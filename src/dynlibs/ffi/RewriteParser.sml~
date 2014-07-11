@@ -1,0 +1,358 @@
+local
+in
+datatype token =
+    COLON
+  | DLANGLE
+  | DLBRACK
+  | DRANGLE
+  | DRBRACK
+  | EOF
+  | EQUALS
+  | IDENTIFIER of string
+  | LCORNER
+  | LITERAL of string
+  | LPAR
+  | RCORNER
+  | RPAR
+  | STAR
+  | UNDERSCORE
+end;
+
+open Obj Parsing;
+prim_val vector_ : int -> 'a -> 'a Vector.vector = 2 "make_vect";
+prim_val update_ : 'a Vector.vector -> int -> 'a -> unit = 3 "set_vect_item";
+
+open GrammarSyntax
+(* Line 7, file RewriteParser.sml *)
+val yytransl = #[
+  257 (* COLON *),
+  258 (* DLANGLE *),
+  259 (* DLBRACK *),
+  260 (* DRANGLE *),
+  261 (* DRBRACK *),
+  262 (* EOF *),
+  263 (* EQUALS *),
+  264 (* IDENTIFIER *),
+  265 (* LCORNER *),
+  266 (* LITERAL *),
+  267 (* LPAR *),
+  268 (* RCORNER *),
+  269 (* RPAR *),
+  270 (* STAR *),
+  271 (* UNDERSCORE *),
+    0];
+
+val yylhs = "\255\255\
+\\001\000\001\000\013\000\013\000\012\000\011\000\011\000\010\000\
+\\010\000\010\000\005\000\005\000\006\000\006\000\007\000\007\000\
+\\007\000\007\000\007\000\007\000\007\000\008\000\008\000\008\000\
+\\009\000\009\000\009\000\004\000\004\000\002\000\003\000\000\000";
+
+val yylen = "\002\000\
+\\002\000\001\000\001\000\002\000\007\000\002\000\001\000\002\000\
+\\001\000\001\000\001\000\002\000\001\000\002\000\003\000\005\000\
+\\008\000\003\000\005\000\003\000\001\000\001\000\003\000\001\000\
+\\003\000\006\000\003\000\001\000\001\000\001\000\001\000\002\000";
+
+val yydefred = "\000\000\
+\\000\000\000\000\000\000\002\000\032\000\003\000\000\000\000\000\
+\\000\000\001\000\004\000\030\000\000\000\031\000\000\000\028\000\
+\\029\000\021\000\000\000\011\000\000\000\000\000\000\000\000\000\
+\\012\000\000\000\000\000\015\000\000\000\018\000\020\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\010\000\000\000\
+\\000\000\016\000\019\000\000\000\000\000\024\000\000\000\013\000\
+\\022\000\000\000\005\000\000\000\025\000\000\000\014\000\000\000\
+\\027\000\000\000\023\000\000\000\017\000\000\000\026\000";
+
+val yydgoto = "\002\000\
+\\005\000\016\000\017\000\018\000\019\000\047\000\020\000\048\000\
+\\039\000\040\000\009\000\006\000\007\000";
+
+val yysindex = "\008\000\
+\\037\255\000\000\034\255\000\000\000\000\000\000\038\255\028\255\
+\\040\255\000\000\000\000\000\000\252\254\000\000\034\255\000\000\
+\\000\000\000\000\028\255\000\000\039\255\001\255\002\255\035\255\
+\\000\000\036\255\000\255\000\000\041\255\000\000\000\000\026\255\
+\\042\255\043\255\044\255\026\255\009\255\046\255\000\000\045\255\
+\\034\255\000\000\000\000\047\255\026\255\000\000\009\255\000\000\
+\\000\000\016\255\000\000\048\255\000\000\049\255\000\000\026\255\
+\\000\000\051\255\000\000\052\255\000\000\054\255\000\000";
+
+val yyrindex = "\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\017\255\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\018\255\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\019\255\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\020\255\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\\000\000\000\000\000\000\000\000\000\000\000\000\000\000";
+
+val yygindex = "\000\000\
+\\000\000\000\000\000\000\224\255\000\000\000\000\031\000\004\000\
+\\225\255\221\255\241\255\050\000\000\000";
+
+val YYTABLESIZE = 66;
+val yytable = "\024\000\
+\\044\000\027\000\029\000\022\000\046\000\049\000\033\000\034\000\
+\\001\000\054\000\023\000\036\000\028\000\030\000\046\000\049\000\
+\\012\000\038\000\014\000\045\000\060\000\007\000\006\000\009\000\
+\\008\000\052\000\056\000\057\000\036\000\007\000\006\000\009\000\
+\\008\000\037\000\038\000\012\000\013\000\014\000\015\000\003\000\
+\\003\000\008\000\004\000\010\000\021\000\026\000\032\000\031\000\
+\\035\000\025\000\055\000\053\000\041\000\050\000\042\000\043\000\
+\\011\000\051\000\000\000\000\000\058\000\059\000\061\000\000\000\
+\\062\000\063\000";
+
+val yycheck = "\015\000\
+\\036\000\001\001\001\001\008\001\037\000\037\000\007\001\008\001\
+\\001\000\045\000\015\001\003\001\012\001\012\001\047\000\047\000\
+\\008\001\009\001\010\001\011\001\056\000\005\001\005\001\005\001\
+\\005\001\041\000\011\001\012\001\003\001\013\001\013\001\013\001\
+\\013\001\008\001\009\001\008\001\009\001\010\001\011\001\003\001\
+\\003\001\008\001\006\001\006\001\005\001\007\001\011\001\013\001\
+\\008\001\019\000\047\000\005\001\011\001\008\001\012\001\012\001\
+\\007\000\013\001\255\255\255\255\013\001\013\001\012\001\255\255\
+\\013\001\012\001";
+
+val yyact = vector_ 33 (fn () => ((raise Fail "parser") : obj));
+(* Rule 1, file RewriteParser.grm, line 37 *)
+val _ = update_ yyact 1
+(fn () => repr(let
+val d__1__ = peekVal 1 : GrammarSyntax.Tree
+in
+( (d__1__) ) end : GrammarSyntax.Tree))
+;
+(* Rule 2, file RewriteParser.grm, line 38 *)
+val _ = update_ yyact 2
+(fn () => repr(let
+in
+( mkNonTerm("rule-list",[]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 3, file RewriteParser.grm, line 42 *)
+val _ = update_ yyact 3
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule-list", [(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 4, file RewriteParser.grm, line 43 *)
+val _ = update_ yyact 4
+(fn () => repr(let
+val d__1__ = peekVal 1 : GrammarSyntax.Tree
+val d__2__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule-list", [(d__1__),(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 5, file RewriteParser.grm, line 47 *)
+val _ = update_ yyact 5
+(fn () => repr(let
+val d__2__ = peekVal 5 : GrammarSyntax.Tree
+val d__6__ = peekVal 1 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule",[(d__2__),(d__6__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 6, file RewriteParser.grm, line 51 *)
+val _ = update_ yyact 6
+(fn () => repr(let
+val d__1__ = peekVal 1 : string
+val d__2__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule-lhs",[mkTerm((d__1__)),(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 7, file RewriteParser.grm, line 52 *)
+val _ = update_ yyact 7
+(fn () => repr(let
+val d__1__ = peekVal 0 : string
+in
+( mkNonTerm("rule-lhs",[mkTerm((d__1__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 8, file RewriteParser.grm, line 56 *)
+val _ = update_ yyact 8
+(fn () => repr(let
+val d__1__ = peekVal 1 : string
+val d__2__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule-rhs",[mkTerm((d__1__)),(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 9, file RewriteParser.grm, line 57 *)
+val _ = update_ yyact 9
+(fn () => repr(let
+val d__1__ = peekVal 0 : string
+in
+( mkNonTerm("rule-rhs",[mkTerm((d__1__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 10, file RewriteParser.grm, line 58 *)
+val _ = update_ yyact 10
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rule-rhs",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 11, file RewriteParser.grm, line 62 *)
+val _ = update_ yyact 11
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("lhs-arg-list",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 12, file RewriteParser.grm, line 63 *)
+val _ = update_ yyact 12
+(fn () => repr(let
+val d__1__ = peekVal 1 : GrammarSyntax.Tree
+val d__2__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("lhs-arg-list",[(d__1__),(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 13, file RewriteParser.grm, line 67 *)
+val _ = update_ yyact 13
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-arg-list",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 14, file RewriteParser.grm, line 68 *)
+val _ = update_ yyact 14
+(fn () => repr(let
+val d__1__ = peekVal 1 : GrammarSyntax.Tree
+val d__2__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-arg-list",[(d__1__),(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 15, file RewriteParser.grm, line 72 *)
+val _ = update_ yyact 15
+(fn () => repr(let
+val d__2__ = peekVal 1 : string
+in
+( mkNonTerm("lhs-arg",[mkTerm((d__2__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 16, file RewriteParser.grm, line 73 *)
+val _ = update_ yyact 16
+(fn () => repr(let
+val d__2__ = peekVal 3 : string
+val d__4__ = peekVal 1 : string
+in
+( mkNonTerm("lhs-arg",[mkTerm((d__2__)),mkTerm((d__4__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 17, file RewriteParser.grm, line 74 *)
+val _ = update_ yyact 17
+(fn () => repr(let
+val d__2__ = peekVal 6 : string
+val d__6__ = peekVal 2 : GrammarSyntax.Tree
+in
+( mkNonTerm("lhs-arg",[mkTerm((d__2__)),(d__6__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 18, file RewriteParser.grm, line 75 *)
+val _ = update_ yyact 18
+(fn () => repr(let
+in
+( mkNonTerm("lhs-arg",[mkTerm("_")]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 19, file RewriteParser.grm, line 76 *)
+val _ = update_ yyact 19
+(fn () => repr(let
+val d__4__ = peekVal 1 : string
+in
+( mkNonTerm("lhs-arg",[mkTerm("_"),mkTerm((d__4__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 20, file RewriteParser.grm, line 77 *)
+val _ = update_ yyact 20
+(fn () => repr(let
+val d__2__ = peekVal 1 : GrammarSyntax.Tree
+in
+( mkNonTerm("lhs-arg",[(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 21, file RewriteParser.grm, line 78 *)
+val _ = update_ yyact 21
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("lhs-arg",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 22, file RewriteParser.grm, line 82 *)
+val _ = update_ yyact 22
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-arg",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 23, file RewriteParser.grm, line 83 *)
+val _ = update_ yyact 23
+(fn () => repr(let
+val d__2__ = peekVal 1 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-arg",[(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 24, file RewriteParser.grm, line 84 *)
+val _ = update_ yyact 24
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-arg",[(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 25, file RewriteParser.grm, line 88 *)
+val _ = update_ yyact 25
+(fn () => repr(let
+val d__2__ = peekVal 1 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-meta-quote",[(d__2__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 26, file RewriteParser.grm, line 89 *)
+val _ = update_ yyact 26
+(fn () => repr(let
+val d__2__ = peekVal 4 : string
+val d__4__ = peekVal 2 : GrammarSyntax.Tree
+in
+( mkNonTerm("rhs-meta-quote",[mkTerm((d__2__)),(d__4__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 27, file RewriteParser.grm, line 90 *)
+val _ = update_ yyact 27
+(fn () => repr(let
+val d__2__ = peekVal 1 : string
+in
+( mkNonTerm("rhs-meta-quote",[mkTerm((d__2__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 28, file RewriteParser.grm, line 94 *)
+val _ = update_ yyact 28
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("at-arg", [(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 29, file RewriteParser.grm, line 95 *)
+val _ = update_ yyact 29
+(fn () => repr(let
+val d__1__ = peekVal 0 : GrammarSyntax.Tree
+in
+( mkNonTerm("at-arg", [(d__1__)]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 30, file RewriteParser.grm, line 99 *)
+val _ = update_ yyact 30
+(fn () => repr(let
+val d__1__ = peekVal 0 : string
+in
+( mkNonTerm("identifier", [mkTerm((d__1__))]) ) end : GrammarSyntax.Tree))
+;
+(* Rule 31, file RewriteParser.grm, line 103 *)
+val _ = update_ yyact 31
+(fn () => repr(let
+val d__1__ = peekVal 0 : string
+in
+( mkNonTerm("literal", [mkTerm((d__1__))]) ) end : GrammarSyntax.Tree))
+;
+(* Entry File *)
+val _ = update_ yyact 32 (fn () => raise yyexit (peekVal 0));
+val yytables : parseTables =
+  ( yyact,
+    yytransl,
+    yylhs,
+    yylen,
+    yydefred,
+    yydgoto,
+    yysindex,
+    yyrindex,
+    yygindex,
+    YYTABLESIZE,
+    yytable,
+    yycheck );
+fun File lexer lexbuf = yyparse yytables 1 lexer lexbuf;

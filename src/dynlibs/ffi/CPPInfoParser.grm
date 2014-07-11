@@ -1,0 +1,23 @@
+%{
+open CSyntax
+%}
+
+%token <string> STRING
+%token <int> INTEGER
+%token HASH
+%token EOF
+
+%start CPPInfo
+%type <CSyntax.Tree> CPPInfo IntList
+
+%%
+
+CPPInfo :
+         HASH INTEGER STRING IntList EOF
+    { mkNonTerm("cpp-info",[mkTerm(Int.toString($2)),mkTerm($3),$4]) }
+;
+
+IntList :
+          INTEGER IntList { mkNonTerm("int-list",[mkTerm(Int.toString($1)),$2]) }
+        | /* nothing */   { mkNonTerm("int-list",[]) }
+;

@@ -1,0 +1,440 @@
+val libmffi =
+       Dynlib.dlopen {lib = "libmffi.so",
+                       flag = Dynlib.RTLD_LAZY,
+                       global = false };
+
+val liblightning =
+       Dynlib.dlopen {lib = "/home/ian3/usr/lib/liblightning.so",
+                       flag = Dynlib.RTLD_LAZY, 
+                       global = false };
+
+datatype jit_gpr_t = 
+   R0 | R1 | R2 | V0 | V1 | V2 | R of int | V of int
+
+datatype jit_fpr_t = 
+   F0 | F1 | F2 | F3 | F4 | F5 | F of int
+
+   datatype jit_sign =
+      Unsigned
+    | Signed
+   datatype jit_typed_value =
+      State of Word8Vector.vector
+    | Node of Word8Vector.vector
+    | String of Word8Vector.vector
+    | Code of Word8Vector.vector
+    | GPRegister of Word8Vector.vector
+    | FPRegister of Word8Vector.vector
+    | Label of Word8Vector.vector
+    | Character of Word8.word * jit_sign
+    | Short of Word8Vector.vector * jit_sign
+    | Integer of Word8Vector.vector * jit_sign
+    | Long of Word8Vector.vector * jit_sign
+    | Float of Word8Vector.vector
+    | Double of Word8Vector.vector
+    | Boolean of Word8.word
+    | Pointer of Word8Vector.vector
+    | Structure of Word8Vector.vector list
+
+local
+   val argv0 = "/home/ian3/usr/lib/mosml/camlrunm";
+   val svec = Ffi.svec_from_string argv0
+   val cp = Ffi.svec_getcptrvalue (Ffi.svec_getbuffercptr svec)
+in val argv0 = Pointer cp
+   val NULLp = Pointer (Ffi.svec_getcptrvalue Ffi.NULL);
+end;
+
+local open Ffi
+   val jit_r_type = Function(Integer(Signed,Int), SOME FFI_TYPE_INT)
+   fun mkargs n_ = svec_setvecword (Word.fromInt n_)
+   fun mkretval v = svec_getvecword v
+   val jit_r_ = Dynlib.cptr (Dynlib.dlsym libmffi "jit_r_")
+in
+   val jit_r = ffi_trampoline "jit_r" jit_r_ jit_r_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_v_type = Function(Integer(Signed,Int), SOME FFI_TYPE_INT)
+   fun mkargs n_ = svec_setvecword (Word.fromInt n_)
+   fun mkretval v = svec_getvecword v
+   val jit_v_ = Dynlib.cptr (Dynlib.dlsym libmffi "jit_v_")
+in
+   val jit_v = ffi_trampoline "jit_v" jit_v_ jit_v_type mkargs mkretval
+end;
+
+val R_NUM = Word.toInt (Ffi.jit_get_constant("R_NUM"));
+val V_NUM = Word.toInt (Ffi.jit_get_constant("V_NUM"));
+
+val MAX_R = R_NUM - 1;
+val MAX_V = V_NUM - 1;
+
+val R3 = R(3)
+val V3 = V(3)
+
+val F6 = F(6);
+val F7 = F(7);
+
+fun jit_gpr (R n) = 
+       if n > MAX_R
+          then raise Fail
+                 ("Invalid R(n) register. (n>"
+                     ^(Int.toString (MAX_R))^")")
+          else jit_r(n)
+  | jit_gpr R0 = jit_r(0)
+  | jit_gpr R1 = jit_r(1)
+  | jit_gpr R2 = jit_r(2)
+  | jit_gpr (V n) = 
+       if n > MAX_V
+          then raise Fail
+                 ("Invalid V(n) register. (n>"
+                     ^(Int.toString (MAX_V))^")")
+          else jit_v(n)
+  | jit_gpr V0 = jit_v(0)
+  | jit_gpr V1 = jit_v(1)
+  | jit_gpr V2 = jit_v(2);
+
+local open Ffi
+in
+   val WORDSIZE = jit_get_wordsize();
+   val BYTE_ORDER = jit_get_byteorder();
+   val LITTLE_ENDIAN = jit_get_little_endian();
+   val BIG_ENDIAN = jit_get_big_endian();
+end
+
+local
+   val init_jit_type =
+          Ffi.Function(Ffi.Pointer(Ffi.Const(Ffi.Character(Ffi.Signed))), SOME Ffi.FFI_TYPE_VOID);
+   fun mkargs (Pointer p) = p
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val init_jit_ = Dynlib.cptr (Dynlib.dlsym liblightning "init_jit")
+in
+   val init_jit = Ffi.ffi_trampoline "init_jit" init_jit_
+                      init_jit_type mkargs mkretval
+end;
+
+local open Ffi
+   val finish_jit_type = Function(Void, SOME FFI_TYPE_VOID);
+   fun mkargs () = Word8Vector.fromList []
+   fun mkretval _ = ()
+   val finish_jit_ = Dynlib.cptr (Dynlib.dlsym liblightning "finish_jit")
+in
+   val finish_jit = ffi_trampoline "finish_jit" finish_jit_
+                          finish_jit_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_new_state_type = Function(Void, SOME FFI_TYPE_POINTER)
+   fun mkargs () = Word8Vector.fromList []
+   fun mkretval v = (State v)
+   val jit_new_state_ = Dynlib.cptr (Dynlib.dlsym liblightning "jit_new_state")
+in
+   val jit_new_state = ffi_trampoline "jit_new_state" jit_new_state_
+                               jit_new_state_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_clear_state_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_clear_state = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_clear_state")
+in
+   val jit_clear_state = ffi_trampoline "jit_clear_state" jit_clear_state
+                               jit_clear_state_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_destroy_state_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_destroy_state = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_destroy_state")
+in
+   val jit_destroy_state = ffi_trampoline "jit_destroy_state" jit_destroy_state
+                                        jit_destroy_state_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_label_type = Function(Pointer(Structure([])), SOME FFI_TYPE_POINTER)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval v = Node v
+   val jit_label = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_label")
+in
+   val jit_label = ffi_trampoline "jit_label" jit_label
+                           jit_label_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_arg_type = Function(Pointer(Structure([])), SOME FFI_TYPE_POINTER)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval v = Node v
+   val jit_arg = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_arg")
+in
+   val jit_arg = ffi_trampoline "jit_arg" jit_arg jit_arg_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_prolog_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_prolog = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_prolog")
+in
+   val jit_prolog = ffi_trampoline "jit_prolog" jit_prolog
+                 jit_prolog_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_prepare_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_prepare = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_prepare")
+in
+   val jit_prepare = ffi_trampoline "jit_prepare" jit_prepare
+                 jit_prepare_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_disassemble_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_disassemble = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_disassemble")
+in
+   val jit_disassemble = ffi_trampoline "jit_disassemble" jit_disassemble
+                              jit_disassemble_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_pushargr_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int)]),
+                       SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, gpr_) = 
+          let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_)] 
+          in argsv
+          end
+     |  mkargs _ = raise Fail "Jit:jit_pushargr: argument type mismatch: expected (State,Gpr)."
+   fun mkretval _ = ()
+   val jit_pushargr_sym = "_jit_pushargr"
+   val jit_pushargr_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargr_sym)
+in
+   val jit_pushargr = ffi_trampoline "jit_pushargr" jit_pushargr_
+                         jit_pushargr_type mkargs mkretval
+end;
+
+local
+   val jit_finishi_type = 
+              Ffi.Function(Ffi.Structure([Ffi.Pointer(Ffi.Structure[]),
+                                  Ffi.Pointer(Ffi.Structure[])]),
+                       SOME Ffi.FFI_TYPE_POINTER)
+   fun mkargs (State jit_, Pointer p) =
+          let val (argsv,svec) = Ffi.mkargssvec [jit_ , p]
+          in argsv
+          end
+     |  mkargs _ = raise Fail ("Jit:jit_finishi: argument type mismatch: expected"^
+                                  " (State,Code,Pointer,word,word).")
+   fun mkretval v = Node v
+   val jit_finishi_sym = "_jit_finishi"
+   val jit_finishi_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_finishi_sym)
+in
+   val jit_finishi = Ffi.ffi_trampoline "jit_finishi" jit_finishi_
+                         jit_finishi_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_getarg_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int),
+                                  Pointer(Structure[])]),
+                       SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, gpr_, Node node_) = 
+          let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_), node_] 
+          in argsv
+          end
+     |  mkargs _ = raise Fail "Jit:jit_getarg: argument type mismatch: expected (State,Gpr,Node)."
+   fun mkretval _ = ()
+   val jit_getarg_sym = "_jit_getarg_"^(if WORDSIZE = 32 then "i" else "l")
+   val jit_getarg_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_sym)
+in
+   val jit_getarg = ffi_trampoline "jit_getarg" jit_getarg_
+                         jit_getarg_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_retval_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int)]),
+                       SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, gpr_) = 
+          let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_)] 
+          in argsv
+          end
+     |  mkargs _ = raise Fail "Jit:jit_retval: argument type mismatch: expected (State,Gpr,Node)."
+   fun mkretval _ = ()
+   val jit_retval_sym = "_jit_retval_"^(if WORDSIZE = 32 then "i" else "l")
+   val jit_retval_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_retval_sym)
+in
+   val jit_retval = ffi_trampoline "jit_retval" jit_retval_
+                         jit_retval_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_patch_type = Function(Structure([Pointer(Structure([])),
+                                            Pointer(Structure([]))]), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, Node node_) =
+          let val (argsv,svec) = mkargssvec [jit_ , node_] 
+          in argsv
+          end
+     |  mkargs _ = raise Fail "Jit:jit_patch: argument type mismatch: expected (State,Node)."
+   fun mkretval _ = ()
+   val jit_patch = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_patch")
+in
+   val jit_patch = ffi_trampoline "jit_patch" jit_patch jit_patch_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_patch_at_type = Function(Structure([Pointer(Structure([])),
+                                               Pointer(Structure([])),
+                                               Pointer(Structure([]))]), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, Node node1_, Node node2_) =
+          let val (argsv,svec) = mkargssvec [jit_ , node1_, node2_]
+          in argsv
+          end
+     |  mkargs _ = raise Fail "Jit:jit_patch_at: argument type mismatch: expected (State,Node,Node)."
+   fun mkretval _ = ()
+   val jit_patch_at = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_patch_at")
+in
+   val jit_patch_at = ffi_trampoline "jit_patch_at" jit_patch_at jit_patch_at_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_retr_type = Function(Structure([Pointer(Structure([])),
+                                           Integer(Unsigned,Int)]), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, gpr_) =
+          let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_)]
+          in argsv
+          end
+     | mkargs _ = raise Fail "Jit:jit_retr:  argument type mismatch: expected (State,gpr)"
+   fun mkretval _ = ()
+   val jit_retr = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retr")
+in
+   val jit_retr = ffi_trampoline "jit_retr" jit_retr jit_retr_type mkargs mkretval
+end;
+
+local
+   val jit_new_node_pww_type = 
+              Ffi.Function(Ffi.Structure([Ffi.Pointer(Ffi.Structure[]),
+                                  Ffi.Integer(Ffi.Unsigned,Ffi.Int),
+                                  Ffi.Pointer(Ffi.Structure[]),
+                                  Ffi.Integer(Ffi.Unsigned,Ffi.Int),
+                                  Ffi.Integer(Ffi.Unsigned,Ffi.Int)]),
+                       SOME Ffi.FFI_TYPE_POINTER)
+   fun mkargs (State jit_, Code code_, Pointer pointer_, word1_, word2_) =
+          let val (argsv,svec) = Ffi.mkargssvec [jit_ , code_, pointer_,
+                                             Ffi.svec_setvecword word1_,
+                                             Ffi.svec_setvecword word2_]
+          in argsv
+          end
+     |  mkargs _ = raise Fail ("Jit:jit_new_node_pww: argument type mismatch: expected"^
+                                  " (State,Code,Pointer,word,word).")
+   fun mkretval v = Node v
+   val jit_new_node_pww_sym = "_jit_new_node_pww"
+   val jit_new_node_pww_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_new_node_pww_sym)
+in
+   val jit_new_node_pww = Ffi.ffi_trampoline "jit_new_node_pww" jit_new_node_pww_
+                         jit_new_node_pww_type mkargs mkretval
+end;
+
+local 
+   val jit_blti_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "blti")))
+in
+   fun jit_blti (jit, gpr, n) = 
+          jit_new_node_pww (jit, jit_blti_, Pointer Ffi.NULLvec, jit_gpr gpr, Word.fromInt n)
+end;
+
+local open Ffi
+   val jit_new_node_www_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int),
+                                  Integer(Unsigned,Int),
+                                  Integer(Unsigned,Int),
+                                  Integer(Unsigned,Int)]),
+                       SOME FFI_TYPE_POINTER)
+   fun mkargs (State jit_, Code code_, word1_, word2_, word3_) =
+          let val (argsv,svec) = mkargssvec [jit_ , code_,
+                                                    svec_setvecword word1_,
+                                                    svec_setvecword word2_,
+                                                    svec_setvecword word3_]
+          in argsv
+          end
+     |  mkargs _ = raise Fail ("Jit:jit_new_node_www: argument type mismatch: expected"^
+                                  " (State,Code,Pointer,word,word).")
+   fun mkretval v = Node v
+   val jit_new_node_www_sym = "_jit_new_node_www"
+   val jit_new_node_www_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_new_node_www_sym)
+in
+   val jit_new_node_www = ffi_trampoline "jit_new_node_www" jit_new_node_www_
+                         jit_new_node_www_type mkargs mkretval
+end;
+
+local 
+   open Ffi
+   val jit_subi_ = Code (svec_setvecword (Word.fromInt (jit_code "subi")))
+   val jit_addi_ = Code (svec_setvecword (Word.fromInt (jit_code "addi")))
+   val jit_subr_ = Code (svec_setvecword (Word.fromInt (jit_code "subr")))
+   val jit_addr_ = Code (svec_setvecword (Word.fromInt (jit_code "addr")))
+in
+   fun jit_subi (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_subi_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
+   fun jit_addi (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_addi_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
+   fun jit_subr (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_subr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
+   fun jit_addr (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_addr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
+end;
+
+local open Ffi
+   val jit_new_node_ww_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int),
+                                  Integer(Unsigned,Int),
+                                  Integer(Unsigned,Int)]),
+                       SOME FFI_TYPE_POINTER)
+   fun mkargs (State jit_, Code code_, word1_, word2_) =
+          let val (argsv,svec) = mkargssvec [jit_ , code_,
+                                                    svec_setvecword word1_,
+                                                    svec_setvecword word2_]
+          in argsv
+          end
+     |  mkargs _ = raise Fail ("Jit:jit_new_node_ww: argument type mismatch: expected"^
+                                  " (State,Code,Pointer,word,word).")
+   fun mkretval v = Node v
+   val jit_new_node_ww_sym = "_jit_new_node_ww"
+   val jit_new_node_ww_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_new_node_ww_sym)
+in
+   val jit_new_node_ww = ffi_trampoline "jit_new_node_ww" jit_new_node_ww_
+                         jit_new_node_ww_type mkargs mkretval
+end;
+
+local
+   val jit_emit_type = Ffi.Function(Ffi.Pointer(Ffi.Structure([])), SOME Ffi.FFI_TYPE_POINTER)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+   fun mkretval v = Ffi.svec_getcptr v
+   val jit_emit = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_emit")
+in
+   val jit_emit = Ffi.ffi_trampoline "jit_emit" jit_emit jit_emit_type mkargs mkretval
+end;
+
+local 
+   open Ffi
+   val jit_movi_ = Code (svec_setvecword (Word.fromInt (jit_code "movi")))
+in
+   fun jit_movi (jit, gpr, n) = 
+          jit_new_node_ww (jit, jit_movi_, jit_gpr gpr, Word.fromInt n)
+end;

@@ -1,0 +1,19 @@
+# Files derived from .mlp files
+# auto-generated
+# binaries
+*.ui
+*.uo
+/mosmlcmp.w32
+/mosmllnk.w32
+/mosmltop.w32
+Config.sml
+Filename.sml
+Lexer.sml
+Opcodes.sml
+Parser.sig
+Parser.sml
+Predef.sml
+Prim_c.sml
+mosmlcmp
+mosmllnk
+mosmltop

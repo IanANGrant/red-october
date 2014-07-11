@@ -1,0 +1,724 @@
+load "RewriteMain";
+load "Rewrite";
+load "CSyntax";
+
+Meta.quotation := true;
+
+fun parse fname cppflags trunit =
+let 
+   open GrammarSyntax;
+   open CSyntax;
+   val cppcmd = "cpp -undef -std=iso9899:1999 "^cppflags;
+   val cppmcmd = cppcmd^" -dM"
+   val cdeft = RewriteMain.parse_cpp_pipe cppmcmd fname trunit;
+   val _ = load_macros cdeft
+   val nCMacros = List.length (macro_names());
+   val cdeclt = RewriteMain.parse_c_pipe cppcmd fname trunit
+   val (cdecls,canondecls) =
+          declsFoldl
+             (fn (t,(a,a')) =>
+                    (case decl_id t
+                       of [Term(s)] => ((s,t)::a,a')
+                        | _ => (a,t::a')))
+         ([],[]) cdeclt;
+   val nCDecls = List.length cdecls
+   val nCAnonDecls = List.length canondecls
+   val CEnumTypedefs =
+       List.foldl (fn ((n, SOME l),r) => (n,l)::r | ((_,NONE),r) => r)  []
+                  (List.map  
+                      (fn n => (n, Option.map enumdec ((enum_typedef o typedef_decl) n))) 
+                      (typedef_names()));
+   val (nCEnumTypedefs,
+        nCEnumTypedefConsts) =
+           List.foldl (fn ((_,l),(m,n)) => (m+1,n+List.length l)) (0,0) CEnumTypedefs;
+   val CAnonEnums =
+       let fun name [] = ""
+             | name l = (case lcprefixl (List.map (fn (s,_) => s) l)
+                           of "" => (#1 o hd) l
+                            | n => n)
+       in 
+          rev (List.foldl
+            (fn (t,a) => 
+                case enumdeclmatch t
+                  of [e] =>
+                     let val l=enumdec (e,())
+                         val ename = (name l)^"Enum"
+                         val ename' = 
+                            let fun iter n =
+                                  if List.exists (fn (s,_) => s = (ename^(Int.toString n))) a
+                                     then iter (n+1)
+                                     else ename^(Int.toString n)
+                            in if List.exists (fn (s,_) => s = ename) a
+                                  then iter 2
+                                  else ename
+                            end 
+                     in ((ename',l)::a)
+                     end
+                   | _ => a)
+            []
+            canondecls)
+       end;
+     val _ = print ("CPP Macro definitions: "^(Int.toString nCMacros))
+     val _ = print ("\nNamed Declarations: "^(Int.toString nCDecls))
+     val _ = print ("\nEnumeration Typedefs: "^(Int.toString nCEnumTypedefs))
+     val _ = print (" (defining "^(Int.toString nCEnumTypedefConsts)^" constants)")
+     val _ = print ("\nAnonymous Enumeration Declarations: "^(Int.toString nCAnonDecls))
+     val _ = print "\n"
+     fun hashtToList t = Hasht.fold (fn a => fn b => fn c => (a,b)::c) [] t
+     val tags = hashtToList CSyntax.tag_table
+     val macros = hashtToList CSyntax.macro_table
+     val typedefs = List.map (fn (s,(t,_)) => (s,t)) (hashtToList CSyntax.typedef_table)
+     fun find_cdecl ds = fn s => List.find (fn (s',t) => s'=s) ds;
+     fun exists optn = case optn of SOME v => v | NONE => raise Subscript
+     val cdecl = fn ds => #2 o exists o (find_cdecl ds)
+     val print_cdecl = fn ds => (Rewrite.printTreeDirect 20) o (cdecl ds) 
+     fun define_enum s = print (enum_datatype (CEnumTypedefs@CAnonEnums) s);
+in {get_decl=cdecl cdecls, print_decl=print_cdecl cdecls, define_enum=define_enum,
+    get_tag=cdecl tags, get_macro=cdecl macros, get_typedef=cdecl typedefs}
+end;
+
+val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n";
+val _ = #print_decl gdkdecls "gdk_window_new";
+val _ = #define_enum gdkdecls "GdkEventType";
+
+val _ = Rewrite.printTreeDirect 0
+                (RewriteMain.parse_c_string "typedef unsigned int ui;\
+                                           \ typedef ui *pui;\
+                                           \ typedef unsigned int *pui2;");
+
+fun match s = Rewrite.tree_match "aquote" 
+                   (Rewrite.compileRewrites
+                      (Rewrite.parse_rewrites_string s));
+
+fun rewrite s = Rewrite.tree_rewrite "aquote" "quote" 
+                   (Rewrite.compileRewrites
+                      (Rewrite.parse_rewrites_string s));
+
+fun printTree t = Rewrite.printTreeDirect 0 t;
+
+fun cstring s = RewriteMain.parse_c_string s;
+
+fun qlToString l =
+   let fun iter r [] = r
+         | iter r ((QUOTE s)::fs) = iter (r^s) fs
+         | iter r ((ANTIQUOTE s)::fs) = iter (r^s) fs
+   in iter "" l
+   end;
+
+fun parseq fname cppflags trunit =
+   parse fname cppflags (qlToString trunit);
+
+val rewriteq = rewrite o qlToString;
+
+val matchq = match o qlToString;
+
+val specqualrw = rewriteq `
+   ⟦declaration-specifiers
+      ⌜x:type-specifier⌝
+      ⌜y:specifier-qualifier-list⌝⟧
+    = (specifier-qualifier-list ⌜x⌝ ⌜y⌝) 
+
+   ⟦declaration-specifiers
+      ⌜x:type-qualifier⌝
+      ⌜y:specifier-qualifier-list⌝⟧
+    = (specifier-qualifier-list ⌜x⌝ ⌜y⌝) 
+
+   ⟦declaration-specifiers
+      ⌜x⌝
+      ⌜y:specifier-qualifier-list⌝⟧
+    = (⌜y⌝) 
+
+   ⟦declaration-specifiers ⌜x:type-qualifier⌝⟧
+    = (specifier-qualifier-list ⌜x⌝) 
+
+   ⟦declaration-specifiers ⌜x:type-specifier⌝⟧
+    = (specifier-qualifier-list ⌜x⌝)
+
+   ⟦declaration (specifier-qualifier-list ⌜x⌝ ⌜y⌝) 
+                (init-declarator-list 
+                    (init-declarator ⌜z⌝))⟧
+    = (struct-declaration
+         ⟦specifier-qualifier-list
+           (specifier-qualifier-list ⌜x⌝)
+           ⌜y⌝⟧
+         (struct-declarator-list
+           (struct-declarator ⌜z⌝)))
+
+   ⟦specifier-qualifier-list
+      ⌜x:specifier-qualifier-list⌝
+      (specifier-qualifier-list ⌜y⌝)⟧
+    = (specifier-qualifier-list ⌜x⌝ ⌜y⌝)
+
+   ⟦specifier-qualifier-list
+      ⌜x:specifier-qualifier-list⌝
+      (specifier-qualifier-list ⌜y⌝ ⌜z⌝)⟧
+    = (⟦specifier-qualifier-list
+         (specifier-qualifier-list ⌜x⌝ ⌜y⌝)
+         ⌜z⌝⟧)
+`;
+
+val _ = printTree (cstring "typedef const unsigned short int usi;");
+
+val _ = printTree (specqualrw (cstring "typedef const unsigned short int usi;"));
+
+val td = parseq "structdef" "" `
+  typedef unsigned int *pui;
+  typedef unsigned int ui;
+  struct tag {const pui puiv, *ppui; const ui *pcui;};
+  extern ui func (const ui *pcui);
+  static const ui *puiv;  
+  static const pui *ppuiv;  
+  typedef struct tag *ps;
+`;
+
+val _ = printTree (#get_tag td "tag");
+
+fun dstDecl t =
+  let open GrammarSyntax
+  in case t
+       of (NonTerm("declaration",[t as (NonTerm("declaration-specifiers",_)),
+                                  t' as (NonTerm("init-declarator-list",_))]))
+            => (t,t')
+        | (NonTerm("struct-declaration",[t as (NonTerm("specifier-qualifier-list",_)),
+                                         t' as (NonTerm("struct-declarator-list",_))]))
+            => (t,t')
+        | (NonTerm("parameter-declaration",[t as (NonTerm("declaration-specifiers",_)),
+                                            t']))
+            => (t,t')
+        | _ => (printTree t;raise Fail "dstDecl: bad decl")
+  end;
+
+fun mkDecl s (dss,idl) =
+  let open GrammarSyntax
+  in (NonTerm(s,[dss,idl]))
+  end;
+
+fun foldStructDecl f =
+   let open GrammarSyntax
+       fun iter (NonTerm("struct-declaration-list",
+                           [ts as NonTerm("struct-declaration-list",_),
+                            t as NonTerm("struct-declaration",_)])) =
+                     NonTerm("struct-declaration-list",[iter ts,f t])
+         | iter (NonTerm("struct-declaration-list",
+                           [t as NonTerm("struct-declaration",_)])) =
+               NonTerm("struct-declaration-list",[f t])
+         | iter t = (Rewrite.printTreeDirect 0 t;
+                        raise Fail "foldStructDecl: no case")
+   in iter
+   end;
+
+fun foldParameterDecl f =
+   let open GrammarSyntax
+       fun iter (NonTerm("parameter-list",
+                           [ts as NonTerm("parameter-list",_),
+                            t as NonTerm("parameter-declaration",_)])) =
+                     NonTerm("parameter-list",[iter ts,f t])
+         | iter (NonTerm("parameter-list",
+                           [t as NonTerm("parameter-declaration",_)])) =
+               NonTerm("parameter-list",[f t])
+         | iter t = (Rewrite.printTreeDirect 0 t;
+                        raise Fail "foldParameterDecl: no case")
+   in iter
+   end;
+
+local open GrammarSyntax
+in
+   type decls = {define_enum : string -> unit, get_decl : string -> Tree,
+                 get_macro : string -> Tree * (string option * string),
+                 get_tag : string -> Tree, get_typedef : string -> Tree,
+                 print_decl : string -> unit}
+end
+
+val elimtdrw = rewriteq `                 
+      ⟦declaration-specifiers
+                 (storage-class-specifier "typedef")
+                 ⌜z:declaration-specifiers⌝⟧
+      = (⟦⌜z⌝⟧)
+      ⟦declaration-specifiers
+            ⌜x⌝
+            (declaration-specifiers
+               (storage-class-specifier "typedef"))⟧
+      = (declaration-specifiers ⌜x⌝)`;
+
+val mergetqrw = rewriteq `                 
+      ⟦merge (declaration-specifiers
+                 ⌜x⌝
+                 ⌜y:declaration-specifiers⌝)
+              ⌜z⌝⟧
+      = (⟦merge ⌜y⌝ ⟦merge (declaration-specifiers ⌜x⌝) ⌜z⌝⟧⟧)
+      ⟦merge (specifier-qualifier-list
+                 ⌜y:specifier-qualifier-list⌝
+                 ⌜x⌝)
+              ⌜z⌝⟧
+      = (⟦merge ⌜y⌝ ⟦merge (specifier-qualifier-list ⌜x⌝) ⌜z⌝⟧⟧)
+      ⟦merge (declaration-specifiers
+                 ⌜x:type-qualifier⌝)
+             (declaration
+                 ⌜y:declaration-specifiers⌝
+                 (init-declarator-list 
+                    (init-declarator
+                       (declarator ⌜w:pointer⌝ ⌜z⌝))))⟧
+      = (declaration
+           ⌜y⌝
+           (init-declarator-list
+              (init-declarator
+                 (declarator ⟦merge-pointer ⌜x⌝ ⌜w⌝⟧ ⌜z⌝))))
+      ⟦merge (specifier-qualifier-list
+                 ⌜x:type-qualifier⌝)
+             (declaration
+                 ⌜y:declaration-specifiers⌝
+                 (init-declarator-list 
+                    (init-declarator
+                       (declarator ⌜w:pointer⌝ ⌜z⌝))))⟧
+      = (declaration
+           ⌜y⌝
+           (init-declarator-list
+              (init-declarator
+                 (declarator ⟦merge-pointer ⌜x⌝ ⌜w⌝⟧ ⌜z⌝))))
+      ⟦merge (declaration-specifiers
+                 ⌜x:type-specifier⌝)
+             ⌜z⌝⟧
+      = (⌜z⌝)
+      ⟦merge (specifier-qualifier-list
+                 ⌜x:type-specifier⌝)
+             ⌜z⌝⟧
+      = (⌜z⌝)
+      ⟦merge (declaration-specifiers
+                 ⌜x:type-qualifier⌝)
+             (parameter-declaration
+                 ⌜y:declaration-specifiers⌝
+                 (declarator ⌜w:pointer⌝ ⌜z⌝))⟧
+      = (parameter-declaration
+           ⌜y⌝
+           (declarator ⟦merge-pointer ⌜x⌝ ⌜w⌝⟧ ⌜z⌝))
+      ⟦merge (specifier-qualifier-list
+                 ⌜x:type-qualifier⌝)
+             (struct-declaration
+                 ⌜y:specifier-qualifier-list⌝
+                 (struct-declarator-list 
+                    (struct-declarator
+                       (declarator ⌜w:pointer⌝ ⌜z⌝))))⟧
+      = (struct-declaration
+            ⌜y⌝
+            (struct-declarator-list
+               (struct-declarator
+                  (declarator ⟦merge-pointer ⌜x⌝ ⌜w⌝⟧ ⌜z⌝))))
+      ⟦merge (declaration-specifiers
+                 ⌜x⌝)
+             (parameter-declaration
+                 ⌜y:declaration-specifiers⌝
+                 ⌜z⌝)⟧
+      = (parameter-declaration
+                 (declaration-specifiers ⌜x⌝ ⌜y⌝)
+                 ⌜z⌝)
+      ⟦merge (specifier-qualifier-list
+                 ⌜x⌝)
+             (struct-declaration
+                 ⌜y:specifier-qualifier-list⌝
+                 ⌜z⌝)⟧
+      = (struct-declaration
+                 (specifier-qualifier-list ⌜x⌝ ⌜y⌝)
+                 ⌜z⌝)
+      ⟦merge (declaration-specifiers
+                 ⌜x⌝)
+             (declaration
+                 ⌜y:declaration-specifiers⌝
+                 ⌜z⌝)⟧
+      = (declaration
+                 (declaration-specifiers ⌜x⌝ ⌜y⌝)
+                 ⌜z⌝)
+      ⟦merge (specifier-qualifier-list
+                 ⌜x⌝)
+             (declaration
+                 ⌜y:declaration-specifiers⌝
+                 ⌜z⌝)⟧
+      = (declaration
+                 (declaration-specifiers ⌜x⌝ ⌜y⌝)
+                 ⌜z⌝)
+      ⟦merge-pointer
+             ⌜x:type-qualifier⌝
+             (pointer ⌜w:type-qualifier-list⌝ ⌜z⌝)⟧
+      = (pointer (type-qualifier-list ⌜w⌝ ⌜x⌝) ⌜z⌝)
+      ⟦merge-pointer
+             ⌜x:type-qualifier⌝
+             (pointer ⌜z⌝)⟧
+      = (pointer (type-qualifier-list ⌜x⌝) ⌜z⌝)
+      ⟦merge-pointer
+             ⌜x:type-qualifier⌝
+             ⌜y:pointer⌝⟧
+      = (pointer (type-qualifier-list ⌜x⌝))`;
+
+local open GrammarSyntax
+in
+fun mergedss (NonTerm("declaration-specifiers",
+                     [NonTerm("type-specifier",_)]))
+          (t as (NonTerm("declaration-specifiers",
+                     [NonTerm("type-specifier",_)]))) = t
+  | mergedss (NonTerm("declaration-specifiers",
+                     [NonTerm("type-specifier",_),dss]))
+          (tds as (NonTerm("declaration-specifiers",
+                     [t as (NonTerm("type-specifier",_))]))) =
+           NonTerm("declaration-specifiers",
+                   [t,mergedss dss tds])
+  | mergedss (NonTerm("declaration-specifiers",
+                     [ds,dss]))
+           tds = NonTerm("declaration-specifiers", [ds,mergedss dss tds])
+  | mergedss dss tds = dss
+end;
+
+fun resolve (decls : decls) t =
+   let open CSyntax
+       val typedef_decl = #get_typedef decls
+       val tag_decl = #get_tag decls
+       fun resolve_decl tags t =
+           case t
+             of (NonTerm("declaration",[_,_]))
+                  => resolve_hairy_decl tags t
+              | (NonTerm("declaration",[t']))
+                  => resolve_simple_decl tags t'
+              | (NonTerm("parameter-declaration",[_,_]))
+                  => resolve_hairy_decl tags t
+              | (NonTerm("parameter-declaration",[t']))
+                  => resolve_simple_decl tags t'
+              | (NonTerm("struct-declaration",[_,_]))
+                  => resolve_hairy_decl tags t
+              | _ => (Rewrite.printTree t; raise Fail "resolve_decl: no case")
+       and resolve_simple_decl tags t =
+           case t
+             of NonTerm("declaration-specifiers",
+                        [NonTerm("type-specifier",
+                                 [NonTerm("struct-or-union-specifier",
+                                         [su,
+                                          id as (NonTerm("identifier",[Term(name)])),
+                                          NonTerm("struct-contents",[sc])])])])
+                => let val sc' = foldStructDecl
+                                     (resolve_decl (name::tags))
+                                     (CSyntax.rewrite_structdecl sc)
+                       val td = NonTerm("struct-contents",[sc']) 
+                   in NonTerm("declaration", 
+                              [NonTerm("declaration-specifiers",
+                                           [NonTerm("type-specifier",
+                                                    [NonTerm("struct-or-union-specifier",
+                                                             [su,id,td])])])])
+                   end
+              | NonTerm("declaration-specifiers",
+                        [NonTerm("type-specifier",
+                                 [NonTerm("struct-or-union-specifier",
+                                         [su,
+                                          NonTerm("struct-contents",[sc])])])])
+                => let val sc' = foldStructDecl
+                                     (resolve_decl tags)
+                                     (CSyntax.rewrite_structdecl sc)
+                       val td = NonTerm("struct-contents",[sc']) 
+                   in NonTerm("declaration", 
+                              [NonTerm("declaration-specifiers",
+                                           [NonTerm("type-specifier",
+                                                    [NonTerm("struct-or-union-specifier",
+                                                             [su,td])])])])
+                   end
+              | _ => (Rewrite.printTree t; raise Fail "resolve_simple_decl: no case")
+       and resolve_hairy_decl tags t =
+       let val (tdd,tdid) = dstDecl t
+           (* val _ = (print "debug:resolve_decl called with:...\n";printTree t) *)
+           val decl_class =
+               case t
+                 of (NonTerm(s as "declaration",_)) => s
+                  | (NonTerm(s as "struct-declaration",_)) => s
+                  | (NonTerm(s as "parameter-declaration",_)) => s
+                  | _ => raise Fail ("resolve_hairy_decl: neither declaration,"^
+                                     " nor parameter/struct-declaration")
+           val r = decl_specs tdd
+           fun decl_ids t = List.map
+                               (fn (GrammarSyntax.Term(n)) => n | _ => "")
+                               (CSyntax.decl_id t) 
+           fun inlist s = List.exists (fn s' => s' = s)
+           val dts = decl_types r
+           fun mergetq dss d = mergetqrw (NonTerm("merge",[dss,d]))
+       in case dts
+            of [NonTerm("typedef-name",[Term(n)])] =>
+                  let val tddecl = (typedef_decl n)
+                          handle Subscript => raise Fail ("resolve_hairy_decl: can't find typedef "^n)
+                      val td = resolve_decl tags tddecl
+                      (* val _ = (print "debug:resolve_decl returned:...\n";printTree td) *)
+                      val td = mergetq tdd td
+                      (* val _ = (print "debug:mergetq returned:...\n";printTree td) *)
+                      val td' = if decl_class = "struct-declaration"
+                                   then specqualrw td
+                                   else td
+                      (* val _ = (print "debug:maybe specqualrw returned:...\n";printTree td') *)
+                      val (tdd',tdid') = dstDecl (td')
+                      (* val _ = (print "debug:dstDecl returned:...\n";printTree tdd')
+                      val _ = (print "debug:and then dstDecl returned:...\n";printTree tdid')
+                      val _ = (print "debug:tdid=:...\n";printTree tdid) *)
+                      val rtd = resolve_decls tags tdid tdid'
+                      (* val _ = (print "debug:resolve_decls returned:...\n";printTree rtd) *)
+                  in  (elimtdrw (mkDecl decl_class (tdd', rtd)))
+                  end
+(*                      val (tdd',tdid') = dstDecl td'
+                      val rtd = resolve_decls tags tdid tdid'
+                  in mergetq tdd (elimtdrw (mkDecl decl_class (tdd', rtd)))
+                  end  *)
+             | [NonTerm("struct-or-union-specifier",
+                        [su,id as NonTerm("identifier",
+                                          [Term(name)])])] =>
+                  let val tdopt = SOME (tag_decl name) handle Subscript => NONE
+                      val nop = fn () => mkDecl decl_class (tdd, (NonTerm("declaration-specifiers",
+                                                                 [NonTerm("type-specifier",dts)])))
+                  in
+                     case tdopt
+                       of NONE => nop ()
+                        | SOME td =>
+                            if inlist name tags
+                               then nop () 
+                               else resolve_decl (name::tags)
+                                        (mkDecl 
+                                           decl_class 
+                                           (mergedss tdd
+                                                  (NonTerm("declaration-specifiers",
+                                                           [NonTerm("type-specifier",
+                                                               [NonTerm("struct-or-union-specifier",
+                                                                        [su,id,td])])])),
+                                                   tdid))
+                  end
+             | [NonTerm("struct-or-union-specifier",
+                        [su,id as NonTerm("identifier",
+                                          [Term(name)]) ,NonTerm("struct-contents",[sc])])] =>
+                  let val sc' = foldStructDecl
+                                     (resolve_decl (name::tags))
+                                     (CSyntax.rewrite_structdecl sc)
+                      val td = NonTerm("struct-contents",[sc']) 
+                  in mkDecl 
+                       decl_class 
+                       (mergedss tdd (NonTerm("declaration-specifiers",
+                                          [NonTerm("type-specifier",
+                                                   [NonTerm("struct-or-union-specifier",
+                                                            [su,id,td])])])),
+                        tdid)
+                  end
+             | dts => t (* (Rewrite.printTreeList dts; raise Fail "resolve_decl: no case") *)
+       end handle Subscript => (Rewrite.printTreeDirect 0 t;
+                                raise Fail "resolve_hairy_decl: can't find resolvent")
+    and resolve_decls tags t t' =
+       let fun iter (NonTerm("init-declarator-list",[t]))
+                    (NonTerm("init-declarator-list",[t'])) =
+                     NonTerm("init-declarator-list",[iter t t'])
+             | iter (t as NonTerm("declarator",_))
+                    (NonTerm("init-declarator-list",
+                             [NonTerm("init-declarator",
+                                      [t' as NonTerm("declarator",_)])])) =
+                     iter t t'
+             | iter (NonTerm("init-declarator",[t]))
+                    (NonTerm("init-declarator",[t'])) =
+                     NonTerm("init-declarator",[iter t t'])
+             | iter (NonTerm("struct-declarator-list",[t]))
+                    (NonTerm("struct-declarator-list",[t'])) =
+                     NonTerm("struct-declarator-list",[iter t t'])
+             | iter (NonTerm("struct-declarator",[t]))
+                    (NonTerm("struct-declarator",[t'])) =
+                     NonTerm("struct-declarator",[iter t t'])
+             | iter (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [dd as NonTerm("direct-declarator",_),
+                                       NonTerm("parameter-type-list",
+                                               [pl as NonTerm("parameter-list",_)])])]))
+                    (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [NonTerm("identifier",_)])])) =
+                    (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [dd,NonTerm("parameter-type-list",
+                                                 [foldParameterDecl (resolve_decl tags) pl])])]))
+             | iter (NonTerm("declarator",
+                             [p,
+                              NonTerm("direct-declarator",
+                                      [dd as NonTerm("direct-declarator",_),
+                                       NonTerm("parameter-type-list",
+                                               [pl as NonTerm("parameter-list",_)])])]))
+                    (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [NonTerm("identifier",_)])])) =
+                    (NonTerm("declarator",
+                             [p, NonTerm("direct-declarator",
+                                      [dd,NonTerm("parameter-type-list",
+                                                 [foldParameterDecl (resolve_decl tags) pl])])]))
+             | iter t (NonTerm("declarator",
+                               [NonTerm("direct-declarator",
+                                  [NonTerm("identifier",_)])])) = t
+(*             | iter t (NonTerm("declarator",
+                                 [NonTerm("direct-declarator",
+                                          [d as NonTerm("declarator",_)])])) = 
+                         NonTerm("declarator",
+                                 [NonTerm("direct-declarator",
+                                          [iter t d])]) *)
+             | iter (NonTerm("declarator",
+                             [p as NonTerm("pointer",_),
+                              d as NonTerm("direct-declarator",_)]))
+                    (NonTerm("declarator",
+                             [NonTerm("pointer",l as [NonTerm("pointer",_)]),
+                              d' as NonTerm("direct-declarator",_)])) = 
+                iter (NonTerm("declarator",[NonTerm("pointer",[p]),d]))
+                     (NonTerm("declarator",l@[d']))
+             | iter (NonTerm("declarator",
+                             [p as NonTerm("pointer",_),
+                              d as NonTerm("direct-declarator",_)]))
+                    (NonTerm("declarator",
+                             [NonTerm("pointer",l),
+                              d' as NonTerm("direct-declarator",_)])) = 
+                iter (NonTerm("declarator",[NonTerm("pointer",l@[p]),d]))
+                     (NonTerm("declarator",[d']))
+             | iter (NonTerm("declarator",
+                             [d as NonTerm("direct-declarator",_)]))
+                    (NonTerm("declarator", [NonTerm("pointer",l as [NonTerm("pointer",_)]),
+                                            d' as NonTerm("direct-declarator", _)])) = 
+                iter (NonTerm("declarator",[NonTerm("pointer",[]),d]))
+                     (NonTerm("declarator",l@[d']))
+             | iter (NonTerm("declarator",
+                             [d as NonTerm("direct-declarator",_)]))
+                    (NonTerm("declarator", [p as NonTerm("pointer",_),
+                                            d' as NonTerm("direct-declarator", _)])) = 
+                iter (NonTerm("declarator",[p,d]))
+                     (NonTerm("declarator",[d']))
+             | iter (NonTerm("declarator",
+                             [d as NonTerm("direct-declarator",_)]))
+                    (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [dd,ad as NonTerm("array-declarator",_)])])) = 
+                iter (NonTerm("declarator",[NonTerm("direct-declarator",[d,ad])]))
+                     (NonTerm("declarator",[dd]))
+             | iter (d as (NonTerm("declarator",
+                             [NonTerm("direct-declarator",_)])))
+                    (NonTerm("declarator",
+                             [NonTerm("direct-declarator",
+                                      [NonTerm("direct-declarator",[d']),
+                                       ptl as NonTerm("parameter-type-list",_)])])) = 
+                (NonTerm("declarator",
+                         [NonTerm("direct-declarator",
+                                  [NonTerm("direct-declarator",
+                                           [iter d d'])]),ptl]))
+             | iter t t' = (Rewrite.printTreeDirect 0 t; Rewrite.printTreeDirect 0 t';
+                            raise Fail "resolve_decls: no case")
+       in iter t t'
+       end
+   in resolve_decl [] t
+   end;
+
+val fdecl = parseq "fdecl" "" `
+   typedef unsigned int ui;
+   typedef ui ( *funcp) (ui i);
+   extern ui *func (ui i, const funcp cfp[]);
+`;
+
+val _ = printTree (resolve fdecl (#get_decl fdecl "func"));
+val _ = printTree (#get_typedef fdecl "ui");
+val _ = printTree (#get_decl fdecl "func");
+
+val cpdecl = parseq "cpdecl" "" `
+   typedef unsigned int *pui;
+   typedef const pui *cppui;
+   typedef unsigned int * const *cppui2;
+`;
+
+val _ = printTree (resolve cpdecl (#get_typedef cpdecl "cppui"));
+val _ = printTree (#get_typedef cpdecl "cppui2");
+
+val ctdecl = parseq "ctdecl" "" `
+   typedef unsigned int ui;
+   typedef const ui cui;
+`;
+
+val _ = printTree (#get_typedef ctdecl "cui");
+val _ = printTree (#get_typedef ctdecl "ui");
+val _ = printTree (resolve ctdecl (#get_typedef ctdecl "cui"));
+
+(*
+val csynt = RewriteMain.parse_c "example.c";
+
+val _ = printTreeDirect 30 csynt;
+
+val _ = quietdec := true
+val grammar_synt = RewriteMain.parse_grammar grammar;
+val _ = quietdec := false
+
+
+val _ = printTreeDirect 30 grammar_synt;
+
+val _ = debug_reset();
+
+fun debug_subst_match_on () =
+   let val _ = debug_on "tree_subst" (On 10)
+       val _ = debug_on "tree_match" (On 10)
+       val _ = debug_on "tree_rewrite" (On 10)
+       val _ = debug_on "tree_tree_list_subst_leaves" (On 4)
+       val _ = debug_on "rewrite" (On 4)
+       val _ = debug_on "tree_subst_branch" (On 4)
+   in () end;
+
+val _ = debug_on "tree_unify_subst" (On 10)
+val _ = debug_off "tree_unify_subst"
+val _ = debug_on "tree_unify_branch" (On 10)
+val _ = debug_on "tree_match" (On 10)
+
+val tddeclt = RewriteMain.parse_c_string
+       "typedef int s; typedef s *t; typedef int *u;";
+val _ = Rewrite.printTreeDirect 30 tddeclt;
+
+val enumdecl = RewriteMain.parse_c_string
+  "typedef enum {SIGEV_SIGNAL = 1, SIGEV_NONE, SIGEV_THREAD = 0, SIGEV_THREAD_ID = 4} fred;";
+
+val _ = Rewrite.printTreeDirect 30 enumdecl;
+
+val rewrite_synt = Rewrite.parse_rewrites "../dynlibs/ffi/typedef.rwt";
+val _ = print (Rewrite.printRewrites rewrite_synt);
+
+val rwres =  (Rewrite.compileRewrites rewrite_synt);
+val rewrite = Rewrite.tree_rewrite "aquote" "quote" rwres;
+val tddeclt' = rewrite tddeclt;
+
+val _ = debug_off "tree_unify_branch"
+
+val _ = print "\nrewrite gives:\n";
+
+val decllistmatch = 
+      Rewrite.compileRewrites
+        (Rewrite.parse_rewrites_string
+            "⟦declaration-list \
+           \    ⌜x:declaration⌝⟧ = \
+           \ (⌜x⌝) \
+           \ ⟦declaration-list \
+           \    ⌜x:declaration-list⌝ \
+           \    ⌜y:declaration⌝⟧ = \
+           \ (⌜y⌝)")
+
+val _ = debug_on "tree_match" (On 10)
+val _ = debug_on "tree_unify_match" (On 10) 
+val tdl = tree_match "quote" decllistmatch tddeclt'
+val _ = debug_off "tree_unify_match"
+val _ = debug_off "tree_match" 
+
+val _ = print "\ntree_match gives:\n";
+
+val _ = List.app (Rewrite.printTreeDirect 30) tdl
+
+val rewrites = "test.rwt";
+val _ = quietdec := true;
+val rewrite_synt = Rewrite.parse_rewrites rewrites;
+val _ = quietdec := false;
+
+val _ = print (Rewrite.printRewrites rewrite_synt);
+
+val rwres =  (Rewrite.compileRewrites rewrite_synt);
+val rewrite' = tree_rewrite "aquote" "quote" rwres;
+
+val res' = rewrite' grammar_synt;
+val _ = print "\nrewrite' gives:\n";
+val _ = Rewrite.printTreeDirect 30 (res');
+
+fun afterFirst t =
+   let fun iter [] = []
+         | iter (l as (x::xs)) = if x = t then l else iter xs
+   in iter
+   end;
+
+val ctoks = RewriteMain.tokenise_c "example.h";
+val cfrag' = afterFirst (CParser.IDENTIFIER "__val") ctoks;
+*)

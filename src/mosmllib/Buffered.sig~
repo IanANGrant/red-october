@@ -1,0 +1,2 @@
+
+val input        : TextIO.instream -> CharArray.array -> int -> int -> int

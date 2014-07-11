@@ -1,0 +1,1397 @@
+%{
+open CSyntax
+%}
+
+/* This concrete MLYACC grammar and the associated semantic
+   productions have been so written that they could be generated
+   mechanically from an entirely abstract description of the syntax
+   such as will be found at the end of this file. */
+
+%token <string> STRING
+%token <string> IDENTIFIER
+%token <string> PMIDENTIFIER
+%token <string> TYPEDEF_NAME
+%token <string> OCTINT
+%token <string> CHARACTER
+%token <string> DECINT
+%token <string> HEXINT
+%token <string> DIGIT_SEQUENCE
+%token <string> SIGN
+%token <string> FLOATING_SUFFIX
+%token <string> TEXT_FRAG
+%token <string> INCLUDE
+%token <string> SYSINCLUDE
+
+%token WARNING
+%token ERROR
+%token PRAGMA
+
+%token UNDEF
+%token CPPELSE
+%token CPPIF
+%token IFDEF
+%token IFNDEF
+%token ENDIF
+%token ELIF
+%token DEFINE
+%token TOKEN_PASTE
+
+%token DEFINED
+%token EOL
+
+%token FOR
+%token WHILE
+%token DO
+%token GOTO
+%token CONTINUE
+%token BREAK
+%token RETURN
+%token SWITCH
+%token IF
+%token ELSE
+%token CASE
+%token DEFAULT
+%token GENERIC
+
+%token ADDASSIGN
+%token ALIGNAS
+%token AND
+%token ANDASSIGN
+%token ATOMIC
+%token AUTO
+%token BOOL
+%token CHAR
+%token COLON
+%token COMMA
+%token COMPLEX
+%token CONST
+%token DEC
+%token DECIMAL_POINT
+%token DIVIDE
+%token DIVIDEASSIGN
+%token DOUBLE
+%token E
+%token ELIPSIS
+%token ENUM
+%token EOF
+%token EQ
+%token EQUALS
+%token EXTERN
+%token FLOAT
+%token GE
+%token GT
+%token INC
+%token INLINE
+%token INT
+%token LAND
+%token LBRACE
+%token LBRACK
+%token LE
+%token LNOT
+%token LONG
+%token LONG_SUFFIX
+%token LOR
+%token LPAR
+%token LS
+%token LSASSIGN
+%token LT
+%token MINUS
+%token MINUSASSIGN
+%token MOD
+%token MODASSIGN
+%token MULTIPLYASSIGN
+%token NE
+%token NI
+%token NO_RETURN
+%token NOT
+%token OR
+%token ORASSIGN
+%token PLUS
+%token RBRACE
+%token RBRACK
+%token REGISTER
+%token RESTRICT
+%token RPAR
+%token RS
+%token RSASSIGN
+%token SEMICOLON
+%token SHORT
+%token SIGNED
+%token SIZEOF
+%token SPR
+%token SR
+%token STAR
+%token STATIC
+%token STATIC_ASSERT
+%token STRUCT
+%token THEN
+%token THREAD_LOCAL
+%token TYPEDEF
+%token TYPEDEF_NAME
+%token UNION
+%token UNSIGNED
+%token UNSIGNED_SUFFIX
+%token VOID
+%token VOLATILE
+%token XOR
+%token XORASSIGN
+
+%start CPPFile
+%type <CSyntax.Tree> CPPFile
+
+%start File
+%type <CSyntax.Tree> File
+
+%type <CSyntax.Tree> ExternalDeclarations ExternalDeclaration
+FunctionDefinition DeclarationList Declaration InitDeclaratorList
+InitDeclarator StaticAssert DeclarationSpecifiers
+StorageClassSpecifier TypeSpecifier TypedefName AtomicTypeSpecifier
+TypeQualifier FunctionSpecifier AlignmentSpecifier
+StructOrUnionSpecifier StructOrUnion StructContents
+StructDeclarationList StructDeclaration StructDeclaratorList
+StructDeclarator EnumSpecifier EnumeratorList Enumerator
+EnumerationConstant Declarator DirectDeclarator Pointer
+TypeQualifierList ArrayDeclarator Static Star TypeName
+SpecifierQualifierList ParameterTypeList Elipsis ParameterList
+ParameterDeclaration IdentifierList AbstractDeclarator
+DirectAbstractDeclarator ConstantExpression Expression
+AssignmentExpression AssignmentOperator ConditionalExpression
+LogicalOrExpression LogicalAndExpression InclusiveOrExpression
+ExclusiveOrExpression AndExpression EqualityExpression
+EqualityOperator RelationalExpression RelationalOperator
+ShiftExpression ShiftOperator AdditiveExpression AdditiveOperator
+MultiplicativeExpression MultiplicativeOperator CastExpression
+UnaryExpression Inc Dec UnaryOperator PostfixExpression
+EmptyParentheses StructRefOperator SizeOf PrimaryExpression
+GenericSelection GenericAssocList GenericAssociation
+ArgumentExpressionList ArgumentExpression Initializer InitializerList
+Designation DesignatorList Designator ArrayDesignator
+CompoundStatement BlockItemList BlockItem NestedDeclaration Statement
+LabeledStatement Label ExpressionStatement SelectionStatement
+IfStatement SwitchStatement IterationStatement JumpStatement
+DoStatement WhileStatement ForStatement IntegerConstant Integer
+DecimalInteger HexadecimalInteger OctalInteger IntegerSuffix
+UnsignedSuffix LongSuffix StringLiteral CharacterLiteral Identifier
+FloatingSuffix DigitSequence ExponentPart FractionalConstant
+FloatingPointConstant HashToken HashDefinition HashDefineParameterList
+ParametricIdentifier HashDefine CPPLines CPPIdentifier
+
+%%
+
+File :
+    ExternalDeclarations EOF { $1 }
+  | EOF                      { mkNonTerm("EMPTY",[]) }
+;
+
+CPPFile :
+    CPPLines EOF { $1 }
+ | EOF          { mkNonTerm("EMPTY",[]) }
+;
+
+CPPLines :
+   CPPLines HashDefine { mkNonTerm("cpp-lines", [$1,$2]) }
+ | HashDefine          { mkNonTerm("cpp-lines", [$1]) }
+;
+
+HashDefine :
+   DEFINE ParametricIdentifier HashDefineParameterList RPAR HashDefinition EOL 
+          { mkNonTerm("hash-define", [$2,$3,$5]) }
+ | DEFINE ParametricIdentifier RPAR HashDefinition EOL 
+          { mkNonTerm("hash-define", [$2,$4]) }
+ | DEFINE ParametricIdentifier RPAR EOL 
+          { mkNonTerm("hash-define", [$2]) }
+ | DEFINE ParametricIdentifier HashDefineParameterList RPAR EOL 
+          { mkNonTerm("hash-define", [$2,$3]) }
+ | DEFINE CPPIdentifier HashDefinition EOL
+          { mkNonTerm("hash-define", [$2,$3]) }
+ | DEFINE CPPIdentifier EOL
+          { mkNonTerm("hash-define", [$2]) }
+;
+
+ParametricIdentifier :
+  PMIDENTIFIER { mkNonTerm("parametric-identifier", [mkTerm($1)]) }
+;
+
+HashDefineParameterList :
+   CPPIdentifier                               { mkNonTerm("hash-define-parameter-list", [$1]) }
+ | HashDefineParameterList COMMA CPPIdentifier { mkNonTerm("hash-define-parameter-list", [$1,$3]) }
+;
+
+HashDefinition :
+   HashDefinition HashToken { mkNonTerm("hash-definition", [$1,$2]) }
+ | HashToken                { mkNonTerm("hash-definition", [$1]) }
+;
+
+CPPIdentifier :
+  IDENTIFIER { mkNonTerm("identifier",[mkTerm($1)]) }
+;
+
+HashToken :
+   IDENTIFIER  { mkNonTerm("hash-token", [mkNonTerm("identifier",[mkTerm($1)])]) }
+ | TOKEN_PASTE { mkNonTerm("hash-token", [mkNonTerm("token-paste",[])]) }
+ | TEXT_FRAG   { mkNonTerm("hash-token", [mkNonTerm("text-frag",[mkTerm($1)])]) }
+;
+
+ExternalDeclarations : 
+   ExternalDeclaration                      { mkNonTerm("external-declarations", [$1]) }
+ | ExternalDeclarations ExternalDeclaration { mkNonTerm("external-declarations", [$1,$2]) }
+;
+
+ExternalDeclaration :
+   FunctionDefinition { mkNonTerm("external-declaration", [$1]) }
+ | Declaration        { mkNonTerm("external-declaration", [$1]) }
+;
+
+FunctionDefinition :
+   DeclarationSpecifiers Declarator DeclarationList CompoundStatement 
+              { mkNonTerm("function-definition", [$1,$2,$3,$4]) }
+ | DeclarationSpecifiers Declarator CompoundStatement
+              { mkNonTerm("function-definition", [$1,$2,$3]) }
+ | Declarator DeclarationList CompoundStatement
+              { mkNonTerm("function-definition", [$1,$2,$3]) }
+ | Declarator CompoundStatement
+              { mkNonTerm("function-definition", [$1,$2]) }
+;
+
+DeclarationList :
+   DeclarationList Declaration  { mkNonTerm("declaration-list", [$1,$2]) }
+ | Declaration                  { mkNonTerm("declaration-list", [$1]) }
+;
+
+Declaration :
+   DeclarationSpecifiers InitDeclaratorList SEMICOLON { mkNonTerm("declaration", [$1,$2]) }
+ | DeclarationSpecifiers SEMICOLON                    { mkNonTerm("declaration", [$1]) }
+ | StaticAssert SEMICOLON                             { mkNonTerm("declaration", [$1]) }
+;
+
+InitDeclaratorList :
+   InitDeclarator                          { mkNonTerm("init-declarator-list", [$1]) }
+ | InitDeclaratorList COMMA InitDeclarator { mkNonTerm("init-declarator-list", [$1,$3]) }
+;
+
+InitDeclarator :
+   Declarator                    { mkNonTerm("init-declarator", [$1]) }
+ | Declarator EQUALS Initializer { mkNonTerm("init-declarator", [$1,$3]) }
+;
+
+StaticAssert :
+   STATIC_ASSERT LPAR Expression COMMA StringLiteral RPAR
+              { mkNonTerm("static-assert-declaration", [$3,$5]) }
+;
+
+DeclarationSpecifiers :
+   StorageClassSpecifier DeclarationSpecifiers { mkNonTerm("declaration-specifiers", [$1,$2]) }
+ | TypeQualifier         DeclarationSpecifiers { mkNonTerm("declaration-specifiers", [$1,$2]) }
+ | TypeSpecifier         DeclarationSpecifiers { mkNonTerm("declaration-specifiers", [$1,$2]) }
+ | FunctionSpecifier     DeclarationSpecifiers { mkNonTerm("declaration-specifiers", [$1,$2]) }
+ | AlignmentSpecifier    DeclarationSpecifiers { mkNonTerm("declaration-specifiers", [$1,$2]) }
+ | StorageClassSpecifier                       { mkNonTerm("declaration-specifiers", [$1]) }
+ | TypeQualifier                               { mkNonTerm("declaration-specifiers", [$1]) }
+ | TypeSpecifier                               { mkNonTerm("declaration-specifiers", [$1]) }
+ | FunctionSpecifier                           { mkNonTerm("declaration-specifiers", [$1]) }
+ | AlignmentSpecifier                          { mkNonTerm("declaration-specifiers", [$1]) }
+;
+
+StorageClassSpecifier :
+   TYPEDEF         { mkNonTerm("storage-class-specifier", [mkTerm("typedef")]) }
+ | EXTERN          { mkNonTerm("storage-class-specifier", [mkTerm("extern")]) }
+ | STATIC          { mkNonTerm("storage-class-specifier", [mkTerm("static")]) }
+ | AUTO            { mkNonTerm("storage-class-specifier", [mkTerm("auto")]) }
+ | REGISTER        { mkNonTerm("storage-class-specifier", [mkTerm("register")]) }
+ | THREAD_LOCAL    { mkNonTerm("storage-class-specifier", [mkTerm("_Thread_local")]) }
+;
+
+TypeSpecifier :
+   VOID     { mkNonTerm("type-specifier", [mkTerm("void")]) }
+ | CHAR     { mkNonTerm("type-specifier", [mkTerm("char")]) }
+ | INT      { mkNonTerm("type-specifier", [mkTerm("int")]) }
+ | SHORT    { mkNonTerm("type-specifier", [mkTerm("short")]) }
+ | LONG     { mkNonTerm("type-specifier", [mkTerm("long")]) }
+ | SIGNED   { mkNonTerm("type-specifier", [mkTerm("signed")]) }
+ | UNSIGNED { mkNonTerm("type-specifier", [mkTerm("unsigned")]) }
+ | FLOAT    { mkNonTerm("type-specifier", [mkTerm("float")]) }
+ | DOUBLE   { mkNonTerm("type-specifier", [mkTerm("double")]) }
+ | BOOL     { mkNonTerm("type-specifier", [mkTerm("_Bool")]) }
+ | COMPLEX  { mkNonTerm("type-specifier", [mkTerm("_Complex")]) }
+ | TypedefName            { mkNonTerm("type-specifier", [$1]) }
+ | StructOrUnionSpecifier { mkNonTerm("type-specifier", [$1]) }
+ | EnumSpecifier          { mkNonTerm("type-specifier", [$1]) }
+ | AtomicTypeSpecifier    { mkNonTerm("type-specifier", [$1]) }
+;
+
+TypedefName :
+   TYPEDEF_NAME { mkNonTerm("typedef-name", [mkTerm($1)]) }
+;
+
+AtomicTypeSpecifier :
+   ATOMIC LPAR TypeName RPAR { mkNonTerm("atomic-type-specifier",[$3]) }
+;
+
+TypeQualifier :
+   CONST     { mkNonTerm("type-qualifier", [mkTerm("const")]) }
+ | RESTRICT  { mkNonTerm("type-qualifier", [mkTerm("restrict")]) }
+ | VOLATILE  { mkNonTerm("type-qualifier", [mkTerm("volatile")]) }
+;
+
+FunctionSpecifier :
+   INLINE    { mkNonTerm("function-specifier", [mkTerm("inline")]) }
+ | NO_RETURN { mkNonTerm("function-specifier", [mkTerm("_Noreturn")]) }
+;
+
+AlignmentSpecifier :
+   ALIGNAS LPAR TypeName RPAR   { mkNonTerm("alignment-specifier", [ $3 ]) }
+ | ALIGNAS LPAR Expression RPAR { mkNonTerm("alignment-specifier", [ $3 ]) }
+;
+
+StructOrUnionSpecifier :
+   StructOrUnion Identifier LBRACE StructContents RBRACE 
+                  { mkNonTerm("struct-or-union-specifier", [$1,$2,$4]) }
+ | StructOrUnion LBRACE StructContents RBRACE 
+                  { mkNonTerm("struct-or-union-specifier", [$1,$3]) }
+ | StructOrUnion Identifier 
+                  { mkNonTerm("struct-or-union-specifier", [$1,$2]) }
+ | StructOrUnion TypedefName 
+                  { mkNonTerm("struct-or-union-specifier", [$1,$2]) }
+;
+
+StructOrUnion :
+   STRUCT { mkNonTerm("struct-or-union", [mkTerm("struct")]) }
+ | UNION  { mkNonTerm("struct-or-union", [mkTerm("union")]) }
+;
+
+StructContents :
+   StructDeclarationList { mkNonTerm("struct-contents", [$1]) }
+;
+
+StructDeclarationList :
+   StructDeclaration SEMICOLON { mkNonTerm("struct-declaration-list", [$1]) }
+ | StructDeclarationList StructDeclaration SEMICOLON
+                               { mkNonTerm("struct-declaration-list", [$1,$2]) }
+;
+
+StructDeclaration :
+   SpecifierQualifierList StructDeclaratorList 
+                { mkNonTerm("struct-declaration", [$1,$2]) }
+ | SpecifierQualifierList 
+                { mkNonTerm("struct-declaration", [$1]) } /* This is a GCC extension */
+ | StaticAssert { mkNonTerm("struct-declaration", [$1]) } 
+;
+
+StructDeclaratorList :
+   StructDeclarator { mkNonTerm("struct-declarator-list", [$1]) }
+ | StructDeclaratorList COMMA StructDeclarator 
+                    { mkNonTerm("struct-declarator-list", [$1,$3]) }
+;
+
+StructDeclarator :
+   Declarator                          { mkNonTerm("struct-declarator", [$1]) }
+ | Declarator COLON ConstantExpression { mkNonTerm("struct-declarator", [$1,$3]) }
+ | COLON ConstantExpression            { mkNonTerm("struct-declarator", [$2]) }
+;
+
+EnumSpecifier :
+   ENUM Identifier LBRACE EnumeratorList RBRACE
+                                     { mkNonTerm("enum-specifier", [$2,$4]) }
+ | ENUM LBRACE EnumeratorList RBRACE { mkNonTerm("enum-specifier", [$3]) }
+ | ENUM Identifier LBRACE EnumeratorList COMMA RBRACE
+                                     { mkNonTerm("enum-specifier", [$2,$4]) }
+ | ENUM LBRACE EnumeratorList COMMA RBRACE
+                                     { mkNonTerm("enum-specifier", [$3]) }
+ | ENUM Identifier { mkNonTerm("enum-specifier", [$2]) }
+;
+
+EnumeratorList :
+   Enumerator                      { mkNonTerm("enumerator-list", [$1]) }
+ | EnumeratorList COMMA Enumerator { mkNonTerm("enumerator-list", [$1,$3]) }
+;
+
+Enumerator :
+   EnumerationConstant                           { mkNonTerm("enumerator", [$1]) }
+ | EnumerationConstant EQUALS ConstantExpression { mkNonTerm("enumerator", [$1,$3]) }
+;
+
+EnumerationConstant :
+   Identifier { mkNonTerm("enumeration-constant", [$1]) }
+;
+
+Declarator :
+   Pointer DirectDeclarator { mkNonTerm("declarator",[$1,$2]) }
+ | DirectDeclarator         { mkNonTerm("declarator",[$1]) }
+;
+
+DirectDeclarator :
+   Identifier                                   { mkNonTerm("direct-declarator",[$1]) }
+ | LPAR Declarator RPAR                         { mkNonTerm("direct-declarator",[$2]) }
+ | DirectDeclarator ArrayDeclarator             { mkNonTerm("direct-declarator",[$1,$2]) }
+ | DirectDeclarator LPAR ParameterTypeList RPAR { mkNonTerm("direct-declarator",[$1,$3]) }
+ | DirectDeclarator LPAR IdentifierList RPAR    { mkNonTerm("direct-declarator",[$1,$3]) }
+ | DirectDeclarator LPAR RPAR                   { mkNonTerm("direct-declarator",[$1]) }
+;
+
+Pointer :
+   STAR TypeQualifierList Pointer { mkNonTerm("pointer",[$2,$3]) }
+ | STAR TypeQualifierList         { mkNonTerm("pointer",[$2]) }
+ | STAR Pointer                   { mkNonTerm("pointer",[$2]) }
+ | STAR                           { mkNonTerm("pointer",[]) }
+;
+
+TypeQualifierList :
+   TypeQualifier                   { mkNonTerm("type-qualifier-list",[$1]) }
+ | TypeQualifierList TypeQualifier { mkNonTerm("type-qualifier-list",[$1,$2]) }
+;
+
+ArrayDeclarator :
+   LBRACK RBRACK         { mkNonTerm("array-declarator",[]) }
+ | LBRACK TypeQualifierList ConstantExpression RBRACK
+                         { mkNonTerm("array-declarator",[$2,$3]) }
+ | LBRACK TypeQualifierList RBRACK
+                         { mkNonTerm("array-declarator",[$2]) }
+ | LBRACK ConstantExpression RBRACK
+                         { mkNonTerm("array-declarator",[$2]) }
+ | LBRACK Static TypeQualifierList ConstantExpression RBRACK
+                         { mkNonTerm("array-declarator",[$2,$3,$4]) }
+ | LBRACK Static ConstantExpression RBRACK
+                         { mkNonTerm("array-declarator",[$2,$3]) }
+ | LBRACK TypeQualifierList Static ConstantExpression RBRACK
+                         { mkNonTerm("array-declarator",[$2,$3,$4]) }
+ | LBRACK TypeQualifierList Star RBRACK
+                         { mkNonTerm("array-declarator",[$2,$3]) }
+ | LBRACK Star RBRACK
+                         { mkNonTerm("array-declarator",[$2]) }
+;
+
+Static : 
+   STATIC { mkTerm("static") }
+;
+
+Star : 
+   STAR { mkTerm("star") }
+;
+
+TypeName :
+   SpecifierQualifierList AbstractDeclarator { mkNonTerm("type-name",[$1,$2]) }
+ | SpecifierQualifierList                    { mkNonTerm("type-name",[$1]) }
+;
+
+SpecifierQualifierList :
+   SpecifierQualifierList TypeQualifier { mkNonTerm("specifier-qualifier-list", [$1,$2]) }
+ | SpecifierQualifierList TypeSpecifier { mkNonTerm("specifier-qualifier-list", [$1,$2]) }
+ | TypeSpecifier                        { mkNonTerm("specifier-qualifier-list", [$1]) }
+ | TypeQualifier                        { mkNonTerm("specifier-qualifier-list", [$1]) }
+;
+
+ParameterTypeList :
+   ParameterList               { mkNonTerm("parameter-type-list",[$1]) }
+ | ParameterList COMMA Elipsis { mkNonTerm("parameter-type-list",[$1,$3]) }
+;
+
+Elipsis :
+   ELIPSIS { mkTerm("...") }
+;
+
+ParameterList :
+   ParameterDeclaration                     { mkNonTerm("parameter-list",[$1]) }
+ | ParameterList COMMA ParameterDeclaration { mkNonTerm("parameter-list",[$1,$3]) }
+;
+
+ParameterDeclaration :
+   DeclarationSpecifiers Declarator         { mkNonTerm("parameter-declaration",[$1,$2]) }
+ | DeclarationSpecifiers AbstractDeclarator { mkNonTerm("parameter-declaration",[$1,$2]) }
+ | DeclarationSpecifiers                    { mkNonTerm("parameter-declaration",[$1]) }
+;
+
+IdentifierList :
+   Identifier                      { mkNonTerm("identifier-list",[$1]) }
+ | IdentifierList COMMA Identifier { mkNonTerm("identifier-list",[$1,$3]) }
+;
+
+AbstractDeclarator :
+   Pointer                          { mkNonTerm("abstract-declarator", [$1]) }
+ | Pointer DirectAbstractDeclarator { mkNonTerm("abstract-declarator", [$1,$2]) }
+ | DirectAbstractDeclarator         { mkNonTerm("abstract-declarator", [$1]) }
+;
+
+DirectAbstractDeclarator :
+   LPAR AbstractDeclarator RPAR 
+                   { mkNonTerm("direct-abstract-declarator", [$2]) }
+ | DirectAbstractDeclarator ArrayDeclarator
+                   { mkNonTerm("direct-abstract-declarator", [$1,$2]) }
+ | ArrayDeclarator { mkNonTerm("direct-abstract-declarator", [$1]) }
+ | DirectAbstractDeclarator LPAR ParameterTypeList RPAR 
+                   { mkNonTerm("direct-abstract-declarator", [$1,$3]) }
+ | LPAR ParameterTypeList RPAR 
+                   { mkNonTerm("direct-abstract-declarator", [$2]) }
+ | DirectAbstractDeclarator LPAR RPAR 
+                   { mkNonTerm("direct-abstract-declarator", [$1]) }
+ | LPAR RPAR 
+                   { mkNonTerm("direct-abstract-declarator", []) }
+;
+
+ConstantExpression : ConditionalExpression { mkNonTerm("constant-expression",[$1]) }
+;
+
+Expression :
+   AssignmentExpression                  { mkNonTerm("expression",[$1]) }
+ | Expression COMMA AssignmentExpression { mkNonTerm("expression",[$1,$3]) }
+;
+
+AssignmentExpression :
+   ConditionalExpression { mkNonTerm("assignment-expression",[$1]) }
+ | UnaryExpression AssignmentOperator AssignmentExpression
+                         { mkNonTerm("assignment-expression",[$1,$2,$3]) }
+;
+
+AssignmentOperator :
+   ANDASSIGN      { mkNonTerm("assignment-operator",[mkTerm("&=")]) }
+ | XORASSIGN      { mkNonTerm("assignment-operator",[mkTerm("^=")]) }
+ | ORASSIGN       { mkNonTerm("assignment-operator",[mkTerm("|=")]) }
+ | LSASSIGN       { mkNonTerm("assignment-operator",[mkTerm("<<=")]) }
+ | RSASSIGN       { mkNonTerm("assignment-operator",[mkTerm(">>=")]) }
+ | MULTIPLYASSIGN { mkNonTerm("assignment-operator",[mkTerm("*=")]) }
+ | MODASSIGN      { mkNonTerm("assignment-operator",[mkTerm("%=")]) }
+ | DIVIDEASSIGN   { mkNonTerm("assignment-operator",[mkTerm("/=")]) }
+ | ADDASSIGN      { mkNonTerm("assignment-operator",[mkTerm("+=")]) }
+ | MINUSASSIGN    { mkNonTerm("assignment-operator",[mkTerm("-=")]) }
+ | EQUALS         { mkNonTerm("assignment-operator",[mkTerm("=")]) }
+;
+
+ConditionalExpression :
+   LogicalOrExpression { mkNonTerm("conditional-expression",[$1]) }
+ | LogicalOrExpression THEN Expression COLON ConditionalExpression
+                       { mkNonTerm("conditional-expression",[$1,$3,$5]) }
+;
+
+LogicalOrExpression :
+   LogicalAndExpression { mkNonTerm("logical-or-expression",[$1]) }
+ | LogicalOrExpression LOR LogicalAndExpression
+                        { mkNonTerm("logical-or-expression",[$1,$3]) }
+;
+
+LogicalAndExpression :
+   InclusiveOrExpression { mkNonTerm("logical-and-expression",[$1]) }
+ | LogicalAndExpression LAND InclusiveOrExpression 
+                         { mkNonTerm("logical-and-expression",[$1,$3]) }
+;
+
+InclusiveOrExpression :
+   ExclusiveOrExpression { mkNonTerm("inclusive-or-expression",[$1]) }
+ | InclusiveOrExpression OR ExclusiveOrExpression 
+                         { mkNonTerm("inclusive-or-expression",[$1,$3]) }
+;
+
+ExclusiveOrExpression :
+   AndExpression { mkNonTerm("exclusive-or-expression",[$1]) }
+ | ExclusiveOrExpression XOR AndExpression 
+                 { mkNonTerm("exclusive-or-expression",[$1,$3]) }
+;
+
+AndExpression :
+   EqualityExpression
+     { mkNonTerm("and-expression",[$1]) }
+ | AndExpression AND EqualityExpression
+     { mkNonTerm("and-expression",[$1,$3]) }
+;
+
+EqualityExpression :
+   RelationalExpression
+     { mkNonTerm("equality-expression",[$1]) }
+ | EqualityExpression EqualityOperator RelationalExpression
+     { mkNonTerm("equality-expression",[$1,$2,$3]) }
+;
+
+EqualityOperator :
+   EQ { mkNonTerm("equality-operator",[mkTerm("==")]) }
+ | NE { mkNonTerm("equality-operator",[mkTerm("!=")]) }
+;
+
+RelationalExpression :
+   ShiftExpression
+     { mkNonTerm("relational-expression",[$1]) }
+ | RelationalExpression RelationalOperator ShiftExpression
+     { mkNonTerm("relational-expression",[$1,$2,$3]) }
+;
+
+RelationalOperator :
+   LT { mkTerm("<") }
+ | LE { mkTerm("<=") }
+ | GT { mkTerm(">") }
+ | GE { mkTerm(">=") }
+;
+
+ShiftExpression :
+   AdditiveExpression
+     { mkNonTerm("shift-expression",[$1]) }
+ | ShiftExpression ShiftOperator AdditiveExpression 
+     { mkNonTerm("shift-expression",[$1,$2,$3]) }
+;
+
+ShiftOperator :
+   LS { mkTerm("<<") }
+ | RS { mkTerm(">>") }
+;
+
+AdditiveExpression :
+   MultiplicativeExpression { mkNonTerm("additive-expression",[$1]) }
+ | AdditiveExpression AdditiveOperator MultiplicativeExpression
+                            { mkNonTerm("additive-expression",[$1,$2,$3]) }
+;
+
+AdditiveOperator :
+   PLUS  { mkTerm("+") }
+ | MINUS { mkTerm("-") }
+;
+
+MultiplicativeExpression :
+   CastExpression { mkNonTerm("multiplicative-expression",[$1]) }
+ | MultiplicativeExpression MultiplicativeOperator CastExpression 
+                  { mkNonTerm("multiplicative-expression",[$1,$2,$3]) }
+;
+
+MultiplicativeOperator :
+   STAR   { mkTerm("*") }
+ | DIVIDE { mkTerm("/") }
+ | MOD    { mkTerm("%") }
+;
+
+CastExpression :
+   UnaryExpression
+                  { mkNonTerm("cast-expression",[$1]) }
+ | LPAR TypeName RPAR UnaryExpression
+                  { mkNonTerm("cast-expression",[$2,$4]) }
+;
+
+UnaryExpression :
+   PostfixExpression
+                  { mkNonTerm("unary-expression",[$1]) }
+ | Inc UnaryExpression
+                  { mkNonTerm("unary-expression",[$1,$2]) }
+ | Dec UnaryExpression
+                  { mkNonTerm("unary-expression",[$1,$2]) }
+ | UnaryOperator CastExpression
+                  { mkNonTerm("unary-expression",[$1,$2]) }
+ | SizeOf UnaryExpression
+                  { mkNonTerm("unary-expression",[$1,$2]) }
+ | SizeOf LPAR TypeName RPAR
+                  { mkNonTerm("unary-expression",[$1,$3]) }
+;
+
+Inc :
+   INC { mkTerm("++") }
+;
+
+Dec :
+   DEC { mkTerm("--") }
+;
+
+UnaryOperator :
+   AND    { mkNonTerm("unary-operator",[mkTerm("&")]) }
+ | STAR   { mkNonTerm("unary-operator",[mkTerm("*")]) }
+ | PLUS   { mkNonTerm("unary-operator",[mkTerm("+")]) }
+ | MINUS  { mkNonTerm("unary-operator",[mkTerm("-")]) }
+ | NOT    { mkNonTerm("unary-operator",[mkTerm("~")]) }
+ | LNOT   { mkNonTerm("unary-operator",[mkTerm("!")]) }
+;
+
+PostfixExpression :
+   PrimaryExpression
+                  { mkNonTerm("postfix-expression",[$1]) }
+ | PostfixExpression LBRACK Expression RBRACK
+                  { mkNonTerm("postfix-expression",[$1,$3]) }
+ | PostfixExpression LPAR ArgumentExpressionList RPAR
+                  { mkNonTerm("postfix-expression",[$1,$3]) }
+ | PostfixExpression EmptyParentheses
+                  { mkNonTerm("postfix-expression",[$1,$2]) }
+ | PostfixExpression StructRefOperator Identifier
+                  { mkNonTerm("postfix-expression",[$1,$2,$3]) }
+ | PostfixExpression Inc
+                  { mkNonTerm("postfix-expression",[$1,$2]) }
+ | PostfixExpression Dec
+                  { mkNonTerm("postfix-expression",[$1,$2]) }
+ | LPAR TypeName RPAR LBRACE InitializerList RBRACE
+                  { mkNonTerm("postfix-expression",[$2,$5]) }
+ | LPAR TypeName RPAR LBRACE InitializerList COMMA RBRACE
+                  { mkNonTerm("postfix-expression",[$2,$5]) }
+;
+
+EmptyParentheses :
+   LPAR RPAR { mkTerm("()") }
+;
+
+StructRefOperator :
+   SR  { mkTerm(".") }
+ | SPR { mkTerm("->") }
+;
+
+SizeOf :
+   SIZEOF { mkTerm("sizeof") }
+;
+
+PrimaryExpression :
+   Identifier            { mkNonTerm("primary-expression",[$1]) }
+ | FloatingPointConstant { mkNonTerm("primary-expression",[$1]) }
+ | IntegerConstant       { mkNonTerm("primary-expression",[$1]) }
+ | CharacterLiteral      { mkNonTerm("primary-expression",[$1]) }
+ | StringLiteral         { mkNonTerm("primary-expression",[$1]) }
+ | LPAR Expression RPAR  { mkNonTerm("primary-expression",[$2]) }
+ | GenericSelection      { mkNonTerm("primary-expression",[$1]) }
+;
+
+GenericSelection :
+   GENERIC LPAR AssignmentExpression COMMA GenericAssocList RPAR
+                        { mkNonTerm("generic-selection",[$3,$5]) }
+;
+
+GenericAssocList :
+   GenericAssociation                        { mkNonTerm("generic-assoc-list",[$1]) }
+ | GenericAssocList COMMA GenericAssociation { mkNonTerm("generic-assoc-list",[$1,$3]) }
+;
+
+GenericAssociation :
+   TypeName COLON AssignmentExpression { mkNonTerm("generic-association",[$1,$3]) }
+ | DEFAULT COLON AssignmentExpression  { mkNonTerm("generic-association",[$3]) }
+;
+
+ArgumentExpressionList :
+   ArgumentExpression                              { mkNonTerm("argument-expression-list",[$1]) }
+ | ArgumentExpressionList COMMA ArgumentExpression { mkNonTerm("argument-expression-list",[$1,$3]) }
+;
+
+ArgumentExpression :
+   AssignmentExpression { mkNonTerm("argument-expression",[$1]) }
+;
+
+Initializer :
+    AssignmentExpression                { mkNonTerm("initializer",[$1]) }
+  | LBRACE InitializerList RBRACE       { mkNonTerm("initializer",[$2]) }
+  | LBRACE InitializerList COMMA RBRACE { mkNonTerm("initializer",[$2]) }
+;
+
+InitializerList :
+   Designation Initializer                       { mkNonTerm("initializer-list",[$1,$2]) }
+ | Initializer                                   { mkNonTerm("initializer-list",[$1]) }
+ | InitializerList COMMA Designation Initializer { mkNonTerm("initializer-list",[$1,$3,$4]) }
+ | InitializerList COMMA Initializer             { mkNonTerm("initializer-list",[$1,$3]) }
+;
+
+Designation :
+   DesignatorList EQUALS { mkNonTerm("designation",[$1]) }
+;
+
+DesignatorList :
+   DesignatorList Designator { mkNonTerm("designator-list",[$1,$2]) }
+ | Designator                { mkNonTerm("designator-list",[$1]) }
+;
+
+Designator :
+   ArrayDesignator { mkNonTerm("designator",[$1]) }
+ | SR Identifier   { mkNonTerm("designator",[$2]) }
+;
+
+ArrayDesignator :
+   LBRACK ConstantExpression RBRACK { mkNonTerm("array-designator",[$2]) }
+;
+
+CompoundStatement :
+   LBRACE BlockItemList RBRACE { mkNonTerm("compound-statement",[$2]) }
+ | LBRACE RBRACE               { mkNonTerm("compound-statement",[]) }
+;
+
+BlockItemList :
+   BlockItemList BlockItem { mkNonTerm("block-item-list",[$1,$2]) }
+ | BlockItem               { mkNonTerm("block-item-list",[$1]) }
+;
+
+BlockItem :
+   NestedDeclaration { mkNonTerm("block-item",[$1]) }
+ | Statement         { mkNonTerm("block-item",[$1]) }
+;
+
+NestedDeclaration :
+   Declaration { mkNonTerm("nested-declaration",[$1]) }
+;
+
+Statement :
+   LabeledStatement    { mkNonTerm("statement",[$1]) }
+ | CompoundStatement   { mkNonTerm("statement",[$1]) }
+ | ExpressionStatement { mkNonTerm("statement",[$1]) }
+ | SelectionStatement  { mkNonTerm("statement",[$1]) }
+ | IterationStatement  { mkNonTerm("statement",[$1]) }
+ | JumpStatement       { mkNonTerm("statement",[$1]) }
+;
+
+LabeledStatement :
+   Label Statement { mkNonTerm("labeled-statement",[$1,$2]) }
+;
+
+Label :
+   Identifier COLON              { mkNonTerm("label",[$1]) }
+ | CASE ConstantExpression COLON { mkNonTerm("label",[mkTerm("case"),$2]) }
+ | DEFAULT COLON                 { mkNonTerm("label",[mkTerm("default")]) }
+;
+
+ExpressionStatement :
+   Expression SEMICOLON { mkNonTerm("expression-statement",[$1]) }
+ | SEMICOLON            { mkNonTerm("expression-statement",[]) }
+;
+
+SelectionStatement :
+   IfStatement     { mkNonTerm("selection-statement",[$1]) }
+ | SwitchStatement { mkNonTerm("selection-statement",[$1]) }
+;
+
+IfStatement :
+   IF LPAR Expression RPAR Statement                { mkNonTerm("if-statement",[$3,$5]) }
+ | IF LPAR Expression RPAR Statement ELSE Statement { mkNonTerm("if-statement",[$3,$5,$7]) }
+;
+
+SwitchStatement :
+   SWITCH LPAR Expression RPAR Statement { mkNonTerm("switch-statement",[$3,$5]) }
+;
+
+IterationStatement :
+   WhileStatement { mkNonTerm("iteration-statement",[$1]) }
+ | DoStatement    { mkNonTerm("iteration-statement",[$1]) }
+ | ForStatement   { mkNonTerm("iteration-statement",[$1]) }
+;
+
+JumpStatement :
+   GOTO Identifier SEMICOLON   { mkNonTerm("jump-statement",[mkTerm("goto"),$2]) }
+ | CONTINUE SEMICOLON          { mkNonTerm("jump-statement",[mkTerm("continue")]) }
+ | BREAK SEMICOLON             { mkNonTerm("jump-statement",[mkTerm("break")]) }
+ | RETURN Expression SEMICOLON { mkNonTerm("jump-statement",[mkTerm("return"),$2]) }
+ | RETURN SEMICOLON            { mkNonTerm("jump-statement",[mkTerm("return")]) }
+;
+
+DoStatement :
+   DO Statement WHILE LPAR Expression RPAR { mkNonTerm("do-statement",[$2,$5]) }
+;
+
+WhileStatement :
+   WHILE LPAR Expression RPAR Statement { mkNonTerm("while-statement",[$3,$5]) }
+;
+
+ForStatement :
+   FOR LPAR Expression SEMICOLON Expression SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[$3,$5,$7,$9]) }
+ | FOR LPAR Expression SEMICOLON Expression SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",[$3,$5,mkTerm("null-statement"),$8]) }
+ | FOR LPAR Expression SEMICOLON            SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[$3,mkTerm("null-statement"),$6,$8]) }
+ | FOR LPAR Expression SEMICOLON            SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",[$3,mkTerm("null-statement"),mkTerm("null-statement"),$7]) }
+ | FOR LPAR            SEMICOLON Expression SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[mkTerm("null-statement"),$4,$6,$8]) }
+ | FOR LPAR            SEMICOLON Expression SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",[mkTerm("null-statement"),$4,mkTerm("null-statement"),$7]) }
+ | FOR LPAR            SEMICOLON            SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[mkTerm("null-statement"),mkTerm("null-statement"),$5,$7]) }
+ | FOR LPAR            SEMICOLON            SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",
+                   [mkTerm("null-statement"),mkTerm("null-statement"),mkTerm("null-statement"),$6]) }
+ | FOR LPAR NestedDeclaration Expression SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[$3,$4,$6,$8]) }
+ | FOR LPAR NestedDeclaration Expression SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",[$3,$4,mkTerm("null-statement"),$7]) }
+ | FOR LPAR NestedDeclaration            SEMICOLON Expression RPAR Statement
+            { mkNonTerm("for-statement",[$3,mkTerm("null-statement"),$5,$7]) }
+ | FOR LPAR NestedDeclaration            SEMICOLON            RPAR Statement
+            { mkNonTerm("for-statement",[$3,mkTerm("null-statement"),mkTerm("null-statement"),$6]) }
+;
+
+IntegerConstant :
+   Integer IntegerSuffix { mkNonTerm("integer-constant",[$1,$2]) }
+ | Integer               { mkNonTerm("integer-constant",[$1]) }
+;
+
+Integer :
+   DecimalInteger     { mkNonTerm("integer",[$1]) }
+ | HexadecimalInteger { mkNonTerm("integer",[$1]) }
+ | OctalInteger       { mkNonTerm("integer",[$1]) }
+;
+
+DecimalInteger :
+   DECINT    { mkNonTerm("decimal-integer",[mkTerm($1)]) }
+;
+
+HexadecimalInteger :
+   HEXINT    { mkNonTerm("hexadecimal-integer",[mkTerm($1)]) }
+;
+
+OctalInteger :
+   OCTINT    { mkNonTerm("octal-integer",[mkTerm($1)]) }
+;
+
+IntegerSuffix :
+   UnsignedSuffix                 { mkNonTerm("integer-suffix",[$1]) }
+ | UnsignedSuffix LongSuffix      { mkNonTerm("integer-suffix",[$1,$2]) }
+ | LongSuffix                     { mkNonTerm("integer-suffix",[$1]) }
+ | LongSuffix UnsignedSuffix      { mkNonTerm("integer-suffix",[$1,$2]) }
+;
+
+UnsignedSuffix :
+   UNSIGNED_SUFFIX { mkNonTerm("unsigned-suffix",[mkTerm("U")]) }
+;
+
+LongSuffix :
+   LONG_SUFFIX     { mkNonTerm("long-suffix",[mkTerm("L")]) }
+;
+
+StringLiteral :
+   STRING     { mkNonTerm("string-literal",[mkTerm($1)]) }
+;
+
+CharacterLiteral :
+   CHARACTER  { mkNonTerm("character-literal",[mkTerm($1)]) }
+;
+
+Identifier :
+   IDENTIFIER { mkNonTerm("identifier",[mkTerm($1)]) }
+;
+
+FloatingPointConstant :
+   FractionalConstant ExponentPart FloatingSuffix { mkNonTerm("floating-point-constant",[$1,$2,$3]) }
+ | FractionalConstant ExponentPart                { mkNonTerm("floating-point-constant",[$1,$2]) }
+ | FractionalConstant FloatingSuffix              { mkNonTerm("floating-point-constant",[$1,$2]) }
+ | FractionalConstant                             { mkNonTerm("floating-point-constant",[$1]) }
+ | DigitSequence ExponentPart FloatingSuffix      { mkNonTerm("floating-point-constant",[$1,$2,$3]) }
+ | DigitSequence ExponentPart                     { mkNonTerm("floating-point-constant",[$1,$2]) }
+;
+
+FractionalConstant :
+   DigitSequence DECIMAL_POINT DigitSequence { mkNonTerm("fractional-constant",[$1,$3]) }
+ | DECIMAL_POINT DigitSequence               { mkNonTerm("fractional-constant",[mkTerm("."),$2]) }
+ | DigitSequence DECIMAL_POINT               { mkNonTerm("fractional-constant",[$1,mkTerm(".")]) }
+;
+
+ExponentPart :
+   E SIGN DigitSequence { mkNonTerm("exponent-part",[mkTerm($2),$3]) }
+ | E DigitSequence      { mkNonTerm("exponent-part",[$2]) }
+;
+
+DigitSequence :
+   DIGIT_SEQUENCE { mkNonTerm("digit-sequence",[mkTerm($1)]) }
+;
+
+FloatingSuffix :
+   FLOATING_SUFFIX { mkNonTerm("floating-suffix",[mkTerm($1)]) }
+;
+
+/* 
+   translation-unit:
+     external-declarations
+
+   external-declarations:
+     external-declarations[opt] external-declaration
+
+   external-declaration:
+     function-definition
+     declaration
+
+   declaration:
+     declaration-specifiers init-declarator-list[opt] SEMICOLON
+     static_assert-declaration
+
+   init-declarator-list:
+     init-declarator
+     init-declarator-list COMMA init-declarator
+
+   init-declarator:
+     declarator
+     declarator EQUALS initializer
+
+   static_assert-declaration:
+     STATIC_ASSERT LPAR constant-expression COMMA string-literal RPAR SEMICOLON
+
+   function-definition:
+     declaration-specifiers[opt] declarator declaration-list[opt] compound-statement
+
+   declaration-list:
+     declaration
+     declaration-list declaration
+
+   declaration-specifiers:
+     storage-class-specifier declaration-specifiers[opt]
+     type-specifier          declaration-specifiers[opt]
+     type-qualifier          declaration-specifiers[opt]
+     function-specifier      declaration-specifiers[opt]
+     alignment-specifier     declaration-specifiers[opt]
+
+   storage-class-specifier:
+     TYPEDEF
+     EXTERN
+     STATIC
+     AUTO
+     REGISTER
+     THREAD_LOCAL
+
+   function-specifier:
+     INLINE
+     NORETURN
+
+   type-specifier:
+     VOID
+     CHAR
+     SHORT
+     INT
+     LONG
+     FLOAT
+     DOUBLE
+     SIGNED
+     UNSIGNED
+     BOOL
+     COMPLEX
+     struct-or-union-specifier
+     enum-specifier
+     typedef-name
+     atomic-type-specifier
+
+   typedef-name:
+     TYPEDEF_NAME
+
+   type-qualifier:
+     CONST
+     RESTRICT
+     VOLATILE
+     ATOMIC
+
+   struct-or-union-specifier:
+     struct-or-union identifier[opt] LBRACE struct-contents RBRACE
+     struct-or-union identifier
+
+   struct-or-union: one of
+     STRUCT UNION
+
+   struct-contents:
+     struct-declaration-list
+
+   struct-declaration-list:
+     struct-declaration SEMICOLON
+     struct-declaration-list struct-declaration SEMICOLON
+
+   struct-declaration:
+     specifier-qualifier-list struct-declarator-list[opt]
+     static_assert-declaration
+
+   specifier-qualifier-list:
+     type-specifier specifier-qualifier-list[opt]
+     type-qualifier specifier-qualifier-list[opt]
+
+   struct-declarator-list:
+     struct-declarator
+     struct-declarator-list COMMA struct-declarator
+
+   struct-declarator:
+     declarator
+     declarator[opt] COLON constant-expression
+
+   enum-specifier:
+     ENUM identifier[opt] LBRACE enumerator-list RBRACE
+     ENUM identifier[opt] LBRACE enumerator-list COMMA RBRACE
+     ENUM identifier
+
+   enumerator-list:
+     enumerator
+     enumerator-list COMMA enumerator
+
+   enumerator:
+     enumeration-constant
+     enumeration-constant EQUALS constant-expression
+
+   alignment-specifier:
+     ALIGNAS LPAR type-name RPAR
+     ALIGNAS LPAR constant-expression RPAR
+
+   declarator:
+     pointer[opt] direct-declarator
+
+   direct-declarator:
+     identifier
+     LPAR declarator RPAR
+     direct-declarator array-declarator
+     direct-declarator LPAR parameter-type-list RPAR
+     direct-declarator LPAR identifier-list[opt] RPAR
+
+   pointer:
+     STAR type-qualifier-list[opt]
+     STAR type-qualifier-list[opt] pointer
+
+   type-qualifier-list:
+     type-qualifier
+     type-qualifier-list type-qualifier
+
+   array-declarator:
+     LBRACK type-qualifier-list[opt] assignment-expression[opt] RBRACK
+     LBRACK STATIC type-qualifier-list[opt] assignment-expression RBRACK
+     LBRACK type-qualifier-list STATIC assignment-expression RBRACK
+     LBRACK type-qualifier-list[opt] STAR RBRACK
+
+   parameter-type-list:
+     parameter-list
+     parameter-list COMMA ELIPSIS
+
+   parameter-list:
+     parameter-declaration
+     parameter-list COMMA parameter-declaration
+
+   parameter-declaration:
+     declaration-specifiers declarator
+     declaration-specifiers abstract-declarator[opt]
+
+   identifier-list:
+     identifier
+     identifier-list COMMA identifier
+
+   abstract-declarator:
+     pointer
+     pointer[opt] direct-abstract-declarator
+
+   direct-abstract-declarator:
+     LPAR abstract-declarator RPAR
+     direct-abstract-declarator[opt] array-declarator
+     direct-abstract-declarator[opt] LPAR parameter-type-list[opt] RPAR
+
+   type-name:
+     specifier-qualifier-list abstract-declarator[opt]
+
+   constant-expression:
+     conditional-expression
+
+   expression:
+     assignment-expression
+     expression COMMA assignment-expression
+
+   assignment-expression:
+     conditional-expression
+     unary-expression assignment-operator assignment-expression
+
+   assignment-operator:
+     EQUALS
+     MULTIPLYASSIGN
+     DIVASSIGN
+     MODASSIGN
+     ADDASSIGN
+     MINUSASSIGN 
+     LSASSIGN
+     RSASSIGN
+     ANDASSIGN
+     XORASSIGN
+     ORASSIGN
+
+   multiplicative-expression:
+     cast-expression
+     multiplicative-expression multiplicative-operator cast-expression
+
+   multiplicative-operator: one of
+     STAR DIVIDE MOD
+
+   additive-expression:
+     multiplicative-expression
+     additive-expression additive-operator multiplicative-expression
+
+   additive-operator: one of
+     ADD MINUS
+
+   shift-expression:
+     additive-expression
+     shift-expression shift-operator additive-expression
+
+   shift-operator: one of
+     LS RS
+
+   relational-expression:
+     shift-expression
+     relational-expression relational-operator shift-expression
+
+   relational-operator: one of
+     LT GT LE GE
+
+   equality-expression:
+     relational-expression
+     equality-expression equality-operator relational-expression
+
+   equality-operator: one of
+     EQ NE
+
+   AND-expression:
+     equality-expression
+     AND-expression AND equality-expression
+
+   exclusive-OR-expression:
+     AND-expression
+     exclusive-OR-expression XOR AND-expression
+
+   inclusive-OR-expression:
+     exclusive-OR-expression
+     inclusive-OR-expression OR exclusive-OR-expression
+
+   logical-AND-expression:
+     inclusive-OR-expression
+     logical-AND-expression LAND inclusive-OR-expression
+
+   conditional-expression:
+     logical-OR-expression
+     logical-OR-expression THEN expression COLON conditional-expression
+ 
+   logical-OR-expression:
+     logical-AND-expression
+     logical-OR-expression LOR logical-AND-expression
+
+   cast-expression:
+     unary-expression
+     LPAR type-name RPAR unary-expression
+
+   unary-expression:
+     postfix-expression
+     INC unary-expression
+     DEC unary-expression
+     unary-operator cast-expression
+     SIZEOF unary-expression
+     SIZEOF LPAR type-name RPAR
+
+   unary-operator: one of
+     AND STAR ADD MINUS NOT LNOT
+
+   postfix-expression:
+     primary-expression
+     postfix-expression LBRACK expression RBRACK
+     postfix-expression LPAR argument-expression-list[opt] RPAR
+     postfix-expression SR identifier
+     postfix-expression SPR identifier
+     postfix-expression INC
+     postfix-expression DEC
+     LPAR type-name RPAR LBRACE initializer-list RBRACE
+     LPAR type-name RPAR LBRACE initializer-list COMMA RBRACE
+
+   argument-expression-list:
+     argument-expression
+     argument-expression-list COMMA argument-expression
+
+   argument-expression:
+     assignment-expression
+
+   primary-expression:
+     identifier
+     constant
+     string-literal
+     LPAR expression RPAR
+     generic-selection
+
+   generic-selection:
+     GENERIC LPAR assignment-expression COMMA generic-assoc-list RPAR
+     
+   generic-assoc-list:
+     generic-association
+     generic-assoc-list COMMA generic-association
+   
+   generic-association:
+     type-name COLON assignment-expression
+     DEFAULT COLON assignment-expression
+
+   initializer:
+     assignment-expression
+     LBRACE initializer-list RBRACE
+     LBRACE initializer-list COMMA RBRACE
+
+   initializer-list:
+     designation[opt] initializer
+     initializer-list COMMA designation[opt] initializer
+
+   designation:
+     designator-list EQUALS
+
+   designator-list:
+     designator-list[opt] designator
+
+   designator:
+     array-designator
+     SR identifier
+
+   array-designator:
+     LBRACK constant-expression RBRACK
+
+   compound-statement:
+     LBRACE block-item-list RBRACE
+     LBRACE RBRACE
+
+   block-item-list:
+     block-item-list[opt] block-item
+
+   block-item:
+     nested-declaration
+     statement
+
+   nested-declaration:
+     declaration
+
+   statement:
+     labeled-statement
+     compound-statement
+     expression-statement
+     selection-statement
+     iteration-statement
+     jump-statement
+
+   labeled-statement:
+     label statement
+
+   label:
+     identifier COLON
+     CASE constant-expression COLON
+     DEFAULT COLON
+
+   expression-statement:
+     expression[opt] SEMICOLON
+
+   selection-statement:
+     if-statement
+     switch-statement
+
+   if-statement:
+     IF LPAR expression RPAR statement
+     IF LPAR expression RPAR statement ELSE statement
+
+   switch-statement:
+     SWITCH LPAR expression RPAR statement
+
+   iteration-statement:
+     while-statement
+     do-statement
+     for-statement
+
+   jump-statement:
+     GOTO identifier SEMICOLON
+     CONTINUE SEMICOLON
+     BREAK SEMICOLON
+     RETURN expression[opt] SEMICOLON
+
+   do-statement:
+     DO statement WHILE LPAR expression RPAR SEMICOLON
+
+   while-statement:
+      WHILE LPAR expression RPAR statement
+
+   for-statement:
+     FOR LPAR expression[opt] SEMICOLON expression[opt] SEMICOLON expression[opt] RPAR statement
+     FOR LPAR nested-declaration expression[opt] SEMICOLON expression[opt] RPAR statement
+
+   floating-point-constant:
+     fractional-constant exponent-part[opt] floating-suffix[opt]
+     digit-sequence exponent-part floating-suffix[opt]
+
+   fractional-constant:
+     digit-sequence[opt] DECIMAL_POINT digit-sequence
+     digit-sequence DECIMAL_POINT
+
+   exponent-part:
+     EXP sign[opt] digit-sequence
+
+   sign: one of
+     PLUS MINUS
+
+   digit-sequence:
+     digit-sequence[opt] digit
+
+   floating-suffix:
+     FLOATING_SUFFIX
+
+*/

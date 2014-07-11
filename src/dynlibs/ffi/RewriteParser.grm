@@ -1,0 +1,181 @@
+%{
+open GrammarSyntax
+%}
+
+/* This concrete MLYACC grammar and the associated semantic
+   productions have been so written that they could be generated
+   mechanically from an entirely abstract, and consequently
+   parsemonious, description of the syntax such as will be found at
+   the end of this file. */
+
+%token <string> IDENTIFIER
+%token <string> LITERAL
+
+%token COLON
+%token EQUALS
+%token EOF
+%token LCORNER
+%token RCORNER
+%token DLBRACK
+%token DRBRACK
+%token DLANGLE
+%token DRANGLE
+%token LPAR
+%token RPAR
+%token UNDERSCORE
+%token STAR
+%token EPSILON
+
+%start File
+
+%type <GrammarSyntax.Tree> File Identifier Literal AtArg 
+LhsArgList RhsArgList LhsArg LhsMetaQuote RhsArg RhsMetaQuote RuleRhs RuleLhs Rule
+RuleList
+
+%%
+
+File :
+    RuleList EOF  { $1 }
+  | EOF           { mkNonTerm("rule-list",[]) }
+;
+
+RuleList :
+   Rule          { mkNonTerm("rule-list", [$1]) }
+ | RuleList Rule { mkNonTerm("rule-list", [$1,$2]) }
+;
+
+Rule :
+   DLBRACK RuleLhs DRBRACK EQUALS LPAR RuleRhs RPAR { mkNonTerm("rule",[$2,$6]) }
+;
+
+RuleLhs :
+   IDENTIFIER LhsArgList { mkNonTerm("rule-lhs",[mkTerm($1),$2]) }
+ | IDENTIFIER            { mkNonTerm("rule-lhs",[mkTerm($1)]) }
+ | LhsMetaQuote          { mkNonTerm("rule-lhs",[$1]) }
+;
+
+RuleRhs :
+   IDENTIFIER RhsArgList      { mkNonTerm("rule-rhs",[mkTerm($1),$2]) }
+ | IDENTIFIER                 { mkNonTerm("rule-rhs",[mkTerm($1)]) }
+ | RhsMetaQuote               { mkNonTerm("rule-rhs",[$1]) }
+;
+
+LhsArgList :
+   LhsArg            { mkNonTerm("lhs-arg-list",[$1]) }
+ | LhsArgList LhsArg { mkNonTerm("lhs-arg-list",[$1,$2]) }
+;
+
+RhsArgList :
+   RhsArg            { mkNonTerm("rhs-arg-list",[$1]) }
+ | RhsArgList RhsArg { mkNonTerm("rhs-arg-list",[$1,$2]) }
+;
+
+LhsArg :
+   LhsMetaQuote      { mkNonTerm("lhs-arg",[$1]) }
+ | LPAR RuleLhs RPAR { mkNonTerm("lhs-arg",[$2]) }
+ | AtArg             { mkNonTerm("lhs-arg",[$1]) }
+;
+
+LhsMetaQuote :
+   LCORNER IDENTIFIER RCORNER                                { mkNonTerm("lhs-metaquote",[mkTerm($2)]) }
+ | LCORNER IDENTIFIER COLON EQUALS LPAR RuleLhs RPAR RCORNER { mkNonTerm("lhs-metaquote",[mkTerm($2),$6]) }
+ | LCORNER IDENTIFIER COLON IDENTIFIER RCORNER { mkNonTerm("lhs-metaquote",[mkTerm($2),mkTerm($4)]) }
+ | LCORNER UNDERSCORE RCORNER                  { mkNonTerm("lhs-metaquote",[mkTerm("_")]) }
+ | LCORNER UNDERSCORE COLON IDENTIFIER RCORNER { mkNonTerm("lhs-metaquote",[mkTerm("_"),mkTerm($4)]) }
+;
+
+RhsArg :
+   RhsMetaQuote               { mkNonTerm("rhs-arg",[$1]) }
+ | LPAR RuleRhs RPAR          { mkNonTerm("rhs-arg",[$2]) }
+ | AtArg                      { mkNonTerm("rhs-arg",[$1]) }
+;
+
+RhsMetaQuote :
+   DLBRACK RuleRhs DRBRACK    { mkNonTerm("rhs-meta-quote",[$2]) }
+ | LCORNER IDENTIFIER LPAR RuleRhs RPAR RCORNER { mkNonTerm("rhs-meta-quote",[mkTerm($2),$4]) }
+ | LCORNER EPSILON RCORNER    { mkNonTerm("rhs-meta-quote",[mkNonTerm("",[])]) }
+ | LCORNER IDENTIFIER RCORNER { mkNonTerm("rhs-meta-quote",[mkTerm($2)]) }
+;
+
+AtArg :
+   Identifier { mkNonTerm("at-arg", [$1]) }
+ | Literal    { mkNonTerm("at-arg", [$1]) }
+;
+
+Identifier :
+   IDENTIFIER { mkNonTerm("identifier", [mkTerm($1)]) }
+;
+
+Literal :
+   LITERAL { mkNonTerm("literal", [mkTerm($1)]) }
+;
+
+/*
+
+COLON: ':'
+EQUALS: '='
+UNDERSCORE: '_'
+STAR: '*'
+LCORNER: '⌜'
+RCORNER: '⌝'
+DLBRACK: '⟦'
+DRBRACK: '⟧'
+LPAR: '('
+RPAR: ')'
+EOF: 'eof'
+
+LITERAL: one of <"'[^']+'" <'"[^"]+"'
+IDENTIFIER: <'[a-zA-Z][-a-zA-Z0-9]*'
+
+rule-list:
+   rule
+ | rule-list rule
+
+rule:
+   DLBRACK rule-lhs DRBRACK EQUALS LPAR rule-rhs RPAR
+
+rule-lhs:
+   IDENTIFIER lhs-arg-list
+ | IDENTIFIER
+
+rule-rhs:
+   IDENTIFIER rhs-arg-list
+ | IDENTIFIER
+ | rhs-meta-quote
+
+lhs-arg-list:
+   lhs-arg
+ | lhs-arg-list lhs-arg
+
+rhs-arg-list:
+   rhs-arg
+ | rhs-arg-list rhs-arg
+
+lhs-arg:
+   LCORNER IDENTIFIER RCORNER
+ | LCORNER UNDERSCORE RCORNER
+ | LCORNER IDENTIFIER COLON IDENTIFIER RCORNER
+ | LCORNER UNDERSCORE COLON IDENTIFIER RCORNER
+ | LPAR rule-lhs RPAR
+ | at-arg
+
+rhs-arg:
+   rhs-meta-quote
+ | LPAR rule-rhs RPAR
+ | at-arg
+
+rhs-meta-quote:
+   DLBRACK rule-rhs DRBRACK
+ | LCORNER IDENTIFIER RCORNER
+
+at-arg:
+   identifier
+ | literal
+
+identifier:
+   IDENTIFIER
+
+literal:
+   LITERAL
+
+*/
