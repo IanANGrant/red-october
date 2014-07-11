@@ -1,1 +1,5 @@
 /config
+*.u[oi]
+*.o
+*~
+JUNK
