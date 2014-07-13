@@ -79,6 +79,8 @@ datatype ffi_type =
  | Void
  | VariadicFunction of ffi_type * ffi_type list * ffi_type_enum option
 
+val first_atoms_ : Dynlib.cptr
+
 val svec_make : Int.int -> svector
 
 val svec_clear : svector -> unit
@@ -269,3 +271,10 @@ val ffi_trampoline :
   string -> Dynlib.cptr -> ffi_type -> ('a -> Word8Vector.vector) -> (Word8Vector.vector -> 'b) -> 'a -> 'b
 
 val mkargssvec : Word8Vector.vector list -> Word8Vector.vector * svector
+
+val var  : Dynlib.cptr -> 'b                            
+val app1 : Dynlib.cptr -> 'a1 -> 'b                     
+val app2 : Dynlib.cptr -> 'a1 -> 'a2 -> 'b              
+val app3 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'b       
+val app4 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'b
+val app5 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'a5 -> 'b

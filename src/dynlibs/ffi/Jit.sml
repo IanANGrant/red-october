@@ -1,5 +1,5 @@
 val libmffi =
-       Dynlib.dlopen {lib = "libmffi.so",
+       Dynlib.dlopen {lib = "./libmffi.so",
                        flag = Dynlib.RTLD_LAZY,
                        global = false };
 
@@ -104,7 +104,7 @@ local
    val init_jit_type =
           Ffi.Function(Ffi.Pointer(Ffi.Const(Ffi.Character(Ffi.Signed))), SOME Ffi.FFI_TYPE_VOID);
    fun mkargs (Pointer p) = p
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.init_jit: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val init_jit_ = Dynlib.cptr (Dynlib.dlsym liblightning "init_jit")
 in
@@ -135,7 +135,7 @@ end;
 local open Ffi
    val jit_clear_state_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_clear_state: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val jit_clear_state = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_clear_state")
 in
@@ -146,7 +146,7 @@ end;
 local open Ffi
    val jit_destroy_state_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_destroy_state: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val jit_destroy_state = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_destroy_state")
 in
@@ -157,7 +157,7 @@ end;
 local open Ffi
    val jit_label_type = Function(Pointer(Structure([])), SOME FFI_TYPE_POINTER)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_label: argument type mismatch: expected (State)."
    fun mkretval v = Node v
    val jit_label = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_label")
 in
@@ -168,7 +168,7 @@ end;
 local open Ffi
    val jit_arg_type = Function(Pointer(Structure([])), SOME FFI_TYPE_POINTER)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_arg: argument type mismatch: expected (State)."
    fun mkretval v = Node v
    val jit_arg = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_arg")
 in
@@ -178,7 +178,7 @@ end;
 local open Ffi
    val jit_prolog_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_prolog: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val jit_prolog = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_prolog")
 in
@@ -189,7 +189,7 @@ end;
 local open Ffi
    val jit_prepare_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_prepare: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val jit_prepare = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_prepare")
 in
@@ -200,7 +200,7 @@ end;
 local open Ffi
    val jit_disassemble_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_disassemble: argument type mismatch: expected (State)."
    fun mkretval _ = ()
    val jit_disassemble = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_disassemble")
 in
@@ -213,17 +213,26 @@ local open Ffi
               Function(Structure([Pointer(Structure[]),
                                   Integer(Unsigned,Int)]),
                        SOME FFI_TYPE_VOID)
-   fun mkargs (State jit_, gpr_) = 
+   fun mkargsr (State jit_, gpr_) = 
           let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_)] 
           in argsv
           end
-     |  mkargs _ = raise Fail "Jit:jit_pushargr: argument type mismatch: expected (State,Gpr)."
+     |  mkargsr _ = raise Fail "Jit:jit_pushargr: argument type mismatch: expected (State,Gpr)."
+   fun mkargsi (State jit_, word_) = 
+          let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecword word_] 
+          in argsv
+          end
+     |  mkargsi _ = raise Fail "Jit:jit_pushargi: argument type mismatch: expected (State,Word)."
    fun mkretval _ = ()
    val jit_pushargr_sym = "_jit_pushargr"
    val jit_pushargr_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargr_sym)
+   val jit_pushargi_sym = "_jit_pushargi"
+   val jit_pushargi_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargi_sym)
 in
    val jit_pushargr = ffi_trampoline "jit_pushargr" jit_pushargr_
-                         jit_pushargr_type mkargs mkretval
+                         jit_pushargr_type mkargsr mkretval
+   val jit_pushargi = ffi_trampoline "jit_pushargi" jit_pushargi_
+                         jit_pushargr_type mkargsi mkretval
 end;
 
 local
@@ -245,6 +254,30 @@ in
                          jit_finishi_type mkargs mkretval
 end;
 
+local
+   val jit_finishr_type = 
+              Ffi.Function(Ffi.Structure([Ffi.Pointer(Ffi.Structure[]),
+                                          Ffi.Integer(Ffi.Unsigned,Ffi.Int)]),
+                       SOME Ffi.FFI_TYPE_POINTER)
+   fun mkargs (State jit_, gpr_) =
+          let val (argsv,svec) = Ffi.mkargssvec [jit_ , Ffi.svec_setvecword (jit_gpr gpr_)]
+          in argsv
+          end
+     |  mkargs _ = raise Fail ("Jit:jit_finishr: argument type mismatch: expected"^
+                                  " (State,Code,word).")
+   fun mkretval v = Node v
+   val jit_finishr_sym = "_jit_finishr"
+   val jit_finishr_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_finishr_sym)
+in
+   val jit_finishr = Ffi.ffi_trampoline "jit_finishr" jit_finishr_
+                         jit_finishr_type mkargs mkretval
+end;
+
+fun only64 fnm thunk =
+   if WORDSIZE = 64
+      then thunk()
+      else raise Fail (fnm^": only on 64 bit machines.")
+
 local open Ffi
    val jit_getarg_type = 
               Function(Structure([Pointer(Structure[]),
@@ -258,10 +291,40 @@ local open Ffi
      |  mkargs _ = raise Fail "Jit:jit_getarg: argument type mismatch: expected (State,Gpr,Node)."
    fun mkretval _ = ()
    val jit_getarg_sym = "_jit_getarg_"^(if WORDSIZE = 32 then "i" else "l")
+   val jit_getarg_c_sym = "_jit_getarg_c"
+   val jit_getarg_uc_sym = "_jit_getarg_uc"
+   val jit_getarg_s_sym = "_jit_getarg_s"
+   val jit_getarg_us_sym = "_jit_getarg_us"
+   val jit_getarg_i_sym = "_jit_getarg_i"
+   val jit_getarg_ui_sym = "_jit_getarg_ui"
+   val jit_getarg_l_sym = "_jit_getarg_l"
    val jit_getarg_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_sym)
+   val jit_getarg_c_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_c_sym)
+   val jit_getarg_uc_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_uc_sym)
+   val jit_getarg_s_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_s_sym)
+   val jit_getarg_us_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_us_sym)
+   val jit_getarg_i_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_i_sym)
 in
    val jit_getarg = ffi_trampoline "jit_getarg" jit_getarg_
                          jit_getarg_type mkargs mkretval
+   val jit_getarg_c = ffi_trampoline "jit_getarg_c" jit_getarg_c_
+                         jit_getarg_type mkargs mkretval
+   val jit_getarg_uc = ffi_trampoline "jit_getarg_uc" jit_getarg_uc_
+                         jit_getarg_type mkargs mkretval
+   val jit_getarg_s = ffi_trampoline "jit_getarg_s" jit_getarg_s_
+                         jit_getarg_type mkargs mkretval
+   val jit_getarg_us = ffi_trampoline "jit_getarg_us" jit_getarg_us_
+                         jit_getarg_type mkargs mkretval
+   val jit_getarg_i = ffi_trampoline "jit_getarg_i" jit_getarg_i_
+                         jit_getarg_type mkargs mkretval
+   fun jit_getarg_ui (jit,arg,node) = only64 "jit_getarg_ui" (fn () => 
+                         ffi_trampoline "jit_getarg_ui" 
+                         (Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_ui_sym))
+                         jit_getarg_type mkargs mkretval (jit,arg,node))
+   fun jit_getarg_l (jit,arg,node) = only64 "jit_getarg_l" (fn () => 
+                         ffi_trampoline "jit_getarg_l" 
+                         (Dynlib.cptr (Dynlib.dlsym liblightning jit_getarg_l_sym))
+                         jit_getarg_type mkargs mkretval (jit,arg,node))
 end;
 
 local open Ffi
@@ -277,9 +340,32 @@ local open Ffi
    fun mkretval _ = ()
    val jit_retval_sym = "_jit_retval_"^(if WORDSIZE = 32 then "i" else "l")
    val jit_retval_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_retval_sym)
+   val jit_retval_c_ =  Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_c")
+   val jit_retval_uc_ =  Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_uc")
+   val jit_retval_s_ =  Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_s")
+   val jit_retval_us_ =  Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_us")
+   val jit_retval_i_ =  Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_i")
+   val jit_retval_ui_ = fn () => Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_ui")
+   val jit_retval_l_ = fn () => Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retval_l")
 in
    val jit_retval = ffi_trampoline "jit_retval" jit_retval_
                          jit_retval_type mkargs mkretval
+   val jit_retval_c = ffi_trampoline "jit_retval_c" jit_retval_c_
+                         jit_retval_type mkargs mkretval
+   val jit_retval_uc = ffi_trampoline "jit_retval_uc" jit_retval_uc_
+                         jit_retval_type mkargs mkretval
+   val jit_retval_s = ffi_trampoline "jit_retval_s" jit_retval_s_
+                         jit_retval_type mkargs mkretval
+   val jit_retval_us = ffi_trampoline "jit_retval_us" jit_retval_us_
+                         jit_retval_type mkargs mkretval
+   val jit_retval_i = ffi_trampoline "jit_retval_i" jit_retval_i_
+                         jit_retval_type mkargs mkretval
+   fun jit_retval_ui (jit,arg) = only64 "jit_retval_ui" (fn () => 
+                         ffi_trampoline "jit_retval_ui" (jit_retval_ui_())
+                         jit_retval_type mkargs mkretval (jit,arg))
+   fun jit_retval_l (jit,arg) = only64 "jit_retval_l" (fn () => 
+                         ffi_trampoline "jit_retval_l" (jit_retval_l_())
+                         jit_retval_type mkargs mkretval (jit,arg))
 end;
 
 local open Ffi
@@ -312,6 +398,17 @@ in
 end;
 
 local open Ffi
+   val jit_ret_type = Function(Pointer(Structure([])), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_) = jit_
+     | mkargs _ = raise Fail "Jit.ret: argument type mismatch: expected (State)."
+   fun mkretval _ = ()
+   val jit_ret = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_ret")
+in
+   val jit_ret = ffi_trampoline "jit_ret" jit_ret
+                 jit_ret_type mkargs mkretval
+end;
+
+local open Ffi
    val jit_retr_type = Function(Structure([Pointer(Structure([])),
                                            Integer(Unsigned,Int)]), SOME FFI_TYPE_VOID)
    fun mkargs (State jit_, gpr_) =
@@ -323,6 +420,20 @@ local open Ffi
    val jit_retr = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_retr")
 in
    val jit_retr = ffi_trampoline "jit_retr" jit_retr jit_retr_type mkargs mkretval
+end;
+
+local open Ffi
+   val jit_reti_type = Function(Structure([Pointer(Structure([])),
+                                           Integer(Unsigned,Int)]), SOME FFI_TYPE_VOID)
+   fun mkargs (State jit_, word_) =
+          let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword word_]
+          in argsv
+          end
+     | mkargs _ = raise Fail "Jit:jit_reti:  argument type mismatch: expected (State,word)"
+   fun mkretval _ = ()
+   val jit_reti = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_reti")
+in
+   val jit_reti = ffi_trampoline "jit_reti" jit_reti jit_reti_type mkargs mkretval
 end;
 
 local
@@ -507,6 +618,71 @@ in
                          jit_new_node_wwp_type mkargs mkretval
 end;
 
+
+local 
+   val jit_lti_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lti")))
+   val jit_lti_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lti_u")))
+   val jit_lei_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lei")))
+   val jit_lei_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lei_u")))
+   val jit_gti_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gti")))
+   val jit_gti_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gti_u")))
+   val jit_gei_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gei")))
+   val jit_gei_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gei_u")))
+   val jit_eqi_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "eqi")))
+   val jit_nei_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "nei")))
+   val jit_ltr_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ltr")))
+   val jit_ltr_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ltr_u")))
+   val jit_ler_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ler")))
+   val jit_ler_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ler_u")))
+   val jit_gtr_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gtr")))
+   val jit_gtr_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "gtr_u")))
+   val jit_ger_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ger")))
+   val jit_ger_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ger_u")))
+   val jit_eqr_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "eqr")))
+   val jit_ner_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "ner")))
+in
+   fun jit_gti (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_gti_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_gti_u (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_gti_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_gei (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_gei_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_gei_u (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_gei_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_lti (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_lti_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_lti_u (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_lti_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_lei (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_lei_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_lei_u (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_lei_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_eqi (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_eqi_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_nei (jit, gpr1, gpr2, n) = 
+          jit_new_node_www (jit, jit_nei_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n)
+   fun jit_gtr (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_gtr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_gtr_u (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_gtr_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ger (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ger_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ger_u (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ger_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ltr (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ltr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ltr_u (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ltr_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ler (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ler_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ler_u (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ler_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_eqr (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_eqr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+   fun jit_ner (jit, gpr1, gpr2, gpr3) = 
+          jit_new_node_www (jit, jit_ner_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3)
+end;
+
 local 
    open Ffi
    val jit_subi_ = Code (svec_setvecword (Word.fromInt (jit_code "subi")))
@@ -518,7 +694,6 @@ local
    val jit_muli_ = Code (svec_setvecword (Word.fromInt (jit_code "muli")))
    val jit_divi_ = Code (svec_setvecword (Word.fromInt (jit_code "divi")))
    val jit_remi_ = Code (svec_setvecword (Word.fromInt (jit_code "remi")))
-   val jit_muli_u_ = Code (svec_setvecword (Word.fromInt (jit_code "muli_u")))
    val jit_divi_u_ = Code (svec_setvecword (Word.fromInt (jit_code "divi_u")))
    val jit_remi_u_ = Code (svec_setvecword (Word.fromInt (jit_code "remi_u")))
    val jit_andi_ = Code (svec_setvecword (Word.fromInt (jit_code "andi")))
@@ -536,7 +711,6 @@ local
    val jit_mulr_ = Code (svec_setvecword (Word.fromInt (jit_code "mulr")))
    val jit_divr_ = Code (svec_setvecword (Word.fromInt (jit_code "divr")))
    val jit_remr_ = Code (svec_setvecword (Word.fromInt (jit_code "remr")))
-   val jit_mulr_u_ = Code (svec_setvecword (Word.fromInt (jit_code "mulr_u")))
    val jit_divr_u_ = Code (svec_setvecword (Word.fromInt (jit_code "divr_u")))
    val jit_remr_u_ = Code (svec_setvecword (Word.fromInt (jit_code "remr_u")))
    val jit_andr_ = Code (svec_setvecword (Word.fromInt (jit_code "andr")))
@@ -564,8 +738,6 @@ in
           jit_new_node_www (jit, jit_divi_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
    fun jit_remi (jit, gpr1, gpr2, n) = 
           jit_new_node_www (jit, jit_remi_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
-   fun jit_muli_u (jit, gpr1, gpr2, n) = 
-          jit_new_node_www (jit, jit_muli_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
    fun jit_divi_u (jit, gpr1, gpr2, n) = 
           jit_new_node_www (jit, jit_divi_u_, jit_gpr gpr1, jit_gpr gpr2, Word.fromInt n);
    fun jit_remi_u (jit, gpr1, gpr2, n) = 
@@ -600,8 +772,6 @@ in
           jit_new_node_www (jit, jit_divr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
    fun jit_remr (jit, gpr1, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_remr_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
-   fun jit_mulr_u (jit, gpr1, gpr2, gpr3) = 
-          jit_new_node_www (jit, jit_mulr_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
    fun jit_divr_u (jit, gpr1, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_divr_u_, jit_gpr gpr1, jit_gpr gpr2, jit_gpr gpr3);
    fun jit_remr_u (jit, gpr1, gpr2, gpr3) = 
@@ -650,10 +820,12 @@ local
    val jit_negr_ = Code (svec_setvecword (Word.fromInt (jit_code "negr")))
    val jit_comr_ = Code (svec_setvecword (Word.fromInt (jit_code "comr")))
    val jit_htonr_ = Code (svec_setvecword (Word.fromInt (jit_code "htonr")))
-   val jit_ntohr_ = Code (svec_setvecword (Word.fromInt (jit_code "ntohr")))
+   val jit_ntohr_ = Code (svec_setvecword (Word.fromInt (jit_code "htonr")))
 in
    fun jit_movi (jit, gpr, n) = 
           jit_new_node_ww (jit, jit_movi_, jit_gpr gpr, Word.fromInt n)
+   fun jit_movi_p (jit, gpr, p) = 
+          jit_new_node_wp (jit, jit_movi_, jit_gpr gpr, p)
    fun jit_movr (jit, gpr, gpr2) = 
           jit_new_node_ww (jit, jit_movr_, jit_gpr gpr, jit_gpr gpr2)
    fun jit_negr (jit, gpr, gpr2) = 
@@ -665,11 +837,6 @@ in
    fun jit_htonr (jit, gpr, gpr2) = 
           jit_new_node_ww (jit, jit_htonr_, jit_gpr gpr, jit_gpr gpr2)
 end;
-
-fun only64 fnm thunk =
-   if WORDSIZE = 64
-      then thunk()
-      else raise Fail (fnm^": only on 64 bit machines.")
 
 local 
    open Ffi
@@ -690,8 +857,8 @@ local
    val jit_ldi_ui_ = Code (svec_setvecword (Word.fromInt (jit_code "ldi_ui")))
    val jit_ldr_l_ = Code (svec_setvecword (Word.fromInt (jit_code "ldr_l")))
    val jit_ldi_l_ = Code (svec_setvecword (Word.fromInt (jit_code "ldi_l")))
-   val jit_ldxr_ = Code (svec_setvecword (Word.fromInt (jit_code "ldxr")))
-   val jit_ldxi_ = Code (svec_setvecword (Word.fromInt (jit_code "ldxi")))
+   val jit_ldxr_ = Code (svec_setvecword (Word.fromInt (jit_code ("ldxr"^jit_ld_type))))
+   val jit_ldxi_ = Code (svec_setvecword (Word.fromInt (jit_code ("ldxi"^jit_ld_type))))
    val jit_ldxr_c_ = Code (svec_setvecword (Word.fromInt (jit_code "ldxr_c")))
    val jit_ldxi_c_ = Code (svec_setvecword (Word.fromInt (jit_code "ldxi_c")))
    val jit_ldxr_uc_ = Code (svec_setvecword (Word.fromInt (jit_code "ldxr_uc")))
@@ -711,32 +878,20 @@ local
    val jit_sti_ = Code (svec_setvecword (Word.fromInt (jit_code ("sti"^jit_st_type))))
    val jit_str_c_ = Code (svec_setvecword (Word.fromInt (jit_code "str_c")))
    val jit_sti_c_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_c")))
-   val jit_str_uc_ = Code (svec_setvecword (Word.fromInt (jit_code "str_uc")))
-   val jit_sti_uc_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_uc")))
    val jit_str_s_ = Code (svec_setvecword (Word.fromInt (jit_code "str_s")))
    val jit_sti_s_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_s")))
-   val jit_str_us_ = Code (svec_setvecword (Word.fromInt (jit_code "str_us")))
-   val jit_sti_us_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_us")))
    val jit_str_i_ = Code (svec_setvecword (Word.fromInt (jit_code "str_i")))
    val jit_sti_i_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_i")))
-   val jit_str_ui_ = Code (svec_setvecword (Word.fromInt (jit_code "str_ui")))
-   val jit_sti_ui_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_ui")))
    val jit_str_l_ = Code (svec_setvecword (Word.fromInt (jit_code "str_l")))
    val jit_sti_l_ = Code (svec_setvecword (Word.fromInt (jit_code "sti_l")))
-   val jit_stxr_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr")))
-   val jit_stxi_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi")))
+   val jit_stxr_ = Code (svec_setvecword (Word.fromInt (jit_code ("stxr"^jit_st_type))))
+   val jit_stxi_ = Code (svec_setvecword (Word.fromInt (jit_code ("stxi"^jit_st_type))))
    val jit_stxr_c_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_c")))
    val jit_stxi_c_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_c")))
-   val jit_stxr_uc_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_uc")))
-   val jit_stxi_uc_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_uc")))
    val jit_stxr_s_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_s")))
    val jit_stxi_s_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_s")))
-   val jit_stxr_us_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_us")))
-   val jit_stxi_us_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_us")))
    val jit_stxr_i_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_i")))
    val jit_stxi_i_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_i")))
-   val jit_stxr_ui_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_ui")))
-   val jit_stxi_ui_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_ui")))
    val jit_stxr_l_ = Code (svec_setvecword (Word.fromInt (jit_code "stxr_l")))
    val jit_stxi_l_ = Code (svec_setvecword (Word.fromInt (jit_code "stxi_l")))
 in
@@ -774,36 +929,40 @@ in
           only64 "jit_ldi_l" (fn () => jit_new_node_wp (jit, jit_ldi_l_, jit_gpr gpr, p))
    fun jit_ldxr (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_c (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_c_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi_c (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_c_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi_c (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_c_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_uc (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_uc_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi_uc (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_uc_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi_uc (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_uc_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_s (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_s_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi_s (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_s_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi_s (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_s_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_us (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_us_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi_us (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_us_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi_us (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_us_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_i (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_ldxr_i_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_ldxi_i (jit, gpr, gpr2, p) = 
-          jit_new_node_wwp (jit, jit_ldxi_i_, jit_gpr gpr, jit_gpr gpr2, p)
+   fun jit_ldxi_i (jit, gpr, gpr2, n) = 
+          jit_new_node_www (jit, jit_ldxi_i_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n)
    fun jit_ldxr_ui (jit, gpr, gpr2, gpr3) =
-          only64 "jit_ldxr_ui" (fn () => jit_new_node_www (jit, jit_ldxr_ui_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
-   fun jit_ldxi_ui (jit, gpr, gpr2, p) =
-          only64 "jit_ldxi_ui" (fn () => jit_new_node_wwp (jit, jit_ldxi_ui_, jit_gpr gpr, jit_gpr gpr2, p))
+          only64 "jit_ldxr_ui" (fn () => 
+          jit_new_node_www (jit, jit_ldxr_ui_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
+   fun jit_ldxi_ui (jit, gpr, gpr2, n) =
+          only64 "jit_ldxi_ui" (fn () => 
+          jit_new_node_www (jit, jit_ldxi_ui_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n))
    fun jit_ldxr_l (jit, gpr, gpr2, gpr3) =
-          only64 "jit_ldxr_l" (fn () => jit_new_node_www (jit, jit_ldxr_l_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
-   fun jit_ldxi_l (jit, gpr, gpr2, p) =
-          only64 "jit_ldxi_l" (fn () => jit_new_node_wwp (jit, jit_ldxi_l_, jit_gpr gpr, jit_gpr gpr2, p))
+          only64 "jit_ldxr_l" (fn () => 
+          jit_new_node_www (jit, jit_ldxr_l_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
+   fun jit_ldxi_l (jit, gpr, gpr2, n) =
+          only64 "jit_ldxi_l" (fn () => 
+          jit_new_node_www (jit, jit_ldxi_l_, jit_gpr gpr, jit_gpr gpr2, Word.fromInt n))
    fun jit_str (jit, gpr, gpr2) = 
           jit_new_node_ww (jit, jit_str_, jit_gpr gpr, jit_gpr gpr2)
    fun jit_sti (jit, p, gpr) = 
@@ -812,62 +971,40 @@ in
           jit_new_node_ww (jit, jit_str_c_, jit_gpr gpr, jit_gpr gpr2)
    fun jit_sti_c (jit, p, gpr) = 
           jit_new_node_pw (jit, jit_sti_c_, p, jit_gpr gpr)
-   fun jit_str_uc (jit, gpr, gpr2) = 
-          jit_new_node_ww (jit, jit_str_uc_, jit_gpr gpr, jit_gpr gpr2)
-   fun jit_sti_uc (jit, p, gpr) = 
-          jit_new_node_pw (jit, jit_sti_uc_, p, jit_gpr gpr)
    fun jit_str_s (jit, gpr, gpr2) = 
           jit_new_node_ww (jit, jit_str_s_, jit_gpr gpr, jit_gpr gpr2)
    fun jit_sti_s (jit, p, gpr) = 
           jit_new_node_pw (jit, jit_sti_s_, p, jit_gpr gpr)
-   fun jit_str_us (jit, gpr, gpr2) = 
-          jit_new_node_ww (jit, jit_str_us_, jit_gpr gpr, jit_gpr gpr2)
-   fun jit_sti_us (jit, p, gpr) = 
-          jit_new_node_pw (jit, jit_sti_us_, p, jit_gpr gpr)
    fun jit_str_i (jit, gpr, gpr2) = 
           jit_new_node_ww (jit, jit_str_i_, jit_gpr gpr, jit_gpr gpr2)
    fun jit_sti_i (jit, p, gpr) = 
           jit_new_node_pw (jit, jit_sti_i_, p, jit_gpr gpr)
-   fun jit_str_ui (jit, gpr, gpr2) =
-          only64 "jit_str_ui" (fn () => jit_new_node_ww (jit, jit_str_ui_, jit_gpr gpr, jit_gpr gpr2))
-   fun jit_sti_ui (jit, p, gpr) =
-          only64 "jit_sti_ui" (fn () => jit_new_node_pw (jit, jit_sti_ui_, p, jit_gpr gpr))
    fun jit_str_l (jit, gpr, gpr2) =
           only64 "jit_str_l" (fn () => jit_new_node_ww (jit, jit_str_l_, jit_gpr gpr, jit_gpr gpr2))
    fun jit_sti_l (jit, p, gpr) =
           only64 "jit_sti_l" (fn () => jit_new_node_pw (jit, jit_sti_l_, p, jit_gpr gpr))
    fun jit_stxr (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_stxr_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_, p, jit_gpr gpr, jit_gpr gpr2)
+   fun jit_stxi (jit, n, gpr, gpr2) = 
+          jit_new_node_www (jit, jit_stxi_, Word.fromInt n, jit_gpr gpr, jit_gpr gpr2)
    fun jit_stxr_c (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_stxr_c_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi_c (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_c_, p, jit_gpr gpr, jit_gpr gpr2)
-   fun jit_stxr_uc (jit, gpr, gpr2, gpr3) = 
-          jit_new_node_www (jit, jit_stxr_uc_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi_uc (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_uc_, p, jit_gpr gpr, jit_gpr gpr2)
+   fun jit_stxi_c (jit, n, gpr, gpr2) = 
+          jit_new_node_www (jit, jit_stxi_c_, Word.fromInt n, jit_gpr gpr, jit_gpr gpr2)
    fun jit_stxr_s (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_stxr_s_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi_s (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_s_, p, jit_gpr gpr, jit_gpr gpr2)
-   fun jit_stxr_us (jit, gpr, gpr2, gpr3) = 
-          jit_new_node_www (jit, jit_stxr_us_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi_us (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_us_, p, jit_gpr gpr, jit_gpr gpr2)
+   fun jit_stxi_s (jit, n, gpr, gpr2) = 
+          jit_new_node_www (jit, jit_stxi_s_, Word.fromInt n, jit_gpr gpr, jit_gpr gpr2)
    fun jit_stxr_i (jit, gpr, gpr2, gpr3) = 
           jit_new_node_www (jit, jit_stxr_i_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3)
-   fun jit_stxi_i (jit, p, gpr, gpr2) = 
-          jit_new_node_pww (jit, jit_stxi_i_, p, jit_gpr gpr, jit_gpr gpr2)
-   fun jit_stxr_ui (jit, gpr, gpr2, gpr3) =
-          only64 "jit_stxr_ui" (fn () => jit_new_node_www (jit, jit_stxr_ui_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
-   fun jit_stxi_ui (jit, p, gpr, gpr2) =
-          only64 "jit_stxi_ui" (fn () => jit_new_node_pww (jit, jit_stxi_ui_, p, jit_gpr gpr, jit_gpr gpr2))
+   fun jit_stxi_i (jit, n, gpr, gpr2) = 
+          jit_new_node_www (jit, jit_stxi_i_, Word.fromInt n, jit_gpr gpr, jit_gpr gpr2)
    fun jit_stxr_l (jit, gpr, gpr2, gpr3) =
-          only64 "jit_stxr_l" (fn () => jit_new_node_www (jit, jit_stxr_l_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
-   fun jit_stxi_l (jit, p, gpr, gpr2) =
-          only64 "jit_stxi_l" (fn () => jit_new_node_pww (jit, jit_stxi_l_, p, jit_gpr gpr, jit_gpr gpr2))
+          only64 "jit_stxr_l" (fn () =>
+          jit_new_node_www (jit, jit_stxr_l_, jit_gpr gpr, jit_gpr gpr2, jit_gpr gpr3))
+   fun jit_stxi_l (jit, n, gpr, gpr2) =
+          only64 "jit_stxi_l" (fn () => 
+          jit_new_node_www (jit, jit_stxi_l_, Word.fromInt n, jit_gpr gpr, jit_gpr gpr2))
 end;
 
 local

@@ -78,7 +78,13 @@ local
     open Dynlib
     val libpath = Path.concat(FileSys.getDir (), "libmffi.so")
     val dlh = dlopen { lib = libpath, flag = RTLD_LAZY, global = false }
+
+    val dlxh = dlopen {lib = "",
+                       flag = Dynlib.RTLD_LAZY,
+                       global = false }
 in
+
+val first_atoms_ = Dynlib.cptr (Dynlib.dlsym dlxh "first_atoms")
 
 val svec_make    : Int.int -> svec        
     = app1 (dlsym dlh "svec_make")
@@ -284,6 +290,13 @@ val ffi_callbackptr2 : Dynlib.cptr
 (* value ffi_callbackptr3(valueptr closureptr, value arg1, value arg2, value arg3) *)
 val ffi_callbackptr3 : Dynlib.cptr
      = Dynlib.var (dlsym dlh "ffi_callbackptr3")
+
+prim_val var  : Dynlib.cptr -> 'b                                    = 1 "c_var"
+prim_val app1 : Dynlib.cptr -> 'a1 -> 'b                             = 2 "cfun_app1"
+prim_val app2 : Dynlib.cptr -> 'a1 -> 'a2 -> 'b                      = 3 "cfun_app2"
+prim_val app3 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'b               = 4 "cfun_app3"
+prim_val app4 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'b        = 5 "cfun_app4"
+prim_val app5 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'a5 -> 'b = 6 "cfun_app5"
 
 fun assq n l =
   let fun lookup k =

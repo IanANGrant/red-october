@@ -56,20 +56,168 @@ val jit_arg : jit_typed_value -> jit_typed_value
 val jit_prolog : jit_typed_value -> unit
 val jit_prepare : jit_typed_value -> unit
 val jit_disassemble : jit_typed_value -> unit
+val jit_emit : jit_typed_value -> Dynlib.cptr
 val jit_pushargr : jit_typed_value * jit_gpr_t -> unit
+val jit_pushargi : jit_typed_value * word -> unit
 val jit_finishi : jit_typed_value * jit_typed_value -> jit_typed_value
+val jit_finishr : jit_typed_value * jit_gpr_t -> jit_typed_value
 val jit_getarg : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_c : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_uc : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_s : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_us : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_i : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_ui : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
+val jit_getarg_l : jit_typed_value * jit_gpr_t * jit_typed_value -> unit
 val jit_retval : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_c : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_uc : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_s : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_us : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_i : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_ui : jit_typed_value * jit_gpr_t -> unit
+val jit_retval_l : jit_typed_value * jit_gpr_t -> unit
 val jit_patch : jit_typed_value * jit_typed_value -> unit
 val jit_patch_at : jit_typed_value * jit_typed_value * jit_typed_value -> unit
+val jit_ret : jit_typed_value -> unit
 val jit_retr : jit_typed_value * jit_gpr_t -> unit
-val jit_new_node_pww : jit_typed_value * jit_typed_value * jit_typed_value * Word.word * Word.word -> jit_typed_value
+val jit_reti : jit_typed_value * word -> unit
+val jit_new_node_pw : jit_typed_value * jit_typed_value * jit_typed_value * word -> jit_typed_value
+val jit_new_node_wp : jit_typed_value * jit_typed_value * word * jit_typed_value -> jit_typed_value
+val jit_new_node_pww : jit_typed_value * jit_typed_value * jit_typed_value * word * word -> jit_typed_value
+val jit_bgti : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_bgti_u : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_bgei : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_bgei_u : jit_typed_value * jit_gpr_t * int -> jit_typed_value
 val jit_blti : jit_typed_value * jit_gpr_t * int -> jit_typed_value
-val jit_new_node_www : jit_typed_value * jit_typed_value * Word.word * Word.word * Word.word -> jit_typed_value
+val jit_blti_u : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_blei : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_blei_u : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_beqi : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_bnei : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_bgtr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bgtr_u : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bger : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bger_u : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bltr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bltr_u : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bler : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bler_u : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_beqr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_bner : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_new_node_www : jit_typed_value * jit_typed_value * word * word * word -> jit_typed_value
+val jit_new_node_wwp : jit_typed_value * jit_typed_value * word * word * jit_typed_value -> jit_typed_value
+val jit_gti : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_gti_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_gei : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_gei_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_lti : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_lti_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_lei : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_lei_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_eqi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_nei : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_gtr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_gtr_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ger : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ger_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ltr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ltr_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ler : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ler_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_eqr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ner : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
 val jit_subi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
 val jit_addi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_subci : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_addci : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_subxi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_addxi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_muli : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_divi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_remi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_divi_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_remi_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_andi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ori : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_xori : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_lshi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_rshi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_rshi_u : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
 val jit_subr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
 val jit_addr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
-val jit_new_node_ww : jit_typed_value * jit_typed_value * Word.word * Word.word -> jit_typed_value
-val jit_emit : jit_typed_value -> Dynlib.cptr
+val jit_subcr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_addcr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_subxr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_addxr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_mulr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_divr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_remr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_divr_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_remr_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_andr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_orr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_xorr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_lshr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_rshr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_rshr_u : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_new_node_ww : jit_typed_value * jit_typed_value * word * word -> jit_typed_value
 val jit_movi : jit_typed_value * jit_gpr_t * int -> jit_typed_value
+val jit_movi_p : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_movr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_negr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_comr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ntohr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_htonr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldr : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_c : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_c : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_uc : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_uc : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_s : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_s : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_us : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_us : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_i : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_i : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_ui : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_ui : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldr_l : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldi_l : jit_typed_value * jit_gpr_t * jit_typed_value -> jit_typed_value
+val jit_ldxr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_c : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_c : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_uc : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_uc : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_s : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_s : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_us : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_us : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_i : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_i : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_ui : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_ui : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_ldxr_l : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_ldxi_l : jit_typed_value * jit_gpr_t * jit_gpr_t * int -> jit_typed_value
+val jit_str : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_sti : jit_typed_value * jit_typed_value * jit_gpr_t -> jit_typed_value
+val jit_str_c : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_sti_c : jit_typed_value * jit_typed_value * jit_gpr_t -> jit_typed_value
+val jit_str_s : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_sti_s : jit_typed_value * jit_typed_value * jit_gpr_t -> jit_typed_value
+val jit_str_i : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_sti_i : jit_typed_value * jit_typed_value * jit_gpr_t -> jit_typed_value
+val jit_str_l : jit_typed_value * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_sti_l : jit_typed_value * jit_typed_value * jit_gpr_t -> jit_typed_value
+val jit_stxr : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxi : jit_typed_value * int * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxr_c : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxi_c : jit_typed_value * int * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxr_s : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxi_s : jit_typed_value * int * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxr_i : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxi_i : jit_typed_value * int * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxr_l : jit_typed_value * jit_gpr_t * jit_gpr_t * jit_gpr_t -> jit_typed_value
+val jit_stxi_l : jit_typed_value * int * jit_gpr_t * jit_gpr_t -> jit_typed_value

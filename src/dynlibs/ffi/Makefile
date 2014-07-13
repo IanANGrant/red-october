@@ -54,7 +54,7 @@ types.o: types.c mffi.h mem.h types.h
 	$(CC) $(CFLAGS) -c -o types.o types.c
 
 libmffi.so: svec.o jit.o mem.o ffi.o types.o
-	$(DYNLD) -o libmffi.so -rpath=$(FFILIBDIR):$(LIGHTNINGLIBDIR) -lffi -llightning mem.o jit.o svec.o ffi.o types.o
+	$(DYNLD) -Wl,-rpath,$(FFILIBDIR) -o libmffi.so -lffi -llightning mem.o jit.o svec.o ffi.o types.o
 
 Ffi.ui : Ffi.sig
 	$(MOSMLC) -imptypes Ffi.sig
