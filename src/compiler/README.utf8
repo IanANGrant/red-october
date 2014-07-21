@@ -1,0 +1,83 @@
+With the option -utf8, the compiler (or the mosml toplevel) uses UTF8
+as the encoding for character strings and so the Lexer validates
+string literals and will reject any that are not valid UTF8
+strings. The switch can be flipped programmatically by assigning true
+or false to the reference Meta.utf8. So to switch it on at the
+top-level, do something like this:
+
+  val () = Meta.utf8 := true;
+
+The lexer also allows the code-points of the Unicode BMP (U+0000 to
+U+FFFF) to be specified using the character escape sequence \uxxxx
+where x represents a hexadecimal character 0-9, A-F, a-f. The full
+six-digit UCS codes are not allowed because this introduces possible
+problems with compatibility with ML interpreters which do not allow
+the full six digit codes. The problem comes when one has a string like
+"\u03baba" If we allow six digit codes then we have to take the
+subsequent ba as well, and this is not what a system which only allows
+four digits will do. But I am only guessing that this is what the
+language definition says: I have never seen a copy of the thing. So if
+I'm wrong, then let me know and we can change it. The lexer allows the
+\uxxxx specification in character literals, but this is actually
+pretty useless, because the type Char.char is still only eight bits
+wide, and therefore any UTF8 codes of multi-octet encoded characters
+are rejected, even if they actually specify characters like 'ø' that
+fit into one byte! The eight-bit limit seems too restrictive to be
+worth the trouble for just one more bit, but if someone can make a
+reasonable case for it, we could allow those two-octet UTF8 codes to
+be specified this way as well.
+
+There is also a mosmllib UTF8 module with some functions for handling
+UTF8 encoded strings. These include UTF8.size which returns the length
+of a UTF8 encoded string in terms of the number of UTF8 code-points it
+contains. This is often (but not always) the length of the printable
+result. It fails when the string contains non-printing characters and
+combining code sequences, and it assumes that the string is valid: the
+only encoding errors it detects are when the final octet-sequence is
+invalid, or when the first octet of a multi-octet encoding is
+invalid. But when you know the content of the string it can be
+useful. If you want a version which will never throw the BadUTF8
+<string> exception then there is UTF8.size_. There are also
+replacements for the StringCvt.padLeft and StringCvt.padRight
+functions which pad out the strings according to their lengths as UTF8
+sequences. There are also functions to 'parse' UTF8 sequences from
+strings and substrings, and StringCvt.reader scanner functors for UTF8
+and UCS characters represented as values of type Word.word. Either of
+these will function as a validator.
+
+Fr example one can write code like this:
+
+load "Substring";
+load "UTF8";
+
+fun foldl f =
+  fn f' => 
+    fn r =>
+      let fun iter r NONE = r
+        | iter r (SOME (a,b)) = iter (f'(a,r)) (f b)
+      in fn a => iter r (f a)
+      end;
+
+fun scanList scanner = List.rev o (foldl scanner op :: []) o Substring.full;
+
+val UTF8scanner = UTF8.scanUTF8 Substring.getc;
+
+val UCSscanner = UTF8.scanUCS Substring.getc;
+
+val UCSlist = scanList UCSscanner
+
+val UTF8list = scanList UTF8scanner
+
+(* This is only for illustration. The version in UTF8.sml is faster. *)
+val UTF8size = foldl UCSscanner (fn (_,a)=> 1+a) 0 o Substring.full;
+
+val wordToChar = String.toString o String.str o Char.chr o Word.toInt;
+fun UCStoChar w = ((fn s => "\\u"^s) o
+                   StringCvt.padLeft #"0" 4 o
+                   (String.translate (str o Char.toLower)) o
+                   Word.toString) w;
+fun charcat (w,a) = a^(if w > 0wx7f then UCStoChar w else wordToChar w);
+val UTF8stringToMLString = foldl UCSscanner charcat "" o Substring.full;
+
+
+

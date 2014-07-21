@@ -44,6 +44,37 @@ fun validf n' =
 val count = Word8Vector.tabulate (0x80,countf);
 val valid = Word8Vector.tabulate (0x80,validf);
 
+fun size s =
+   let val len = String.size s
+       fun errmsg n cn = ("Invalid UTF8 sequence at octet "^(Int.toString n)^
+                          " (code 0x"^(Int.fmt StringCvt.HEX cn)^")")
+       fun iter sz n = 
+              if n < len
+                 then let val cn = Char.ord (CharVector.sub (s,n))
+                      in if cn < 0x80
+                            then iter (sz+1) (n+1)
+                            else case Word8.toInt (Word8Vector.sub (count, cn - 0x80))
+                                   of 1  => iter (sz+1) (n+2)
+                                    | 2  => iter (sz+1) (n+3)
+                                    | 3  => iter (sz+1) (n+4)
+                                    | _ => raise BadUTF8 (errmsg n cn)
+                      end
+                 else sz
+   in iter 0 0
+   end
+
+fun size_ s = size s handle BadUTF8 _ => String.size s 
+
+local
+   fun pad c n s =
+      let val len = size s
+      in CharVector.tabulate (Int.max(n - len, 0), fn _ => c)
+      end
+in
+   fun padLeft c n s = (pad c n s)^s
+   fun padRight c n s = s^(pad c n s)
+end
+
 type state = {stateno : int, seqno : int, fcno : int, chars : string, ucsno : Word.word};
 
 (* A state machine for decoding UTF8 octet sequences. *)
@@ -55,11 +86,11 @@ datatype transition = Process of Char.char -> transition
 fun transition state =
    let fun continue (state : state) c n = 
         let val ucsno' = Word.orb(Word.<<(#ucsno state,0w6), Word.andb(Word.fromInt n,0wx3F))
+            val chars' = (#chars state)^(String.str c)
         in if #seqno state = 1
-              then Value ((#chars state)^(String.str c), ucsno')
+              then Value (chars', ucsno')
               else Process (transition {stateno = 3, seqno = (#seqno state) - 1,
-                                        fcno = n, chars = String.str c,
-                                        ucsno = ucsno'})
+                                        fcno = n, chars = chars', ucsno = ucsno'})
         end
        fun newstate c =
            let val n = Char.ord c
@@ -83,7 +114,7 @@ fun transition state =
                               else continue state c n 
                         end
                  | 3 => if n < 0x80 orelse n > 0xBF
-                           then Error "Invalid UTF8 trailing octet" 
+                           then Error "Invalid UTF8 trailing octet"
                            else continue state c n 
                  | _ => raise Fail "Internal error: UTF8.transition: invalid state"
            end
@@ -108,10 +139,8 @@ val scanUCS = scanUTF8UCS (fn (_,w) => w);
 
 val scanUTF8Transition = scanUTF8UCS (fn (s,_) => s);
 
-(*
 val UCSfromUTF8String =
    StringCvt.scanString scanUCS;
-*)
 
 fun UCStoUTF8String cp =
   let

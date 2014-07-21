@@ -16,14 +16,14 @@ COMP_OBJS = \
     Synchk.uo Infixres.uo Elab.uo Tr_env.uo Pr_lam.uo \
     Match.uo Front.uo Back.uo Pr_zam.uo \
     Opcodes.uo Prim_opc.uo Buffcode.uo Labels.uo Code_dec.uo Reloc.uo \
-    Emitcode.uo Emit_phr.uo Sigmtch.uo Compiler.uo
+    Emitcode.uo Emit_phr.uo Sigmtch.uo Compiler.uo MetaQuote.uo
 
 C_LIBOBJS= \
     List.uo Strbase.uo Char.uo String.uo BasicIO.uo TextIO.uo \
     Vector.uo Array.uo Misc.uo \
     StringCvt.uo Word.uo Word8.uo Word8Vector.uo CharVector.uo \
     Word8Array.uo CharArray.uo Obj.uo Nonstdio.uo \
-    Lexing.uo Parsing.uo PP.uo
+    Lexing.uo Parsing.uo PP.uo UTF8.uo
 
 C_OBJS= \
     Mainc.uo
@@ -47,7 +47,7 @@ T_LIBOBJS= \
     StringCvt.uo Word.uo Word8.uo Word8Vector.uo CharVector.uo \
     Word8Array.uo CharArray.uo Obj.uo Nonstdio.uo \
     Substring.uo Path.uo Time.uo OS.uo FileSys.uo \
-    Lexing.uo Parsing.uo PP.uo
+    Lexing.uo Parsing.uo PP.uo UTF8.uo
 
 T_OBJS= \
     Predef.uo Prim_c.uo Symtable.uo Patch.uo Tr_const.uo \
@@ -197,6 +197,7 @@ Sigmtch.uo: Sigmtch.ui Front.ui Const.uo Back.ui Fnlib.ui Emit_phr.uo \
 Pr_lam.ui: Prim.uo Lambda.uo 
 Fnlib.uo: Fnlib.ui 
 Prim.uo: Const.uo 
+MetaQuote.ui: Parser.ui 
 Elab.ui: Asynt.uo Globals.uo 
 Smltop.uo: Smltop.ui Compiler.ui Const.uo Fnlib.ui Patch.uo Emit_phr.uo \
     Rtvals.ui Config.uo Code_dec.uo Lexer.ui Types.ui Globals.uo Smlprim.uo \
@@ -243,7 +244,7 @@ Back.uo: Back.ui Sort.ui Const.uo Fnlib.ui Prim.uo Instruct.uo Stack.ui \
     Mixture.ui Lambda.uo 
 Ovlres.ui: Asynt.uo 
 Lexer.uo: Lexer.ui Parser.ui Const.uo Fnlib.ui Config.uo Stack.ui \
-    Mixture.ui Hasht.ui Memory.uo 
+    Mixture.ui Hasht.ui Memory.uo MetaQuote.ui 
 Primdec.uo: Const.uo Fnlib.ui Prim.uo Smlprim.uo 
 Infixst.ui: Asynt.uo Fnlib.ui Globals.uo Location.ui Mixture.ui 
 Link.uo: Link.ui Const.uo Fnlib.ui Patch.uo Config.uo Code_dec.uo \
@@ -268,6 +269,7 @@ Smlperv.uo: Smlperv.ui Const.uo Fnlib.ui Prim.uo Types.ui Globals.uo \
     Smlprim.uo Smlexc.uo Units.ui Hasht.ui 
 Code_dec.uo: Const.uo Mixture.ui Hasht.ui 
 Mixture.ui: Hasht.ui 
+MetaQuote.uo: MetaQuote.ui Parser.ui Hasht.ui 
 Tr_env.uo: Tr_env.ui Asynt.uo Const.uo Fnlib.ui Prim.uo Types.ui Asyntfn.ui \
     Globals.uo Mixture.ui Units.ui Hasht.ui Lambda.uo 
 Instruct.uo: Const.uo Config.uo Prim.uo 

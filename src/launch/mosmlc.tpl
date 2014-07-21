@@ -58,6 +58,8 @@ while : ; do
       shift;;
     -q|-quotation)
       compopt="$compopt $1";;
+    -Q|-metaquotation)
+      compopt="$compopt $1";;
     -i)
       compopt="$compopt $1"
       linkopt="$linkopt $1";;
@@ -79,8 +81,10 @@ while : ; do
     -stdlib)
       stdlib=$2
       shift;;
+    -u|-utf8)
+      compopt="$compopt $1";;
     -v|-version)
-      echo "The Moscow ML system, version 2.00 (June 2000)"
+      echo "The Moscow ML system, version 2.10 (July 2013)"
       echo "  (standard library from $stdlib)"
       $mosmlbin/camlrunm -V
       $mosmlbin/camlrunm $stdlib/mosmlcmp -version

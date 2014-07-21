@@ -24,6 +24,15 @@ while : ; do
     -quietdec)
       options="$options -quietdec"
       ;;
+    -q|-quotation)
+      options="$options -quotation"
+      ;;
+    -Q|-metaquotation)
+      options="$options -metaquotation"
+      ;;
+    -u|-utf8)
+      options="$options -utf8"
+      ;;
     -valuepoly)
       options="$options -valuepoly"
       ;;

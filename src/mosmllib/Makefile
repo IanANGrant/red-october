@@ -122,7 +122,7 @@ FileSys.uo: FileSys.ui Path.ui List.ui Time.ui
 CharArraySlice.ui: CharVector.ui CharArray.ui CharVectorSlice.ui 
 SML90.uo: SML90.ui String.ui BasicIO.ui 
 CharVector.ui: Char.ui 
-PP.uo: PP.ui String.ui List.ui Vector.ui Array.ui TextIO.ui 
+PP.uo: PP.ui String.ui UTF8.ui List.ui Vector.ui Array.ui TextIO.ui 
 Parsing.ui: Lexing.ui Vector.ui Obj.uo 
 Intmap.uo: Intmap.ui 
 BasicIO.uo: BasicIO.ui 
@@ -178,8 +178,8 @@ Buffered.ui: CharArray.ui TextIO.ui
 Hashset.uo: Hashset.ui List.ui Array.ui 
 Msp.uo: Msp.ui String.ui StringCvt.ui List.ui Option.ui Vector.ui TextIO.ui \
     Int.ui Mosmlcgi.ui Char.ui 
-UTF8.uo: UTF8.ui String.ui Word.ui StringCvt.ui Word8.ui Word8Vector.ui \
-    Char.ui 
+UTF8.uo: UTF8.ui String.ui Word.ui CharVector.ui StringCvt.ui Word8.ui \
+    Int.ui Word8Vector.ui Char.ui 
 StringCvt.uo: StringCvt.ui 
 Polygdbm.uo: Polygdbm.ui List.ui Gdbm.ui 
 Mysql.ui: Msp.ui Date.ui Word8Array.ui Vector.ui 

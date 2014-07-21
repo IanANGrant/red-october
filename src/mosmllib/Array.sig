@@ -41,7 +41,7 @@ val collate  : ('a * 'a -> order) -> 'a array * 'a array -> order
    are equal if both were created by the same call to a primitive
    (array, tabulate, fromList).
 
-   Functions working on a slices (contiguous subsequence) of an array
+   Functions working on a slice (contiguous subsequence) of an array
    are found in the ArraySlice structure.
 
    [maxLen] is the maximal number of elements in an array.

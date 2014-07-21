@@ -63,6 +63,15 @@ fun main_loop () =
 fun anonymous s =
   initialFiles := !initialFiles @ [s];
 
+fun set_utf8 b _ = 
+  Lexer.utf8 := b;
+
+fun set_quotation b _ = 
+  Lexer.quotation := b;
+
+fun set_metaquotation b _ = 
+  Lexer.metaquotation := b;
+
 fun set_stdlib p =
   path_library := p;
 
@@ -118,6 +127,12 @@ fun main () =
                ("-imptypes",  Arg.Unit (set_value_polymorphism false)),
                ("-valuepoly", Arg.Unit (set_value_polymorphism true)),
                ("-quietdec",  Arg.Unit (set_quietdec true)),
+               ("-quotation", Arg.Unit (set_quotation true)),
+               ("-q",         Arg.Unit (set_quotation true)),
+               ("-metaquotation",  Arg.Unit (set_metaquotation true)),
+               ("-Q",         Arg.Unit (set_metaquotation true)),
+               ("-utf8",      Arg.Unit (set_utf8 true)),
+               ("-u",         Arg.Unit (set_utf8 true)),
                ("-msgstyle",  Arg.String set_msgstyle),
                ("-m",         Arg.String set_msgstyle),
 	       ("-orthodox",  Arg.Unit orthodox),

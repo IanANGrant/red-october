@@ -113,6 +113,14 @@ fun enable_quotation() =
   Lexer.quotation := true
 ;
 
+fun enable_utf8() =
+  Lexer.utf8 := true
+;
+
+fun enable_metaquotation() =
+  Lexer.metaquotation := true
+;
+
 fun topdec_mode () =
   initialMode := TOPDECmode;
 
@@ -143,6 +151,10 @@ fun main () =
              ("-i",         Arg.Unit show_inferred_types),
              ("-quotation", Arg.Unit enable_quotation),
              ("-q",         Arg.Unit enable_quotation),
+             ("-metaquotation", Arg.Unit enable_metaquotation),
+             ("-Q",         Arg.Unit enable_metaquotation),
+             ("-utf8", Arg.Unit enable_utf8),
+             ("-u",         Arg.Unit enable_utf8),
              ("-imptypes",  Arg.Unit (set_value_polymorphism false)),
              ("-valuepoly", Arg.Unit (set_value_polymorphism true)),
              ("-msgstyle",  Arg.String set_msgstyle), 
