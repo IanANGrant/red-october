@@ -81,6 +81,8 @@ datatype ffi_type =
 
 val first_atoms_ : Dynlib.cptr
 
+val raiseprimitive0 : Dynlib.cptr
+
 val svec_make : Int.int -> svector
 
 val svec_clear : svector -> unit

@@ -1,0 +1,2 @@
+signature OperEnc = sig
+end

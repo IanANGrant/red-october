@@ -1,10 +1,10 @@
 val libmffi =
-       Dynlib.dlopen {lib = "./libmffi.so",
+       Dynlib.dlopen {lib = "libmffi.so",
                        flag = Dynlib.RTLD_LAZY,
                        global = false };
 
 val liblightning =
-       Dynlib.dlopen {lib = "/home/ian3/usr/lib/liblightning.so",
+       Dynlib.dlopen {lib = "liblightning.so",
                        flag = Dynlib.RTLD_LAZY, 
                        global = false };
 
@@ -618,7 +618,6 @@ in
                          jit_new_node_wwp_type mkargs mkretval
 end;
 
-
 local 
    val jit_lti_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lti")))
    val jit_lti_u_ = Code (Ffi.svec_setvecword (Word.fromInt (Ffi.jit_code "lti_u")))
@@ -1010,7 +1009,7 @@ end;
 local
    val jit_emit_type = Ffi.Function(Ffi.Pointer(Ffi.Structure([])), SOME Ffi.FFI_TYPE_POINTER)
    fun mkargs (State jit_) = jit_
-     | mkargs _ = raise Fail "Jit.mkargs: argument type mismatch: expected (State)."
+     | mkargs _ = raise Fail "Jit.jit_emit: argument type mismatch: expected (State)."
    fun mkretval v = Ffi.svec_getcptr v
    val jit_emit = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_emit")
 in

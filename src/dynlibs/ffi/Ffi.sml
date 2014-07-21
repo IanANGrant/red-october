@@ -79,12 +79,14 @@ local
     val libpath = Path.concat(FileSys.getDir (), "libmffi.so")
     val dlh = dlopen { lib = libpath, flag = RTLD_LAZY, global = false }
 
-    val dlxh = dlopen {lib = "",
+    val dlxh = Dynlib.dlopen {lib = "",
                        flag = Dynlib.RTLD_LAZY,
                        global = false }
 in
 
 val first_atoms_ = Dynlib.cptr (Dynlib.dlsym dlxh "first_atoms")
+
+val raiseprimitive0 = Dynlib.cptr (Dynlib.dlsym dlxh "raiseprimitive0")
 
 val svec_make    : Int.int -> svec        
     = app1 (dlsym dlh "svec_make")

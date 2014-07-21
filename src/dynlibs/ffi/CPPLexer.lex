@@ -1,5 +1,5 @@
 {
-open CParser UTF8 TextIO;
+open CParser TextIO;
 
 exception LexicalError of string * int * int;
 
@@ -288,7 +288,7 @@ fun UTF8StringOfUCSEscapeSequence lexbuf i =
        end
     fun hexCharsToWord n s =
         Word.fromInt (intOfString 16 n s)
-  in store_string (UCStoUTF8String (hexCharsToWord (skipPrefix 1) s))
+  in store_string (UTF8.UCStoUTF8String (hexCharsToWord (skipPrefix 1) s))
   end;
 
 fun scanString scan lexbuf =
@@ -642,7 +642,7 @@ and String = parse
          [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`] 
          [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`]
       { UTF8StringOfUCSEscapeSequence lexbuf 1
-        handle BadUTF8 s => skipString s SkipString lexbuf;
+        handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
         String lexbuf }
   | `\\`
       { skipString "ill-formed string escape sequence" SkipString lexbuf }
@@ -676,7 +676,7 @@ and SysInclude = parse
          [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`] 
          [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`]
       { UTF8StringOfUCSEscapeSequence lexbuf 1
-        handle BadUTF8 s => skipString s SkipString lexbuf;
+        handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
         SysInclude lexbuf }
   | `\\`
       { skipString "ill-formed string escape sequence" SkipString lexbuf }

@@ -20,16 +20,20 @@ CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR) $(ADDINCDIRS) -I.
 
 MOSMLTOOLS=camlrunm $(TOOLDIR)
 
-MOSMLC=mosmlc -c
+MOSMLC=mosmlc -orthodox -c
 MOSMLL=mosmlc
 MOSMLLEX=mosmllex
 MOSMLYACC=mosmlyac
 
-all: libmffi.so Ffi.uo Jit.uo CParser.uo	\
-    CPPLexer.uo GrammarParser.uo GrammarLexer.uo GrammarSyntax.uo	\
-    CSyntax.uo RewriteLexer.uo RewriteParser.uo	\
-    RewriteMain.uo Rewrite.uo CPPInfoParser.uo CPPInfoLexer.uo		\
-    Location2.uo Hasht.uo 
+all: libmffi.so Ffi.uo Jit.uo CParser.uo                              \
+    CPPLexer.uo GrammarParser.uo GrammarLexer.uo GrammarSyntax.uo     \
+    CSyntax.uo RewriteLexer.uo RewriteParser.uo                       \
+    RewriteMain.uo Rewrite.uo CPPInfoParser.uo CPPInfoLexer.uo	      \
+    Location2.uo Hasht.uo WordPrim.uo MachineWord.uo WordN.uo         \
+    AbstractMachineWord.uo ArraySliceWordEnc.uo VectorSliceWordEnc.uo \
+    WordEncSig.ui PrimEncSig.ui PrimEnc.uo VectorWordEnc.uo Globals.uo\
+    TestWord.uo WordFormat.uo CompTestWord.uo WordRepr.uo SpeedTest.uo\
+    WordReprSig.ui WordOpsSig.ui WordOps.uo
 
 install:
 	cp libmffi.so $(LIBDIR)
@@ -112,6 +116,63 @@ CSyntax.uo : CSyntax.sml
 Location2.uo : Location2.sml Location2.ui
 	$(MOSMLC) Location2.sml
 
+PrimEncSig.ui : Jit.uo PrimEncSig.sml
+	$(MOSMLC) -toplevel Jit.uo -c PrimEncSig.sml
+
+PrimEnc.uo : PrimEncSig.ui PrimEnc.sml
+	$(MOSMLC) -toplevel Jit.uo PrimEncSig.ui -c PrimEnc.sml
+
+SpeedTest.uo : SpeedTest.sml
+	$(MOSMLC) SpeedTest.sml
+
+Globals.uo : Globals.sml
+	$(MOSMLC) -toplevel Globals.sml
+
+WordReprSig.ui : WordReprSig.sml
+	$(MOSMLC) -toplevel WordReprSig.sml
+
+WordFormat.uo WordFormat.ui : WordReprSig.ui WordFormat.sml
+	$(MOSMLC) -toplevel WordReprSig.ui -c WordFormat.sml
+
+CompTestWord.uo CompTestWord.ui : Globals.uo WordReprSig.ui WordFormat.ui CompTestWord.sml
+	$(MOSMLC) -toplevel Globals.ui WordReprSig.ui WordFormat.ui -c CompTestWord.sml
+
+TestWord.uo : Globals.ui CompTestWord.ui WordFormat.ui WordReprSig.ui TestWord.sml
+	$(MOSMLC) -toplevel Globals.ui CompTestWord.ui WordFormat.ui WordReprSig.ui -c TestWord.sml
+
+WordEncSig.ui : Jit.uo PrimEncSig.ui WordEncSig.sml  
+	$(MOSMLC) -toplevel PrimEncSig.ui Jit.uo -c WordEncSig.sml
+
+WordOpsSig.ui : Jit.ui WordOpsSig.sml
+	$(MOSMLC) -toplevel Jit.ui -c WordOpsSig.sml
+
+WordOps.uo : Jit.uo WordOpsSig.sml WordOps.sml
+	$(MOSMLC) -toplevel Jit.uo WordOpsSig.ui -c WordOps.sml
+
+WordPrim.uo : WordPrim.sml
+	$(MOSMLC) -toplevel -c WordPrim.sml
+
+WordPrim.ui : WordPrim.uo
+
+VectorWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui VectorWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c VectorWordEnc.sml
+
+VectorSliceWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui VectorSliceWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c VectorSliceWordEnc.sml
+
+ArraySliceWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui ArraySliceWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c ArraySliceWordEnc.sml
+
+
+AbstractMachineWord.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui WordOps.uo AbstractMachineWord.sml 
+	$(MOSMLC) -toplevel WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui WordOps.uo -c AbstractMachineWord.sml
+
+MachineWord.uo : MachineWord.sml WordPrim.ui
+	$(MOSMLC) -toplevel WordPrim.ui -c MachineWord.sml
+
+WordN.uo : WordN.sml WordReprSig.ui WordPrim.ui
+	$(MOSMLC) -toplevel WordReprSig.ui WordPrim.ui -c WordN.sml
+
 test:
 	mosml testffi.sml
 
@@ -136,25 +197,41 @@ depend: GrammarParser.sml GrammarLexer.sml RewriteParser.sml \
 
 ### DO NOT DELETE THIS LINE
 Ffi.uo: Ffi.ui 
+ArraySliceWordEnc.uo: Jit.ui PrimEnc.uo 
 CPPInfoParser.ui: CSyntax.uo 
+testmcword.uo: TestWord.uo ArraySliceWordEnc.uo VectorSliceWordEnc.uo \
+    WordFormat.uo VectorWordEnc.uo 
 CPPInfoLexer.uo: CPPInfoParser.ui 
 Rewrite.uo: Location2.ui RewriteLexer.uo RewriteParser.ui GrammarSyntax.uo 
 CParser.uo: CParser.ui CSyntax.uo 
 Jit.uo: Jit.ui Ffi.ui 
 Hasht.uo: Hasht.ui 
+MachineWord.uo: Jit.ui Ffi.ui 
+AbstractMachineWord.uo: Jit.ui Ffi.ui 
 testrewrite.uo: GrammarSyntax.uo RewriteMain.uo CSyntax.uo Hasht.ui \
     Rewrite.uo 
+TestWord.uo: CompTestWord.uo Globals.uo SpeedTest.ui 
 GrammarLexer.uo: GrammarParser.ui 
+VectorWordEnc.uo: Jit.ui PrimEnc.uo 
 CSyntax.uo: GrammarSyntax.uo Hasht.ui Rewrite.uo 
 testffi.uo: Jit.ui Ffi.ui 
 RewriteParser.ui: GrammarSyntax.uo 
+SpeedTest.uo: SpeedTest.ui 
 GrammarParser.ui: GrammarSyntax.uo 
 CParser.ui: CSyntax.uo 
 RewriteMain.uo: CParser.ui Location2.ui CPPInfoParser.ui CPPLexer.uo \
     CSyntax.uo GrammarLexer.uo GrammarParser.ui CPPInfoLexer.uo 
 CPPInfoParser.uo: CPPInfoParser.ui CSyntax.uo 
+PrimEncSig.uo: Jit.ui PrimEnc.uo 
 RewriteParser.uo: RewriteParser.ui GrammarSyntax.uo 
 CPPLexer.uo: CParser.ui CSyntax.uo Hasht.ui 
+WordRepr.uo: WordRepr.ui Jit.ui Ffi.ui 
+WordEncSig.uo: Jit.ui 
 RewriteLexer.uo: RewriteParser.ui 
 GrammarParser.uo: GrammarParser.ui GrammarSyntax.uo 
+VectorSliceWordEnc.uo: Jit.ui PrimEnc.uo 
+WordOps.uo: Jit.ui 
+Word32.uo: Jit.ui Ffi.ui 
+PrimEnc.uo: Jit.ui Ffi.ui 
 Location2.uo: Location2.ui 
+WordOpsSig.uo: Jit.ui 

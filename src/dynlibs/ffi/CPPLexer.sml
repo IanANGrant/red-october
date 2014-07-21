@@ -1,7 +1,7 @@
 local open Obj Lexing in
 
 
-open CParser UTF8 TextIO;
+open CParser TextIO;
 
 exception LexicalError of string * int * int;
 
@@ -290,7 +290,7 @@ fun UTF8StringOfUCSEscapeSequence lexbuf i =
        end
     fun hexCharsToWord n s =
         Word.fromInt (intOfString 16 n s)
-  in store_string (UCStoUTF8String (hexCharsToWord (skipPrefix 1) s))
+  in store_string (UTF8.UCStoUTF8String (hexCharsToWord (skipPrefix 1) s))
   end;
 
 fun scanString scan lexbuf =
@@ -678,7 +678,7 @@ and action_30 lexbuf = (
  skipString "ill-formed string escape sequence" SkipString lexbuf )
 and action_29 lexbuf = (
  UTF8StringOfUCSEscapeSequence lexbuf 1
-        handle BadUTF8 s => skipString s SkipString lexbuf;
+        handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
         String lexbuf )
 and action_28 lexbuf = (
  let val code = intOfString 16 2 (getLexeme lexbuf) in
@@ -706,7 +706,7 @@ and action_21 lexbuf = (
  skipString "ill-formed string escape sequence" SkipString lexbuf )
 and action_20 lexbuf = (
  UTF8StringOfUCSEscapeSequence lexbuf 1
-        handle BadUTF8 s => skipString s SkipString lexbuf;
+        handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
         SysInclude lexbuf )
 and action_19 lexbuf = (
  let val code = intOfString 16 2 (getLexeme lexbuf) in
