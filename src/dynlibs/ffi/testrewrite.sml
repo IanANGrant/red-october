@@ -658,7 +658,7 @@ fun resolve substruct (decls : decls) t =
                                        (declarator
                                           (pointer ⌜p2⌝ ⌜d2⌝))⟧)
 `        end 
-   and fun mergepointer t = rewriteq `
+   and mergepointer t = rewriteq `
       ⟦merge ⌜x:type-qualifier⌝
             (pointer ⌜w:type-qualifier-list⌝ ⌜z⌝)⟧
           = (pointer (type-qualifier-list ⌜w⌝ ⌜x⌝) ⌜z⌝)
