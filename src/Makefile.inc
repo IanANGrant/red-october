@@ -57,7 +57,8 @@ endif
 #
 #     LDFLAGS=-Wl,-rpath,/usr/local/lib make
 
-ADDLDFLAGS=$(LDFLAGS) -Wl,-rpath,$(LIBDIR)
+ADDLIBDIR=/home/ian3/usr/lib
+ADDLDFLAGS=$(LDFLAGS) -Wl,-rpath,$(LIBDIR) -Wl,-rpath,$(ADDLIBDIR)
 ADDRUNLIBS=-ldl
 ADDRUNCFLAGS=-fPIC
 ADDDYNLIBCFLAGS=-fPIC
