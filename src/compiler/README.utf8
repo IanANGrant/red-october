@@ -31,13 +31,16 @@ There is also a mosmllib UTF8 module with some functions for handling
 UTF8 encoded strings. These include UTF8.size which returns the length
 of a UTF8 encoded string in terms of the number of UTF8 code-points it
 contains. This is often (but not always) the length of the printable
-result. It fails when the string contains non-printing characters and
-combining code sequences, and it assumes that the string is valid: the
-only encoding errors it detects are when the final octet-sequence is
-invalid, or when the first octet of a multi-octet encoding is
-invalid. But when you know the content of the string it can be
-useful. If you want a version which will never throw the BadUTF8
-<string> exception then there is UTF8.size_. There are also
+result. This assumption fails to hold when the string contains
+non-printing characters and/or combining code sequences.  The
+UTF8.size function assumes that the string is valid: the only encoding
+errors it detects are when the final octet-sequence is invalid, or
+when the first octet of a multi-octet encoding is invalid, in which
+case it raises the exception BadUTF8 with a string argument giving
+some more or less specific reason for the error, in some form of the
+language sometimes called "English."  If you want a version which will
+never throw the BadUTF8 <string>, exception then there is UTF8.size_:
+in the event of a failure it defaults to String.size. There are also
 replacements for the StringCvt.padLeft and StringCvt.padRight
 functions which pad out the strings according to their lengths as UTF8
 sequences. There are also functions to 'parse' UTF8 sequences from
@@ -45,8 +48,17 @@ strings and substrings, and StringCvt.reader scanner functors for UTF8
 and UCS characters represented as values of type Word.word. Either of
 these will function as a validator.
 
-Fr example one can write code like this:
+Another change is to the Pretty-printer to use UTF8.size instead of
+String.size, which means it has a better chance of getting the
+alignment right when the output includes multi-octet encoded
+characters. This feature can be 'controlled' by a switch implemented
+as a bool ref type value called PP.utf8. I say 'controlled' because it
+seems not to function if the printer has been installed using the
+Meta.installPP function.
 
+Here are some examples of the UTF8 functions:
+
+load "PP";
 load "Substring";
 load "UTF8";
 
@@ -78,6 +90,20 @@ fun UCStoChar w = ((fn s => "\\u"^s) o
                    Word.toString) w;
 fun charcat (w,a) = a^(if w > 0wx7f then UCStoChar w else wordToChar w);
 val UTF8stringToMLString = foldl UCSscanner charcat "" o Substring.full;
+
+local
+   fun strtostr s = ("\""^(UTF8stringToMLString s)^"\"")
+   fun ppstring pps s0 = 
+       let open PP
+           fun ppstr s = add_string pps (strtostr s)
+       in
+           begin_block pps INCONSISTENT 0;
+           ppstr s0;
+           end_block pps
+    end
+in
+   val _ = Meta.installPP ppstring
+end;
 
 
 
