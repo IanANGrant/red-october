@@ -25,6 +25,8 @@ in
 
 val largeint_make    : unit -> largeint        
     = app1 (dlsym dlh "largeint_make")
+val largeint_make2   : Int.int -> largeint        
+    = app1 (dlsym dlh "largeint_make2")
 val largeint_make_si : Int.int -> largeint 
     = app1 (dlsym dlh "largeint_make_si")
 val largeint_clear   : largeint -> unit
@@ -43,6 +45,36 @@ val largeint_sub     : largeint -> largeint -> largeint -> unit
     = app3 (dlsym dlh "largeint_sub")
 val largeint_mul     : largeint -> largeint -> largeint -> unit
     = app3 (dlsym dlh "largeint_mul")
+val largeint_and     : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_and")
+val largeint_ior     : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_ior")
+val largeint_xor     : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_xor")
+val largeint_com     : largeint -> largeint -> unit
+    = app2 (dlsym dlh "largeint_com")
+val largeint_lsl    : largeint -> largeint -> Int.int -> unit
+    = app3 (dlsym dlh "largeint_lsl")
+val largeint_lsr    : largeint -> largeint -> Int.int -> unit
+    = app3 (dlsym dlh "largeint_lsr")
+val largeint_asr    : largeint -> largeint -> Int.int -> unit
+    = app3 (dlsym dlh "largeint_asr")
+val largeint_tstbit : largeint -> Int.int -> bool
+    = app2 (dlsym dlh "largeint_tstbit")
+val largeint_setbit : largeint -> Int.int -> unit
+    = app2 (dlsym dlh "largeint_setbit")
+val largeint_clrbit : largeint -> Int.int -> unit
+    = app2 (dlsym dlh "largeint_clrbit")
+val largeint_combit : largeint -> Int.int -> unit
+    = app2 (dlsym dlh "largeint_combit")
+val largeint_scan0 : largeint -> Int.int -> largeint option
+    = app2 (dlsym dlh "largeint_scan0")
+val largeint_scan1 : largeint -> Int.int -> largeint option
+    = app2 (dlsym dlh "largeint_scan1")
+val largeint_popcount : largeint -> largeint option
+    = app1 (dlsym dlh "largeint_popcount")
+val largeint_hamdist : largeint -> largeint -> largeint option
+    = app2 (dlsym dlh "largeint_hamdist")
 val largeint_tdiv    : largeint -> largeint -> largeint -> unit
     = app3 (dlsym dlh "largeint_tdiv")
 val largeint_tmod    : largeint -> largeint -> largeint -> unit
@@ -55,12 +87,32 @@ val largeint_fdivmod : largeint -> largeint -> largeint -> largeint -> unit
     = app4 (dlsym dlh "largeint_fdivmod")
 val largeint_tdivmod : largeint -> largeint -> largeint -> largeint -> unit
     = app4 (dlsym dlh "largeint_tdivmod")
+val largeint_gcd    : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_gcd")
+val largeint_lcm    : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_lcm")
+val largeint_invert    : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_invert")
+val largeint_sqrt     : largeint -> largeint -> unit
+    = app2 (dlsym dlh "largeint_sqrt")
+val largeint_sqrtrem  : largeint -> largeint -> largeint -> unit
+    = app3 (dlsym dlh "largeint_sqrtrem")
 val largeint_cmp     : largeint -> largeint -> Int.int 
     = app2 (dlsym dlh "largeint_cmp")
 val largeint_cmp_si  : largeint -> Int.int -> Int.int 
     = app2 (dlsym dlh "largeint_cmp_si")
 val largeint_sizeinbase : largeint -> Int.int -> Int.int 
     = app2 (dlsym dlh "largeint_sizeinbase")
+
+val largeint_import :
+         largeint -> (Int.int * Int.int * Int.int * Int.int * Int.int)
+                  -> Word8ArraySlice.slice -> unit
+    = app3 (dlsym dlh "largeint_import")
+
+val largeint_export : Word8ArraySlice.slice -> (Int.int * Int.int * Int.int * Int.int)
+                                            -> largeint -> Int.int
+    = app3 (dlsym dlh "largeint_export")
+
 val largeint_get_str : largeint -> Int.int -> string
     = app2 (dlsym dlh "largeint_get_str")
 val largeint_set_str : largeint -> string -> Int.int -> unit
@@ -141,6 +193,87 @@ fun rem(li1, li2) =
 	let val res = largeint_make ()
 	in largeint_tmod res li1 li2; res end
 
+fun ~>> (li,i) =
+   let val res = largeint_make ()
+   in largeint_asr res li i; res
+   end
+
+fun >> (li,i) =
+   let val res = largeint_make ()
+   in largeint_lsr res li i; res
+   end
+
+fun << (li,i) =
+   let val res = largeint_make ()
+   in largeint_lsl res li i; res
+   end
+
+fun orb (li1,li2) =
+   let val res = largeint_make ()
+   in largeint_ior res li1 li2; res
+   end
+
+fun andb (li1,li2) =
+   let val res = largeint_make ()
+   in largeint_and res li1 li2; res
+   end
+
+fun xorb (li1,li2) =
+   let val res = largeint_make ()
+   in largeint_xor res li1 li2; res
+   end
+
+fun notb (li : int) =
+   let val res = largeint_make ()
+   in largeint_com res li; res
+   end
+
+fun gcd(li1, li2) = 
+   let val res = largeint_make ()
+   in largeint_gcd res li1 li2; res
+   end
+
+fun sqrt(li1) = 
+   let val res = largeint_make ()
+   in largeint_sqrt res li1; res
+   end
+
+fun sqrtrem(li1) = 
+   let val res = largeint_make ()
+       val rem = largeint_make ()
+   in largeint_sqrtrem res rem li1;
+      (res,rem)
+   end
+
+fun lcm(li1, li2) = 
+   let val res = largeint_make ()
+   in largeint_lcm res li1 li2; res
+   end
+
+fun invert(li1, li2) = 
+   let val res = largeint_make ()
+   in largeint_invert res li1 li2; res
+   end
+
+val msb : largeint -> Int.int
+    = (fn li => Int.-((largeint_sizeinbase li 2),1))
+
+fun init2 (nbits,initval) = 
+   let val li = if nbits < 1 then raise Size else largeint_make2 nbits
+   in if initval <> 0 then largeint_set_si li initval else ();
+      li
+   end
+
+val combit = fn (li,n) => largeint_combit li n
+val clrbit = fn (li,n) => largeint_clrbit li n
+val setbit = fn (li,n) => largeint_setbit li n
+
+val tstbit = fn (li,n) => largeint_tstbit li n
+val popcount = largeint_popcount
+val hamdist = fn (li1,li2) => largeint_hamdist li1 li2
+val scan0 = fn (li,n) => largeint_scan0 li n
+val scan1 = fn (li,n) => largeint_scan1 li n
+
 fun divMod(li1, li2) = 
     if sign li2 = 0 then raise Div 
     else
@@ -181,8 +314,58 @@ fun fmt radix li =
       | DEC => largeint_get_str li 10
       | HEX => largeint_get_str li 16
     end;
-    
-fun toString li = largeint_get_str li 10;
+
+(* From the GMP info page on mpz_export, to calculate the space
+   required for a given large integer:
+
+       numb = 8 * size - nail;
+       count = (mpz_sizeinbase (z, 2) + numb - 1) / numb;
+       p = malloc (count * size) 
+
+  Since our msb is equal to mpz_sizeinbase (z,2) - 1, we 
+  have the following: *)
+
+fun mkbuf size nails z =
+   let open Int
+       val numb = (8 * size) - nails
+       val count = ((msb z) + numb) div numb
+       val length = count * size
+   in Word8ArraySlice.full(Word8Array.array (length,0w0))
+   end
+
+fun import {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
+   fn (slc, nwords : Int.int, sgn : Int.int)  => 
+      let val z = largeint_make ()
+          val _ = largeint_import z (nwords, order, size, endian, nails) slc
+          val _ = if sgn = ~1 then largeint_neg z z else ()
+      in 
+         z
+      end
+
+fun export {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
+   fn z => 
+      let val slice = mkbuf size nails z
+          val sgn = sign z
+      in (slice, largeint_export slice (order, size, endian, nails) z, sgn)
+      end
+
+(* When one does not have access to the FACTS, then one has to make-do
+   with mere _information_ ... But if we get this right, then GMP will
+   export directly into, and import directly from, the machine word
+   order, so that we can use GMP integers to represent vectors (and
+   array slices, etc.) of machine words, and rows of pixels from PNG
+   images, and discrete probability distributions and Fourier series
+   and .... *)
+
+val wordSize = if compare (fromInt Vector.maxLen,<<(fromInt 1,31)) = GREATER then 64 else 32
+
+val wsz = Int.div(wordSize, 8)
+
+val rawformat = {order = ~1, endian = 0, size = wsz, nails = 0}
+
+val netformat = {order = 1, endian = 1, size = 2, nails = 0}
+
+fun toString li = largeint_get_str li 10
 
 local 
     open StringCvt
@@ -263,3 +446,4 @@ fun op - (li1, li2) =
 fun op * (li1, li2) = 
     let val res = largeint_make ()
     in largeint_mul res li1 li2; res end;
+

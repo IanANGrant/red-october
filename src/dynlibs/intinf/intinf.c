@@ -1,8 +1,10 @@
 /* intinf.c -- partial interface to the GNU GMP multi-precision library.
    sestoft@dina.kvl.dk 1995, 1998-04-20 */
 
-#include <gmp.h>
+#include <limits.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <gmp.h>
 
 /* Access to the camlrunm/Moscow ML runtime data representation: */
 
@@ -177,6 +179,14 @@ value largeint_make(value null)
   return li;
 }
 
+/* Initialises with a given precision */
+value largeint_make2(value prec)
+{ 
+  value li = largeint_alloc();
+  mpz_init2(Large_val(li), (mp_bitcnt_t) Long_val(prec));
+  return li;
+}
+
 value largeint_make_si(value src)			
 { 
   value li = largeint_alloc();
@@ -229,6 +239,131 @@ value largeint_mul(value dest, value li1, value li2)
   return Val_unit;
 }
 
+/* Bitwise and */
+value largeint_and(value dest, value li1, value li2)
+{ 
+  mpz_and(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
+/* Bitwise inclusive-or */
+value largeint_ior(value dest, value li1, value li2)
+{ 
+  mpz_ior(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
+/* Bitwise exclusive-or */
+value largeint_xor(value dest, value li1, value li2)
+{ 
+  mpz_xor(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
+/* Bitwise complement */
+value largeint_com(value dest, value li1)
+{ 
+  mpz_com(Large_val(dest), Large_val(li1));
+  return Val_unit;
+}
+
+/* Shift left */
+value largeint_lsl(value dest, value li1, value bits)
+{ 
+  mpz_mul_2exp(Large_val(dest), Large_val(li1), (mp_bitcnt_t) Long_val(bits));
+  return Val_unit;
+}
+
+/* Arithmetic shift right */
+value largeint_asr(value dest, value li1, value bits)
+{ 
+  mpz_fdiv_q_2exp(Large_val(dest), Large_val(li1), (mp_bitcnt_t) Long_val(bits));
+  return Val_unit;
+}
+
+/* Logical shift right */
+value largeint_lsr(value dest, value li1, value bits)
+{ 
+  mpz_tdiv_q_2exp(Large_val(dest), Large_val(li1), (mp_bitcnt_t) Long_val(bits));
+  return Val_unit;
+}
+
+/* Test bit */
+value largeint_tstbit(value li1, value bit)
+{ 
+  return Atom(mpz_tstbit(Large_val(li1), (mp_bitcnt_t) Long_val(bit)));
+}
+
+/* Set bit */
+value largeint_setbit(value li1, value bit)
+{ 
+  mpz_setbit(Large_val(li1), (mp_bitcnt_t) Long_val(bit));
+  return Val_unit;
+}
+
+/* Clear bit */
+value largeint_clrbit(value li1, value bit)
+{ 
+  mpz_clrbit(Large_val(li1), (mp_bitcnt_t) Long_val(bit));
+  return Val_unit;
+}
+
+/* Complement bit */
+value largeint_combit(value li1, value bit)
+{ 
+  mpz_combit(Large_val(li1), (mp_bitcnt_t) Long_val(bit));
+  return Val_unit;
+}
+
+/* Return SOME n or NONE if n == ULONG_MAX */
+static value Some_bitcnt(mp_bitcnt_t bits)
+{
+  if ((unsigned long) bits == ULONG_MAX)
+    return NONE;
+  else { /* return SOME(s) */
+    value res;
+    Push_roots(r, 1);
+    r[0] = largeint_alloc();
+    mpz_init_set_ui(Large_val(r[0]), (unsigned long) bits);
+    res = alloc(1, SOMEtag); 
+    Field(res, 0) = r[0];
+    Pop_roots();
+    return res;
+  }
+}
+
+/* Scan for successive 0 bits */
+value largeint_scan0(value li1, value startbit)
+{
+  mp_bitcnt_t bits;
+  bits = mpz_scan0(Large_val(li1), (mp_bitcnt_t) Long_val(startbit));
+  return Some_bitcnt(bits);
+}
+
+/* Scan for successive 1 bits */
+value largeint_scan1(value li1, value startbit)
+{
+  mp_bitcnt_t bits;
+  bits = mpz_scan1(Large_val(li1), (mp_bitcnt_t) Long_val(startbit));
+  return Some_bitcnt(bits);
+}
+
+/* Population count */
+value largeint_popcount(value li1)
+{ 
+  mp_bitcnt_t bits;
+  bits = mpz_popcount(Large_val(li1));
+  return Some_bitcnt(bits);
+}
+
+/* Hamming distance */
+value largeint_hamdist(value li1, value li2)
+{ 
+  mp_bitcnt_t bits;
+  bits = mpz_hamdist(Large_val(li1), Large_val(li2));
+  return Some_bitcnt(bits);
+}
+
 /* Division truncating towards 0: */
 value largeint_tdiv(value dest, value li1, value li2)
 { 
@@ -269,6 +404,47 @@ value largeint_fdivmod(value quotdest, value remdest, value li1, value li2)
   return Val_unit;
 }
 
+/* Integer square root */
+value largeint_sqrt(value quotdest, value li1)
+{ 
+  mpz_sqrt(Large_val(quotdest), Large_val(li1)); 
+  return Val_unit;
+}
+
+/* Integer square root with remainder */
+value largeint_sqrtrem(value quotdest, value remdest, value li1)
+{ 
+  mpz_sqrtrem(Large_val(quotdest), Large_val(remdest), Large_val(li1)); 
+  return Val_unit;
+}
+
+/* Greatest common divisor */
+value largeint_gcd(value dest, value li1, value li2)
+{ 
+  mpz_gcd(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
+/* Least common multiple */
+value largeint_lcm(value dest, value li1, value li2)
+{ 
+  mpz_lcm(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
+/* Invert: from the GMP manual: Compute the inverse of li1 modulo li2
+   and put the result in dest.  If the inverse exists, the return
+   value is non-zero and dest will satisfy 0 < dest < abs(li2).  If an
+   inverse doesn't exist the return value is zero and dest is
+   undefined.  The behaviour of this function is undefined when li2 is
+   zero. */
+
+value largeint_invert(value dest, value li1, value li2)
+{ 
+  mpz_invert(Large_val(dest), Large_val(li1), Large_val(li2)); 
+  return Val_unit;
+}
+
 value largeint_cmp(value li1, value li2)			
 { 
   long res = mpz_cmp(Large_val(li1), Large_val(li2));
@@ -293,6 +469,58 @@ value largeint_cmp_si(value li, value si)
 
 value largeint_sizeinbase(value li, value base)		
 { return (Val_long(mpz_sizeinbase(Large_val(li), Long_val(base)))); }
+
+value largeint_export (value slicev, value params, value li)
+{
+  value orderv = Field(params,0);
+  value sizev = Field(params,1);
+  value endianv = Field(params,2);
+  value nailsv = Field(params,3);
+
+  int order = (int) Long_val(orderv);
+  size_t size = (size_t) Long_val(sizev);
+  int endian = (int) Long_val(endianv);
+  int nails = (int) Long_val(nailsv);
+
+  size_t offset = (size_t) Long_val(Field(slicev,1));
+  size_t length = (size_t) Long_val(Field(slicev,2));
+  char *buf = String_val(Field(Field(slicev,0),0)) + offset;
+
+  size_t written;
+
+  if (size > length) {
+      raiseprimitive0(SYS__EXN_SIZE);
+  } else
+      (void) mpz_export (buf, &written, order, size, endian, nails, Large_val(li));
+
+  return (Val_long(written));
+}
+
+value largeint_import (value li, value params, value slicev)
+{
+  value countv = Field(params,0);
+  value orderv = Field(params,1);
+  value sizev = Field(params,2);
+  value endianv = Field(params,3);
+  value nailsv = Field(params,4);
+
+  size_t count = (size_t) Long_val(countv);
+  int order = (int) Long_val(orderv);
+  size_t size = (size_t) Long_val(sizev);
+  int endian = (int) Long_val(endianv);
+  int nails = (int) Long_val(nailsv);
+
+  size_t offset = (size_t) Long_val(Field(slicev,1));
+  size_t length = (size_t) Long_val(Field(slicev,2));
+  char *buf = String_val(Field(Field(slicev,0),0)) + offset;
+
+  if (size > length) {
+      raiseprimitive0(SYS__EXN_SIZE);
+  } else
+      mpz_import (Large_val(li), count, order, size, endian, nails, buf);
+
+  return Val_unit;
+}
 
 /* The mpz_set_str function below is pretty absurd:
  * "- 123"	-> ~123
