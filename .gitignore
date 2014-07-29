@@ -3,5 +3,8 @@
 *.o
 *.so
 *~
+*.out
+*.*~
+*.rwt
 JUNK
 backup.sh
