@@ -21,8 +21,9 @@
   hp: Pointer to the header of an object.  (a char *)
   int32: Four bytes on all architectures.
 
-  Remark: An object size is always a multiple of the word size, and at least
-          one word plus the header.
+  Remark: An object size (in the heap) is always a multiple of the word size, and at least
+          one word plus the header. An atom is a header with no fields. There are only 256
+          atoms, and they are statically allocated, see comment 3 below.
 
   bosize: Size (in bytes) of the "bytes" part.
   wosize: Size (in words) of the "fields" part.

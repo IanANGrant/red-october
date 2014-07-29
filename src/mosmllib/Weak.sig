@@ -6,6 +6,7 @@ type 'a weak
 val weak    : 'a -> 'a weak
 val set     : 'a weak * 'a -> unit
 val get     : 'a weak -> 'a                  (* Raises Fail *)
+val resurrect : 'a weak -> 'a option
 val isweak  : 'a weak -> bool
 
 (* Arrays of weak pointers *)
@@ -72,6 +73,15 @@ val modifyi : (int * 'a -> 'a) -> 'a array * int * int option -> unit
    but evaluating the latter expression may have the side effect of
    keeping w alive for slightly longer, because a pointer to w is
    returned by get w.
+
+   [resurrect w] returns the value pointed to by a 'dead' weak pointer
+   w, if the value is still available, or NONE if it not dead, or,
+   like the parrot in the Monty Python sketch, it was really, really
+   dead, and not just pretending. This is intended for those who wish
+   to experiment with garbage-scavenging: allocation is expensive, so
+   if one can re-use an object, knowing that its pevious owner has no
+   need of it anymore, then one can save oneself the trouble of
+   allocating a new one.
 
    ---
 

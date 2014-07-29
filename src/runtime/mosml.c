@@ -1308,6 +1308,39 @@ int isdead(value v)
 	     && Is_block(v) && Is_in_heap(v) && Is_white_val(v));
 }
 
+static value SOME_val(value val)
+{
+    value res;
+
+    Push_roots(r, 1);
+    r[0] = val;
+    res = alloc(1, SOMEtag); 
+    Field(res, 0) = r[0];
+    Pop_roots();
+    return res;
+}
+
+value weak_resurrect(value arr, value idx) /* Not flagged as an ml primitive */
+{ // It's a familiar story. We're looking for a weak thing in white
+  //   raiment, in a block on the heap, but not really dead (otherwise
+  //   it would have NULL value) ...
+
+  value res = NONE;
+  value v = Field(arr, Long_val(idx));
+  int reallydead = v == (value) NULL;
+  int resurrectable = !reallydead 
+                    && gc_phase == Phase_weak
+                    && Is_block(v)
+                    && Is_in_heap(v)
+                    && Is_white_val(v);
+
+  if (resurrectable) {
+      darken(v);
+      res = SOME_val(v);
+  }
+  return res;
+}
+
 value weak_sub(value arr, value index)			/* ML */
 {
   value v = Field(arr, Long_val(index));

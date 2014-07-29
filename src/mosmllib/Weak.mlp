@@ -40,6 +40,23 @@ fun weak (v : 'a) : 'a weak =
 
 fun get (w : 'a weak) = weaksub_ (weak2arr w) 0
 
+local open Dynlib
+
+   val dlxh = Dynlib.dlopen {lib = "", flag = Dynlib.RTLD_LAZY, global = false }
+   val weakresp_ = Dynlib.cptr (Dynlib.dlsym dlxh "weak_resurrect")
+
+ (* This works because "" corresponds to a NULL C pointer, and that
+    tells libdl to resolve symbols from the executable's own global
+    symbol table, rather than a library. It was easier for me to do
+    this than to add a new primitive to the runtime and bootstrap the
+    compiler! *)
+
+   prim_val app2 : Dynlib.cptr -> 'a1 -> 'a2 -> 'b = 3 "cfun_app2"
+   val weakres_ : 'a array_ -> int -> 'a option = app2 weakresp_
+in
+   fun resurrect (w : 'a weak) = weakres_ (weak2arr w) 0
+end
+
 fun set (w : 'a weak, v : 'a) = update_ (weak2arr w) 0 v
 
 fun isweak (w : 'a weak) = isdead_ (weak2arr w) 0;
