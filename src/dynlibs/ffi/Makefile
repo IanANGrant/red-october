@@ -33,7 +33,12 @@ all: libmffi.so Ffi.uo Jit.uo CParser.uo                              \
     AbstractMachineWord.uo ArraySliceWordEnc.uo VectorSliceWordEnc.uo \
     WordEncSig.ui PrimEncSig.ui PrimEnc.uo VectorWordEnc.uo Globals.uo\
     TestWord.uo WordFormat.uo CompTestWord.uo WordRepr.uo SpeedTest.uo\
-    WordReprSig.ui WordOpsSig.ui WordOps.uo
+    WordOpsSig.ui WordOps.uo WordReprSig.ui Rot13.uo BitSet.uo       \
+    testlightning
+
+testlightning: testlightning.c
+	gcc testlightning.c  `pkg-config --cflags --libs glib-2.0` \
+              -I./lightning-2.0.4/include -Wl,-rpath,./debug -L./debug -llightning -Wl,-rpath,/home/ian3/usr/lib -o testlightning
 
 install:
 	cp libmffi.so $(LIBDIR)
@@ -52,19 +57,25 @@ svec.o: svec.c mffi.h mem.h
 	$(CC) $(CFLAGS) -c -o svec.o svec.c
 
 mem.o: mem.c mffi.h
-	$(CC) $(CFLAGS) -c -o mem.o mem.c
+	$(CC) $(CFLAGS) `pkg-config --cflags glib-2.0` -c -o mem.o mem.c
 
 types.o: types.c mffi.h mem.h types.h 
 	$(CC) $(CFLAGS) -c -o types.o types.c
 
 libmffi.so: svec.o jit.o mem.o ffi.o types.o
-	$(DYNLD) -Wl,-rpath,$(FFILIBDIR) -o libmffi.so -lffi -llightning mem.o jit.o svec.o ffi.o types.o
+	$(DYNLD) -Wl,-rpath,$(FFILIBDIR) `pkg-config --libs glib-2.0` -o libmffi.so -lffi -llightning mem.o jit.o svec.o ffi.o types.o
 
 Ffi.ui : Ffi.sig
 	$(MOSMLC) -imptypes Ffi.sig
 
 Ffi.uo : Ffi.sml
 	$(MOSMLC) -imptypes Ffi.sml
+
+Jit.ui : Jit.sig Ffi.ui
+	$(MOSMLC) -imptypes Jit.sig
+
+Jit.uo : Jit.sml Jit.ui
+	$(MOSMLC) -imptypes Jit.sml
 
 CPPInfoLexer.sml : CPPInfoLexer.lex
 
@@ -128,10 +139,30 @@ SpeedTest.uo : SpeedTest.sml
 Globals.uo : Globals.sml
 	$(MOSMLC) -toplevel Globals.sml
 
+WordPrim.uo : WordPrim.sml
+	$(MOSMLC) -toplevel -c WordPrim.sml
+
+WordPrim.ui : WordPrim.uo
+
 WordReprSig.ui : WordReprSig.sml
 	$(MOSMLC) -toplevel WordReprSig.sml
 
-WordFormat.uo WordFormat.ui : WordReprSig.ui WordFormat.sml
+Rot13.uo : Rot13.sml
+	$(MOSMLC) -toplevel Rot13.sml
+
+BitSet.uo : BitSet.sml
+	$(MOSMLC) -toplevel BitSet.sml
+
+WordN.uo : WordN.sml  WordPrim.ui WordReprSig.ui
+	$(MOSMLC) -toplevel WordReprSig.ui WordPrim.ui -c WordN.sml
+
+# WordN.ui : WordN.sig
+#	$(MOSMLC) -toplevel -c WordN.sig
+
+#WordN.uo : WordPrim.ui WordN.sml WordN.ui
+#	$(MOSMLC) -toplevel WordN.ui WordPrim.ui -c WordN.sml
+
+WordFormat.uo WordFormat.ui : WordFormat.sml WordReprSig.ui
 	$(MOSMLC) -toplevel WordReprSig.ui -c WordFormat.sml
 
 CompTestWord.uo CompTestWord.ui : Globals.uo WordReprSig.ui WordFormat.ui CompTestWord.sml
@@ -149,11 +180,6 @@ WordOpsSig.ui : Jit.ui WordOpsSig.sml
 WordOps.uo : Jit.uo WordOpsSig.sml WordOps.sml
 	$(MOSMLC) -toplevel Jit.uo WordOpsSig.ui -c WordOps.sml
 
-WordPrim.uo : WordPrim.sml
-	$(MOSMLC) -toplevel -c WordPrim.sml
-
-WordPrim.ui : WordPrim.uo
-
 VectorWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui VectorWordEnc.sml
 	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c VectorWordEnc.sml
 
@@ -169,9 +195,6 @@ AbstractMachineWord.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui W
 
 MachineWord.uo : MachineWord.sml WordPrim.ui
 	$(MOSMLC) -toplevel WordPrim.ui -c MachineWord.sml
-
-WordN.uo : WordN.sml WordReprSig.ui WordPrim.ui
-	$(MOSMLC) -toplevel WordReprSig.ui WordPrim.ui -c WordN.sml
 
 test:
 	mosml testffi.sml
@@ -199,9 +222,9 @@ depend: GrammarParser.sml GrammarLexer.sml RewriteParser.sml \
 Ffi.uo: Ffi.ui 
 ArraySliceWordEnc.uo: Jit.ui PrimEnc.uo 
 CPPInfoParser.ui: CSyntax.uo 
-testmcword.uo: TestWord.uo ArraySliceWordEnc.uo VectorSliceWordEnc.uo \
-    WordFormat.uo VectorWordEnc.uo 
+testmcword.uo: TestWord.uo Jit.ui Ffi.ui 
 CPPInfoLexer.uo: CPPInfoParser.ui 
+testhugewords.uo: Ffi.ui WordFormat.uo VectorWordEnc.uo 
 Rewrite.uo: Location2.ui RewriteLexer.uo RewriteParser.ui GrammarSyntax.uo 
 CParser.uo: CParser.ui CSyntax.uo 
 Jit.uo: Jit.ui Ffi.ui 
@@ -227,6 +250,7 @@ RewriteParser.uo: RewriteParser.ui GrammarSyntax.uo
 CPPLexer.uo: CParser.ui CSyntax.uo Hasht.ui 
 WordRepr.uo: WordRepr.ui Jit.ui Ffi.ui 
 WordEncSig.uo: Jit.ui 
+Jit.ui: Ffi.ui 
 RewriteLexer.uo: RewriteParser.ui 
 GrammarParser.uo: GrammarParser.ui GrammarSyntax.uo 
 VectorSliceWordEnc.uo: Jit.ui PrimEnc.uo 
@@ -234,4 +258,3 @@ WordOps.uo: Jit.ui
 Word32.uo: Jit.ui Ffi.ui 
 PrimEnc.uo: Jit.ui Ffi.ui 
 Location2.uo: Location2.ui 
-WordOpsSig.uo: Jit.ui 

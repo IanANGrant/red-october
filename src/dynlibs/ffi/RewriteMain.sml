@@ -8,6 +8,14 @@ fun parseExprPlain file stream lexbuf =
     end
     handle exn => (CSyntax.reset_parser();Parsing.clearParser(); raise exn);
 
+fun parseConstExprPlain file stream lexbuf =
+    let val expr = CParser.ConstExp CPPLexer.Token lexbuf
+    in
+	Parsing.clearParser();
+	expr
+    end
+    handle exn => (Parsing.clearParser(); raise exn);
+
 fun parseCPPPlain file stream lexbuf =
     let val () = CSyntax.reset_parser();
         val expr = CParser.CPPFile CPPLexer.Token lexbuf
@@ -168,6 +176,8 @@ val parse_grammar = processFile parseGrammarReport
 val parse_c = processFile parseExprReport
 
 val parse_c_string = processString parseExprPlain
+
+val parse_c_cexp_string = processString parseConstExprPlain
 
 val parse_cpp = processFile parseCPPReport
 

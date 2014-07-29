@@ -8,25 +8,45 @@ extern long jit_ffi_debug;
 // Finalised objects representing buffers as ML byte-vectors on the
 // static heap, (i.e. not subject to garbage collection).
 
+typedef void (*svec_final_fun) (void *);
+
 /* Field 0 is the finalized tag. */
 #define Svec_val(x) (void **)(&Field(x, 1))
-#define SvecLength_val(x) (mlsize_t)(Field(x, 2))
-#define SvecFieldsCount 2
+#define SvecLength_val(x) (Long_val(Field(x, 2)))
+#define SvecFinalize_val(x) (svec_final_fun) (Field(x, 3))
+#define SvecFieldsCount 3
 
 #define SvecSize (SvecFieldsCount + 1)
 #define SvecHeapSpace (SvecSize + sizeof(void *))
 
 void svec_finalize(value obj)
 {
-  mosml_ffi_free(*Svec_val(obj));
-  return;
+   svec_final_fun ffunp = SvecFinalize_val(obj);
+
+   /* See the mosml_ffi_* functions in mem.c for the in-memory format
+      of the blocks allocated. They are meant to look exactly like
+      objects of type String.string or Word8Vector.vector. This fools
+      the interpreter and so aliasing one of these things with a val
+      binding will create an on-heap copy of the whole buffer. So we
+      only trigger the finalise function when the object is
+      off-heap. */
+
+   if (ffunp && !(Is_in_heap(*Svec_val(obj)))) {
+      if (jit_ffi_debug)
+          fprintf(stderr,"svec_finalise: calling %p to finalise %p.\n",
+                          (void *) ffunp,*Svec_val(obj));
+      (*ffunp) (*Svec_val(obj));
+      Field(obj,3) = (value)NULL;
+      *(Svec_val(obj)) = NULL;
+   }
+   return;
 }
 
 value svec_clear(value obj)			
 {
-  svec_finalize(obj);
-  Tag_val(obj) = Abstract_tag;
-  return Val_unit;
+   svec_finalize(obj);
+   Tag_val(obj) = Abstract_tag;
+   return Val_unit;
 }
 
 value svec_make(value lengthv)
@@ -34,9 +54,33 @@ value svec_make(value lengthv)
   value sv;
 
   sv = alloc_final(SvecSize, &svec_finalize, SvecHeapSpace, MAX_FFI_ALLOC);
-  initialize((value *) Svec_val(sv),(value) mosml_ffi_alloc((mlsize_t) Long_val(lengthv)));
-  initialize(&Field(sv,2),Long_val(lengthv));
+  initialize((value *) Svec_val(sv), (value) mosml_ffi_alloc((size_t) Long_val(lengthv)));
+  initialize(&Field(sv,2),lengthv);
+  initialize(&Field(sv,3),(value) &mosml_ffi_free);
 
+  return sv;
+}
+
+/* Here the allocation and finalize functions are separate: the buffer
+   could just as easily have been allocated by some library
+   function. So we take pointers to the buffer and the finalize
+   function. This is not necessarily the same type as the static
+   vector created by svec_make, because the buffer is not necessarily
+   something that looks like a Word8Vector: it could be a pointer to
+   any sort of structure or union returned by an arbitrary
+   function. But in the event that we _know_ the buffer pointer is a
+   pointer to a Word8Vector-like block (because it was allocated by
+   mosml_ffi_alloc, for example!) then we can recast this object to an
+   ordinary static vector. */
+
+value svec_wrap_cptr(value cptr, value finalize, value lengthv)
+{ 
+  value sv;
+
+  sv = alloc_final(SvecSize, &svec_finalize , SvecHeapSpace, MAX_FFI_ALLOC);
+  initialize((value *) Svec_val(sv),cptr);
+  initialize(&Field(sv,2),lengthv);
+  initialize(&Field(sv,3), finalize);
   return sv;
 }
 
@@ -84,23 +128,6 @@ value svec_getcptrword (value cptr)
 value svec_getcptr (value v)
 {
   return *((value *) v);
-}
-
-value svec_getcptrwordv (value cptr)
-{
-  value res;
-
-  Push_roots(r, 1);
-  r[0] = cptr;
-  res = alloc_tuple(1);
-  modify(&Field(res, 0), Val_long(*(unsigned int *)r));
-
-  if (jit_ffi_debug)
-     fprintf(stderr,"svec_getcptrwordv returning 0x%8.8x [0x%8.8x].\n",
-	     *(unsigned int *)r, (unsigned int) Long_val(Field(res, 0)));
-  Pop_roots();
-
-  return res;
 }
 
 value svec_setcptrvalue(value vec)
@@ -175,7 +202,7 @@ value svec_getvalue(value sv, value offset, value length)
   char *src;
 
   len = Long_val(length);
-  offs = Long_val (offset);
+  offs = Long_val(offset);
   avail = SvecLength_val(sv) - offs;
 
   if (avail < len)
@@ -213,7 +240,7 @@ value svec_setvalue(value svec, value offset, value str)
   dst = (((char *)*(Svec_val(svec)))+offs);
 
   if ((max_headroom = (SvecLength_val(svec) - offs)) <= 0)
-    return Val_long(0);
+    return (Val_long(0));
 
   if (len > max_headroom)
     len = max_headroom;

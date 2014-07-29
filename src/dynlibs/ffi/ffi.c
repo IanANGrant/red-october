@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdalign.h>
 
 #include "mffi.h"
 #include "mem.h"
@@ -41,24 +42,24 @@ static const intstrpair_t type_values[] = {
 
 static int typevalueslens = (int) (sizeof(type_values)) / (sizeof(struct intstrpair_));
 
-static const intstrpair_t type_sizes[] = {
- {0,                       "VOID"},
- {(int) sizeof(signed int), "INT"},
- {(int) sizeof(jit_float32_t), "FLOAT"},
- {(int) sizeof(jit_float64_t), "DOUBLE"},
- {(int) sizeof(long double), "LONGDOUBLE"},
- {(int) sizeof(jit_uint8_t), "UINT8"},
- {(int) sizeof(jit_int8_t), "SINT8"},
- {(int) sizeof(jit_uint16_t), "UINT16"},
- {(int) sizeof(jit_int16_t), "SINT16"},
- {(int) sizeof(jit_uint32_t), "UINT32"},
- {(int) sizeof(jit_int32_t), "SINT32"},
- {(int) sizeof(jit_uint64_t), "UINT64"},
- {(int) sizeof(jit_int64_t), "SINT64"},
- {0,                          "STRUCT"},
- {(int) sizeof(jit_pointer_t), "POINTER"}};
+static const intstrtriple_t type_sizes[] = {
+  {0, 0,                                                "VOID"},
+  {(int) alignof(signed int), (int) sizeof(signed int), "INT"},
+  {(int) alignof(jit_float32_t), (int) sizeof(jit_float32_t), "FLOAT"},
+  {(int) alignof(jit_float64_t), (int) sizeof(jit_float64_t), "DOUBLE"},
+  {(int) alignof(long double), (int) sizeof(long double), "LONGDOUBLE"},
+  {(int) alignof(jit_uint8_t), (int) sizeof(jit_uint8_t), "UINT8"},
+  {(int) alignof(jit_int8_t), (int) sizeof(jit_int8_t), "SINT8"},
+  {(int) alignof(jit_uint16_t), (int) sizeof(jit_uint16_t), "UINT16"},
+  {(int) alignof(jit_int16_t), (int) sizeof(jit_int16_t), "SINT16"},
+  {(int) alignof(jit_uint32_t), (int) sizeof(jit_uint32_t), "UINT32"},
+  {(int) alignof(jit_int32_t), (int) sizeof(jit_int32_t), "SINT32"},
+  {(int) alignof(jit_uint64_t), (int) sizeof(jit_uint64_t), "UINT64"},
+  {(int) alignof(jit_int64_t), (int) sizeof(jit_int64_t), "SINT64"},
+  {0, 0,                                                 "STRUCT"},
+  {(int) alignof(jit_pointer_t), (int) sizeof(jit_pointer_t), "POINTER"}};
 
-static int typesizeslens = (int) (sizeof(type_sizes)) / (sizeof(struct intstrpair_));
+static int typesizeslens = (int) (sizeof(type_sizes)) / (sizeof(struct intstrtriple_));
 
 static const ptrstrpair_t type_struct_pointers[] = {
  {(const void *) &ffi_type_void, "void"}, 
@@ -143,8 +144,8 @@ value ffi_get_typesizesentry(value num)
 {   int entry = Long_val(num);
 
     if (entry >= 0 && entry < typesizeslens)
-      return copy_int_str_pair((intstrpair_t *)&type_sizes[entry]);
-    return copy_int_str_pair((intstrpair_t *)&type_sizes[0]);
+      return copy_int_str_triple((intstrtriple_t *)&type_sizes[entry]);
+    return copy_int_str_triple((intstrtriple_t *)&type_sizes[0]);
 }
 
 value ffi_get_typestructentry(value num)
@@ -182,33 +183,6 @@ value ffi_get_typestructpointerslength(value unit)
 {
   return Val_long(typestructpointerslens);
 }
-
-/* Link to some functions defined in runtime/callback.c. These won't
-   be necessary when we have access to the symbol static and dynamic
-   symbol tables via, say, BFD. Until then we indirect like this,
-   through the libmffi table. */
-
-valueptr ffi_get_valueptr(char* nam)
-{
-  return get_valueptr(nam);
-}
-
-value ffi_callbackptr(valueptr closureptr, value arg1)
-{
-  return callbackptr(closureptr, arg1);
-}
-
-value ffi_callbackptr2(valueptr closureptr, value arg1, value arg2)
-{
-  return callbackptr2(closureptr, arg1, arg2);
-}
-
-value ffi_callbackptr3(valueptr closureptr, value arg1, value arg2, value arg3)
-{
-  return callbackptr3(closureptr, arg1, arg2, arg3);
-}
-
-void *ffi_putsp = (void *) &puts;
 
 int ffi_dryrun = 0;
 
@@ -351,5 +325,11 @@ value ffi_call_n_ (ffi_cif *cifptr, void (*fptr) (void), value rvptr, value args
    }
 
    return Val_unit;
+}
+
+value ffi_report_alloc (value msg)
+{
+  report_alloc(String_val(msg));
+  return Val_unit;
 }
 

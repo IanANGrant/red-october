@@ -10,7 +10,7 @@ datatype jit_sign =
  | Signed
 
 datatype jit_typed_value =
-   State of Word8Vector.vector
+   State of Word8Vector.vector ref
  | Node of Word8Vector.vector
  | String of Word8Vector.vector
  | Code of Word8Vector.vector
@@ -27,6 +27,7 @@ datatype jit_typed_value =
  | Pointer of Word8Vector.vector
  | Structure of Word8Vector.vector list
 
+val argv0svec : Ffi.svector
 val argv0 : jit_typed_value
 val NULLp : jit_typed_value
 val jit_r : int -> Word.word
@@ -47,6 +48,7 @@ val LITTLE_ENDIAN : int
 val BIG_ENDIAN : int
 
 val init_jit : jit_typed_value -> unit
+val jit_set_memory_functions : Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> unit
 val finish_jit : unit -> unit
 val jit_new_state : unit -> jit_typed_value
 val jit_clear_state : jit_typed_value -> unit
@@ -54,8 +56,10 @@ val jit_destroy_state : jit_typed_value -> unit
 val jit_label : jit_typed_value -> jit_typed_value
 val jit_arg : jit_typed_value -> jit_typed_value
 val jit_prolog : jit_typed_value -> unit
+val jit_epilog : jit_typed_value -> unit
 val jit_prepare : jit_typed_value -> unit
 val jit_disassemble : jit_typed_value -> unit
+val jit_realize : jit_typed_value -> unit
 val jit_emit : jit_typed_value -> Dynlib.cptr
 val jit_pushargr : jit_typed_value * jit_gpr_t -> unit
 val jit_pushargi : jit_typed_value * word -> unit
@@ -78,6 +82,7 @@ val jit_retval_i : jit_typed_value * jit_gpr_t -> unit
 val jit_retval_ui : jit_typed_value * jit_gpr_t -> unit
 val jit_retval_l : jit_typed_value * jit_gpr_t -> unit
 val jit_patch : jit_typed_value * jit_typed_value -> unit
+val jit_address : jit_typed_value * jit_typed_value -> Dynlib.cptr
 val jit_patch_at : jit_typed_value * jit_typed_value * jit_typed_value -> unit
 val jit_ret : jit_typed_value -> unit
 val jit_retr : jit_typed_value * jit_gpr_t -> unit

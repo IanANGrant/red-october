@@ -249,6 +249,7 @@ fun eval env e =
    let val lookup = assq "env" env
        fun ev (NonTerm("expression",[e])) = ev e
          | ev (NonTerm("assignment-expression",[e])) = ev e
+         | ev (NonTerm("constant-expression",[e])) = ev e
          | ev (NonTerm("conditional-expression",[e])) = ev e
          | ev (NonTerm("logical-or-expression",[e])) = ev e
          | ev (NonTerm("logical-and-expression",[e])) = ev e
@@ -257,6 +258,7 @@ fun eval env e =
          | ev (NonTerm("exclusive-or-expression",[e])) = ev e
          | ev (NonTerm("exclusive-or-expression",[e,e'])) = Word.xorb(ev e,ev e')
          | ev (NonTerm("and-expression",[e])) = ev e
+         | ev (NonTerm("and-expression",[e,e'])) = Word.andb(ev e,ev e')
          | ev (NonTerm("equality-expression",[e])) = ev e
          | ev (NonTerm("relational-expression",[e])) = ev e
          | ev (NonTerm("shift-expression",[e])) = ev e
@@ -625,6 +627,12 @@ fun load_macros t =
    in iter t
    end;
 
+fun mlvar s =
+   let fun iter [] = "us'"
+         | iter (l as (c::cs)) = if c = #"_" then iter cs else implode l
+   in iter (explode s)
+   end 
+
 fun enum_datatype tds s =
    let fun dedup l =
               List.foldr 
@@ -632,17 +640,28 @@ fun enum_datatype tds s =
                      (case List.find (fn (_,n') => n'=n) a
                         of NONE => p::a
                          | SOME _ => a)) [] l
-       val lut = assq "EnumTypedef" tds s
+       val lut_ = assq "EnumTypedef" tds s
+       val lut = List.map (fn (s,n) => (mlvar s,n)) lut_
+       val dtl = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n   [" else ",\n   ")^s) "" lut
        val dtdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n    " else "\n  | ")^s) "" lut
        val ludef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
                                   "0wx"^(Word.toString n)^" => "^s) "" (dedup lut)
+       val lusdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
+                                  "\""^s^"\" => "^s) "" (dedup lut)
        val uldef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
                                   s^" => "^"0wx"^(Word.toString n)) "" lut
+       val ulsdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
+                                  s^" => \""^s^"\"") "" lut
    in "structure "^s^" = \nstruct\n"^
       "datatype "^s^"_enum ="^dtdef^"\n"^
+      "type enum = "^s^"_enum\n"^
+      "val flags = "^dtl^"]\n"^
       "\nfun fromWord n =\n    case n of"^ludef^"\n       | w => raise Fail (\""^s
                      ^".fromWord: 0wx\"^(Word.toString w)^\" is not a defined enumeration constant\")\n"^
       "\nfun toWord e =\n    case e of"^uldef^"\n"^
+      "\nfun fromString s =\n    case s of"^lusdef^"\n       | w => raise Fail (\""^s
+                     ^".fromString: \\\"\"^s^\"\\\" is not a defined enumeration constant\")\n"^
+      "\nfun toString e =\n    case e of"^ulsdef^"\n"^
       "\nend\n"
    end;
 

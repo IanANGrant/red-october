@@ -5,7 +5,7 @@
 (* This unit relies on two's complement representation *)
 
 functor WordN(structure Prim : WordPrim) :> Word 
-    where type word = Prim.word =
+    where type word = Prim.word = 
 struct
     type word = Prim.word
     type largeword = Prim.largeword

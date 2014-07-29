@@ -1,15 +1,18 @@
-val _ = List.app Meta.load 
-         ["WordReprSig", "Globals", "Random", "Bool", "SpeedTest", "WordN",
-          "MachineWord", "AbstractMachineWord", "PrimEnc", "WordOps",
-          "ArraySliceWordEnc", "VectorSliceWordEnc", "VectorWordEnc",
-          "WordFormat", "CompTestWord", "TestWord", "IntInf",
-          "Listsort", "UTF8"];
+val _ = List.app Meta.load ["Jit", "WordReprSig", "Globals", "Random",
+         "Bool", "SpeedTest", "WordN", "MachineWord",
+         "AbstractMachineWord", "PrimEnc", "WordOps",
+         "ArraySliceWordEnc", "VectorSliceWordEnc", "VectorWordEnc",
+         "WordFormat", "CompTestWord", "TestWord", "IntInf",
+         "Listsort", "UTF8"];
 
 val _ = Meta.orthodox();
 val _ = Meta.quietdec := true;
 
-val _ = print "\nInstantiating structures: "
+val _ = Jit.jit_set_memory_functions Ffi.my_alloc Ffi.my_realloc Ffi.my_free
 
+val () = Jit.init_jit Jit.argv0;
+
+val _ = print "\nInstantiating structures: "
 val _ = print "\n  RefWord"
 structure RefWord = 
 struct
@@ -55,25 +58,21 @@ val _ = print "\n";
 
 val _ = print "\nInstantiating tests: "
 val _ = print "\n  MachineWord"
-
 structure TestWord=
    TestWord(structure WordA = MWord
             structure WordB = RefWord)
 
 val _ = print "\n  VectorWord"
-
 structure TestVectorWord=
    TestWord(structure WordA = VectorWord
             structure WordB = MWord)
 
 val _ = print "\n  ArraySliceWord"
-
 structure TestArraySliceWord=
    TestWord(structure WordA = ArraySliceWord
             structure WordB = VectorWord)
 
 val _ = print "\n  VectorSliceWord"
-
 structure TestVectorSliceWord=
    TestWord(structure WordA = VectorSliceWord
             structure WordB = ArraySliceWord)
@@ -156,14 +155,15 @@ local
    fun padnum s = UTF8.padLeft #" " numberswidth s
    fun padpc s = UTF8.padLeft #" " pcswidth s
    fun padtname s = UTF8.padRight #" " labelwidth s
-   fun barchart pc = 
+   fun barchart pc =
        let val ndots = pc * bchartwidth div 100 - 1
            val nspcs = Int.min(bchartwidth - ndots, 0)
        in UTF8.padRight #" " nspcs (UTF8.padLeft #"." ndots "+")
        end
    fun printtime (s,p,q) =
        print ("  "^(padtname s)^" : "^(padnum(ratToIntString q))^" "^
-                                      (padpc(ratToIntString p))^"%. "^(barchart (ratToInt p))^"\n")
+                                      (padpc(ratToIntString p))^"%. "^
+                                      (barchart (ratToInt p))^"\n")
    fun printtimes l = List.app printtime (Listsort.sort ranking l)
 in
    val () = print ("  "^(padtname "Representation")^" : "^(padnum("usr μs"))^". "^
@@ -174,8 +174,6 @@ in
 end;
 
 val _ = Meta.quietdec := false;
-
-val _ = Meta.quit();
 
 (* To see reference behaviours *)
 
@@ -262,3 +260,7 @@ caused by the pretty-printers because it happens when they're not
 installed.
  
 *)
+
+val () = Ffi.ffi_report_alloc "end of testmcword.sml";
+
+val _ = Meta.quit();

@@ -1,4 +1,10 @@
 (* Ffi -- interface to the GNU FFI library *)
+(*
+load "Word8ArraySlice";
+load "Dynlib";
+load "Mosml";
+load "Int";
+*)
 
 prim_type svector;
 type svec = svector;
@@ -71,13 +77,17 @@ datatype ffi_type =
  | Float of ffi_float_size
  | Character of ffi_signed
  | Void
+  (* I would rather not have variadic functions in the interface at
+     all, because they are really just C syntactic sugar. There must
+     always be an underlying function taking a variable length list of
+     values, mustn't there? *)
  | VariadicFunction of ffi_type * ffi_type list * ffi_type_enum option
 
 local 
     open Word8Vector
     open Dynlib
     val libpath = Path.concat(FileSys.getDir (), "libmffi.so")
-    val dlh = dlopen { lib = libpath, flag = RTLD_LAZY, global = false }
+    val dlh = Dynlib.dlopen { lib = libpath, flag = Dynlib.RTLD_LAZY, global = false }
 
     val dlxh = Dynlib.dlopen {lib = "",
                        flag = Dynlib.RTLD_LAZY,
@@ -85,11 +95,35 @@ local
 in
 
 val first_atoms_ = Dynlib.cptr (Dynlib.dlsym dlxh "first_atoms")
-
 val raiseprimitive0 = Dynlib.cptr (Dynlib.dlsym dlxh "raiseprimitive0")
+
+val jit_set_memfuns : unit -> unit = app1 (dlsym dlh "jit_set_memfuns")
+
+val ffi_report_alloc: string -> unit
+   = app1 (dlsym dlh "ffi_report_alloc")
+
+val ffi_alloc = Dynlib.cptr (Dynlib.dlsym dlh "mosml_ffi_alloc")
+val ffi_realloc = Dynlib.cptr (Dynlib.dlsym dlh "mosml_ffi_realloc")
+val ffi_resize = Dynlib.cptr (Dynlib.dlsym dlh "mosml_ffi_resize")
+val ffi_free = Dynlib.cptr (Dynlib.dlsym dlh "mosml_ffi_free")
+
+val ffi_stat_alloc = Dynlib.cptr (Dynlib.dlsym dlxh "stat_alloc")
+val ffi_stat_resize = Dynlib.cptr (Dynlib.dlsym dlxh "stat_resize")
+val ffi_stat_free = Dynlib.cptr (Dynlib.dlsym dlxh "stat_free")
+
+val sys_malloc = Dynlib.cptr (Dynlib.dlsym dlxh "malloc")
+val sys_realloc = Dynlib.cptr (Dynlib.dlsym dlxh "realloc")
+val sys_free = Dynlib.cptr (Dynlib.dlsym dlxh "free")
+
+val my_alloc = Dynlib.cptr (Dynlib.dlsym dlh "my_alloc")
+val my_realloc = Dynlib.cptr (Dynlib.dlsym dlh "my_realloc")
+val my_free = Dynlib.cptr (Dynlib.dlsym dlh "my_free")
 
 val svec_make    : Int.int -> svec        
     = app1 (dlsym dlh "svec_make")
+
+val svec_wrap_cptr : Dynlib.cptr -> Dynlib.cptr -> Int.int -> svec
+    = app3 (dlsym dlh "svec_wrap_cptr")
 
 val svec_clear   : svec -> unit
     = app1 (dlsym dlh "svec_clear")
@@ -100,6 +134,15 @@ val svec_getlength    : svec -> Int.int
 val svec_getbuffercptr : svec -> Dynlib.cptr
     = app1 (dlsym dlh "svec_getbuffer")
 
+local
+   val buffervec : svec -> vector
+       = app1 (dlsym dlh "svec_getbuffer")
+   prim_val array_ : Word8Vector.vector ref -> Word8Array.array = 1 "identity"
+in
+   val svec_getbufferarray : svec -> Word8Array.array
+       = fn sv => array_ (ref (buffervec sv))
+end
+
 val svec_getpointervalue : svec -> vector
     = app1 (dlsym dlh "svec_getpointervalue")
 
@@ -108,9 +151,6 @@ val svec_getcptrvalue : Dynlib.cptr -> vector
 
 val svec_getcptrword : Dynlib.cptr -> Word.word
     = app1 (dlsym dlh "svec_getcptrword")
-
-val svec_getcptrwordv : Dynlib.cptr -> Word.word Vector.vector
-    = app1 (dlsym dlh "svec_getcptrwordv")
 
 val svec_setcptrvalue : vector -> Dynlib.cptr
     = app1 (dlsym dlh "svec_setcptrvalue")
@@ -154,7 +194,7 @@ val ffi_status_values_entry : Int.int -> (Int.int * String.string)
 val ffi_type_values_entry : Int.int -> (Int.int * String.string)
     = app1 (dlsym dlh "ffi_get_typevaluesentry")
 
-val ffi_type_sizes_entry : Int.int -> (Int.int * String.string)
+val ffi_type_sizes_entry : Int.int -> (Int.int * Int.int * String.string)
     = app1 (dlsym dlh "ffi_get_typesizesentry")
 
 val ffi_type_struct_entry : Int.int -> (Int.int * Int.int * String.string)
@@ -226,27 +266,6 @@ val ffi_cif_length : unit -> Int.int
 val ffi_type_length : unit -> Int.int
     = app1 (dlsym dlh "ffi_type_length")
 
-val ffi_closure_length : unit -> Int.int
-    = app1 (dlsym dlh "ffi_closure_length")
-
-val ffi_get_statusvalueslength : unit -> Int.int
-    = app1 (dlsym dlh "ffi_get_statusvalueslength")
-
-val ffi_get_typevalueslength : unit -> Int.int
-    = app1 (dlsym dlh "ffi_get_typevalueslength")
-
-val ffi_get_typestructlength : unit -> Int.int
-    = app1 (dlsym dlh "ffi_get_typestructlength")
-
-val ffi_get_statusvaluesentry : Int.int -> Int.int * string
-    = app1 (dlsym dlh "ffi_get_statusvaluesentry")
-
-val ffi_get_typevaluesentry : Int.int -> Int.int * string
-    = app1 (dlsym dlh "ffi_get_typevaluesentry")
-
-val ffi_get_typestructentry : Int.int -> Int.int * Int.int * string
-    = app1 (dlsym dlh "ffi_get_typestructentry")
-
 val ffi_setdryrun : bool -> unit
    = app1 (dlsym dlh "ffi_setdryrun")
 
@@ -274,31 +293,6 @@ val ffi_call_ : Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> unit
 val ffi_call_n_ : Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> unit
     = app4 (dlsym dlh "ffi_call_n_")
 
-val putsp : Dynlib.cptr
-     = Dynlib.var (dlsym dlh "ffi_putsp")
-
-(* valueptr ffi_get_valueptr(char* nam) *)
-val ffi_get_valueptr : Dynlib.cptr
-     = Dynlib.var (dlsym dlh "ffi_get_valueptr")
-
-(* value ffi_callbackptr(valueptr closureptr, value arg1) *)
-val ffi_callbackptr : Dynlib.cptr
-     = Dynlib.var (dlsym dlh "ffi_callbackptr")
-
-(* value ffi_callbackptr2(valueptr closureptr, value arg1, value arg2) *)
-val ffi_callbackptr2 : Dynlib.cptr
-     = Dynlib.var (dlsym dlh "ffi_callbackptr2")
-
-(* value ffi_callbackptr3(valueptr closureptr, value arg1, value arg2, value arg3) *)
-val ffi_callbackptr3 : Dynlib.cptr
-     = Dynlib.var (dlsym dlh "ffi_callbackptr3")
-
-prim_val var  : Dynlib.cptr -> 'b                                    = 1 "c_var"
-prim_val app1 : Dynlib.cptr -> 'a1 -> 'b                             = 2 "cfun_app1"
-prim_val app2 : Dynlib.cptr -> 'a1 -> 'a2 -> 'b                      = 3 "cfun_app2"
-prim_val app3 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'b               = 4 "cfun_app3"
-prim_val app4 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'b        = 5 "cfun_app4"
-prim_val app5 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'a5 -> 'b = 6 "cfun_app5"
 
 fun assq n l =
   let fun lookup k =
@@ -319,6 +313,18 @@ fun assqi n l =
      end
   in lookup
   end;
+
+local
+   fun gettbl f l =
+      let fun iter 0 acc = (f 0)::acc
+            | iter n acc = iter (n-1) ((f n)::acc)
+      in iter (l - 1) []
+      end
+   val tlen = ffi_type_struct_length();
+   val trows = gettbl ffi_type_struct_entry tlen
+in
+   val tstbl = trows
+end
 
 local
    val _ = jit_initialise_constants(false);
@@ -430,11 +436,15 @@ local
       in iter (l - 1) []
       end
    val tsl = ffi_type_sizes_length();
-   val tstbl = List.map (fn (v,k) => (k,v)) (gettbl ffi_type_sizes_entry tsl);
-   val tsetbl = List.map (fn (v,k) => v) (gettbl ffi_type_sizes_entry tsl);
-   val ent = assq "type_values" tstbl;
+   val tstbl = List.map (fn (_,v,k) => (k,v)) (gettbl ffi_type_sizes_entry tsl);
+   val tsetbl = List.map (fn (_,v,k) => v) (gettbl ffi_type_sizes_entry tsl);
+   val ent = assq "type_sizes" tstbl;
+   val tatbl = List.map (fn (v,_,k) => (k,v)) (gettbl ffi_type_sizes_entry tsl);
+   val taetbl = List.map (fn (v,_,k) => v) (gettbl ffi_type_sizes_entry tsl);
+   val aent = assq "type_alignment" tatbl;
 in
   val typeEnumToSize = ent o lu
+  val typeEnumToAlign = aent o lu
 end
 
 local
@@ -511,7 +521,7 @@ local
       end
    val svl = ffi_status_values_length();
    val svtbl = List.map (fn (v,k) => (k,v)) (gettbl ffi_status_values_entry (svl));
- (*val _ = List.app (fn (k,v) => print (" | FFI_"^k^"\n")) svtbl;
+(* val _ = List.app (fn (k,v) => print (" | FFI_"^k^"\n")) svtbl;
    val _ = List.app (fn (k,v) => print (" | lu FFI_"^k^" = ent \""^k^"\" \n")) svtbl;
    val _ = List.app (fn (k,v) => print (" | ul "^(Int.toString (ent k))^" = FFI_"^k^" \n")) svtbl;
 *) val ent = assq "status_values" svtbl;
@@ -549,12 +559,6 @@ in
    val NULL = svec_setcptrvalue(nulv);
 end
 
-prim_val svec_getstringcptr : string -> Dynlib.cptr
-          = 1 "identity"
-
-prim_val svec_getveccptr : Word8Vector.vector -> Dynlib.cptr
-          = 1 "identity"
-
 prim_val svec_getvecstring : Word8Vector.vector -> string
           = 1 "identity"
 
@@ -563,9 +567,11 @@ val doubleVectorToReal = Mosml.vecDouble
 val realToFloatVector = Mosml.floatVec
 val floatVectorToReal = Mosml.vecFloat
 
-val vectorToList = Word8Vector.foldl (fn (x,a)=> x::a) []
+val vectorToList = Word8Vector.foldr (fn (x,a)=> x::a) []
 val listToVector = Word8Vector.fromList
 
+(* This is a rather inefficient way of computing the identity function!
+   Better to use prim 1 "identity" *)
 val vectorFromString = Word8Vector.fromList o (List.map (Word8.fromInt o ord)) o explode
 val stringFromVector = Word8Vector.foldl (fn (b,s) => s^(String.str (Char.chr (Word8.toInt b)))) ""
 
@@ -587,12 +593,16 @@ val wordListFromVector = (Vector.foldr (fn (e,a) => e::a) []) o wordVectorFromVe
 
 fun svec_from_vector v =
     let val sv = svec_make(Word8Vector.length v)
-        val vl = svec_setvalue sv 0 v;
+        val vl = svec_setvalue sv 0 v
     in sv
     end
 
-fun svec_from_string s =
-   svec_from_vector (vectorFromString (s^"\000"))
+val svec_from_string = svec_from_vector o vectorFromString
+
+fun svec_to_string sv = 
+      String.implode
+        (Word8Array.foldr 
+           (fn (w,a) => (Char.chr (Word8.toInt w))::a) [] (svec_getbufferarray sv));
 
 val svec_from_word_vector = svec_from_vector o vectorFromWordVector
 
@@ -669,6 +679,23 @@ val ffi_cif_struct_size = ffi_cif_length()
 val ffi_type_struct_size = ffi_type_length()
 
 val ffi_closure_size = ffi_closure_length()
+
+prim_val var  : Dynlib.cptr -> 'b                                    = 1 "c_var"
+prim_val app1 : Dynlib.cptr -> 'a1 -> 'b                             = 2 "cfun_app1"
+prim_val app2 : Dynlib.cptr -> 'a1 -> 'a2 -> 'b                      = 3 "cfun_app2"
+prim_val app3 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'b               = 4 "cfun_app3"
+prim_val app4 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'b        = 5 "cfun_app4"
+prim_val app5 : Dynlib.cptr -> 'a1 -> 'a2 -> 'a3 -> 'a4 -> 'a5 -> 'b = 6 "cfun_app5"
+
+
+val heap_start : unit -> Dynlib.cptr = fn () => (Dynlib.cptr (Dynlib.dlsym dlxh "heap_start"))
+val heap_end : unit -> Dynlib.cptr = fn () => (Dynlib.cptr (Dynlib.dlsym dlxh "heap_end"))
+val gc_phase : unit -> int = fn () => var (Dynlib.cptr (Dynlib.dlsym dlxh "gc_phase"))
+
+val gc_minor : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_minor"))
+val gc_major : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_major"))
+val gc_full_major : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_full_major"))
+
 
 local
    val debug = jit_get_debug()

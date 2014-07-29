@@ -549,6 +549,7 @@ static void debug_dump(void)
 	 codetablelen,codetablelens, arch, wordsize, 
          byte_order == little_endian ? "littleendian" : "bigendian");
 
+  printf("mosml_ffi_alloc is %p. mosml_ffi_free is %p. \n", &mosml_ffi_alloc, &mosml_ffi_free);
   return;
 }
 
@@ -562,6 +563,22 @@ value jit_initialise_constants(value debug)
   if (jit_ffi_debug)
      debug_dump();
 
+  return Val_unit;
+}
+
+value jit_set_memfuns(value unit)
+{
+  /*  jit_set_memory_functions((jit_alloc_func_ptr)&mosml_ffi_alloc,
+                           (jit_realloc_func_ptr)&mosml_ffi_resize,
+                           (jit_free_func_ptr)&mosml_ffi_free);
+
+  jit_set_memory_functions((jit_alloc_func_ptr)&malloc,
+                           (jit_realloc_func_ptr)&realloc,
+                           (jit_free_func_ptr)&free); */
+
+  jit_set_memory_functions((jit_alloc_func_ptr)&stat_alloc,
+                           (jit_realloc_func_ptr)&stat_resize,
+                           (jit_free_func_ptr)&stat_free);
   return Val_unit;
 }
 

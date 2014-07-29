@@ -589,8 +589,7 @@ and Comment = parse
 
 and UTF8Char = parse
    [`\^@`-`\127`] { let val c = getLexemeChar lexbuf 0
-                    in if c = #">" then dprint "UTF8Char: got \">\"\n" else ();
-                       store_string_char c
+                    in store_string_char c
                     end }
  | [`\194`-`\223`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
                                      store_string_char(getLexemeChar lexbuf 1) }

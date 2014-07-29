@@ -79,11 +79,41 @@ datatype ffi_type =
  | Void
  | VariadicFunction of ffi_type * ffi_type list * ffi_type_enum option
 
-val first_atoms_ : Dynlib.cptr
+val heap_start : unit -> Dynlib.cptr
+val heap_end : unit -> Dynlib.cptr
+val gc_phase : unit -> Int.int
 
+val gc_minor : unit-> unit
+val gc_major : unit-> unit
+val gc_full_major : unit-> unit
+
+val first_atoms_ : Dynlib.cptr
 val raiseprimitive0 : Dynlib.cptr
 
+val ffi_alloc : Dynlib.cptr
+val ffi_realloc : Dynlib.cptr
+val ffi_resize : Dynlib.cptr
+val ffi_free : Dynlib.cptr
+
+val ffi_stat_alloc : Dynlib.cptr
+val ffi_stat_resize : Dynlib.cptr
+val ffi_stat_free : Dynlib.cptr
+
+val sys_malloc : Dynlib.cptr
+val sys_realloc : Dynlib.cptr
+val sys_free : Dynlib.cptr
+
+val my_alloc : Dynlib.cptr
+val my_realloc : Dynlib.cptr
+val my_free : Dynlib.cptr
+
+val jit_set_memfuns : unit -> unit
+
+val ffi_report_alloc: string -> unit
+
 val svec_make : Int.int -> svector
+
+val svec_wrap_cptr : Dynlib.cptr -> Dynlib.cptr -> Int.int -> svector
 
 val svec_clear : svector -> unit
 
@@ -99,6 +129,8 @@ val vectorFromWordVector : word vector -> Word8Vector.vector
 
 val svec_getbuffercptr   :  svector -> Dynlib.cptr
 
+val svec_getbufferarray : svector -> Word8Array.array
+
 val svec_getpointervalue : svector -> Word8Vector.vector
 
 val svec_getcptrvalue : Dynlib.cptr -> Word8Vector.vector
@@ -106,8 +138,6 @@ val svec_getcptrvalue : Dynlib.cptr -> Word8Vector.vector
 val svec_getcptr : Word8Vector.vector -> Dynlib.cptr
 
 val svec_getcptrword : Dynlib.cptr -> Word.word
-
-val svec_getcptrwordv : Dynlib.cptr -> Word.word Vector.vector
 
 val svec_setcptrvalue : Word8Vector.vector -> Dynlib.cptr
 
@@ -120,10 +150,6 @@ val svec_setvecword : Word.word -> Word8Vector.vector
 val svec_getvalue   : svector -> Int.int -> Int.int -> Word8Vector.vector
 
 val svec_setvalue   : svector -> Int.int -> Word8Vector.vector -> Int.int
-
-val svec_getstringcptr : string -> Dynlib.cptr
-
-val svec_getveccptr : Word8Vector.vector -> Dynlib.cptr
 
 val svec_getvecstring : Word8Vector.vector -> string
 
@@ -185,7 +211,7 @@ val ffi_status_values_entry : Int.int -> Int.int * string
 
 val ffi_type_values_entry : Int.int -> Int.int * string
 
-val ffi_type_sizes_entry : Int.int -> Int.int * string
+val ffi_type_sizes_entry : Int.int -> Int.int * Int.int * string
 
 val ffi_type_struct_entry : Int.int -> Int.int * Int.int * string
 
@@ -201,21 +227,14 @@ val statusEnumToInt : ffi_status_enum -> Int.int
 val statusEnumFromInt : Int.int -> ffi_status_enum
 val statusIntToString : Int.int -> string
 val typeEnumToSize : ffi_type_enum -> Int.int
+val typeEnumToAlign : ffi_type_enum -> Int.int
+
+val typepFromTypeEnum : ffi_type_enum -> word
 
 val jit_code : string -> Int.int
 
 val NULL : Dynlib.cptr
 val NULLvec : Word8Vector.vector
-
-val putsp : Dynlib.cptr
-
-val ffi_get_valueptr : Dynlib.cptr
-
-val ffi_callbackptr : Dynlib.cptr
-
-val ffi_callbackptr2 : Dynlib.cptr
-
-val ffi_callbackptr3 : Dynlib.cptr
 
 val ffi_getdryrun : unit -> bool
 
@@ -263,14 +282,15 @@ val vectorFromString : string -> Word8Vector.vector
 val stringFromVector : Word8Vector.vector -> string
 
 val svec_from_string : string -> svector
+val svec_to_string : svector -> string
 
 val ffi_default_abi_number : Int.int
 val ffi_cif_struct_size : Int.int
 val ffi_type_struct_size : Int.int
 val ffi_closure_size : Int.int
 
-val ffi_trampoline :
-  string -> Dynlib.cptr -> ffi_type -> ('a -> Word8Vector.vector) -> (Word8Vector.vector -> 'b) -> 'a -> 'b
+val ffi_trampoline : string -> Dynlib.cptr -> ffi_type ->
+                     ('a -> Word8Vector.vector) -> (Word8Vector.vector -> 'b) -> 'a -> 'b
 
 val mkargssvec : Word8Vector.vector list -> Word8Vector.vector * svector
 

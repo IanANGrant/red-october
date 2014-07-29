@@ -1,6 +1,12 @@
 load "RewriteMain";
 load "Rewrite";
 load "CSyntax";
+load "Listsort";
+load "BitSet";
+load "Ffi";
+load "Jit";
+
+app load ["Int", "Real", "Mosml", "Substring", "Regex"];
 
 Meta.quotation := true;
 
@@ -40,18 +46,21 @@ in
    type decls = {define_enum : string -> string, get_decl : string -> Tree,
                  get_macro : string -> Tree * (string option * string),
                  get_tag : string -> Tree, get_typedef : string -> Tree,
-                 print_decl : string -> unit}
+                 print_decl : string -> unit, 
+                 macros : unit -> (string * (Tree * (string option * string))) list}
 end
 
 fun parse fname cppflags trunit =
 let 
-   open GrammarSyntax;
-   open CSyntax;
-   val cppcmd = "cpp -undef -std=iso9899:1999 "^cppflags;
+   open GrammarSyntax
+   open CSyntax
+   val cppcmd = "cpp -undef -std=iso9899:1999 "^cppflags
    val cppmcmd = cppcmd^" -dM"
-   val cdeft = RewriteMain.parse_cpp_pipe cppmcmd fname trunit;
+   val cdeft = RewriteMain.parse_cpp_pipe cppmcmd fname trunit
    val _ = load_macros cdeft
-   val nCMacros = List.length (macro_names());
+   val nCMacros = List.length (macro_names())
+     fun hashtToList t = Hasht.fold (fn a => fn b => fn c => (a,b)::c) [] t
+     val macros = hashtToList CSyntax.macro_table
    val cdeclt = RewriteMain.parse_c_pipe cppcmd fname trunit
    val (cdecls,canondecls) =
           declsFoldl
@@ -59,7 +68,7 @@ let
                     (case decl_id t
                        of [Term(s)] => ((s,t)::a,a')
                         | _ => (a,t::a')))
-         ([],[]) cdeclt;
+         ([],[]) cdeclt
    val nCDecls = List.length cdecls
    val nCAnonDecls = List.length canondecls
    val CEnumTypedefs =
@@ -69,10 +78,10 @@ let
                       (typedef_names()));
    val (nCEnumTypedefs,
         nCEnumTypedefConsts) =
-           List.foldl (fn ((_,l),(m,n)) => (m+1,n+List.length l)) (0,0) CEnumTypedefs;
+           List.foldl (fn ((_,l),(m,n)) => (m+1,n+List.length l)) (0,0) CEnumTypedefs
    val CAnonEnums =
        let fun name [] = ""
-             | name l = (case lcprefixl (List.map (fn (s,_) => s) l)
+             | name l = (case lcprefixl (List.map (fn (s,_) => mlvar s) l)
                            of "" => (#1 o hd) l
                             | n => n)
        in 
@@ -81,7 +90,7 @@ let
                 case enumdeclmatch t
                   of [e] =>
                      let val l=enumdec (e,())
-                         val ename = (name l)^"Enum"
+                         val ename = (name l)^"Consts"
                          val ename' = 
                             let fun iter n =
                                   if List.exists (fn (s,_) => s = (ename^(Int.toString n))) a
@@ -96,43 +105,41 @@ let
                    | _ => a)
             []
             canondecls)
-       end;
+       end
      val _ = print ("CPP Macro definitions: "^(Int.toString nCMacros))
      val _ = print ("\nNamed Declarations: "^(Int.toString nCDecls))
      val _ = print ("\nEnumeration Typedefs: "^(Int.toString nCEnumTypedefs))
      val _ = print (" (defining "^(Int.toString nCEnumTypedefConsts)^" constants)")
      val _ = print ("\nAnonymous Enumeration Declarations: "^(Int.toString nCAnonDecls))
      val _ = print "\n"
-     fun hashtToList t = Hasht.fold (fn a => fn b => fn c => (a,b)::c) [] t
      val tags = hashtToList CSyntax.tag_table
-     val macros = hashtToList CSyntax.macro_table
      val typedefs = List.map (fn (s,(t,_)) => (s,t)) (hashtToList CSyntax.typedef_table)
-     fun find_cdecl ds = fn s => List.find (fn (s',t) => s'=s) ds;
+     fun find_cdecl ds = fn s => List.find (fn (s',t) => s'=s) ds
      fun exists optn = case optn of SOME v => v | NONE => raise Subscript
      val cdecl = fn ds => #2 o exists o (find_cdecl ds)
      val print_cdecl = fn ds => (Rewrite.printTreeDirect 20) o (cdecl ds) 
-     fun define_enum s = enum_datatype (CEnumTypedefs@CAnonEnums) s;
+     fun define_enum s = enum_datatype (CEnumTypedefs@CAnonEnums) s
 in {get_decl=cdecl cdecls, print_decl=print_cdecl cdecls, define_enum=define_enum,
-    get_tag=cdecl tags, get_macro=cdecl macros, get_typedef=cdecl typedefs}
-end;
+    get_tag=cdecl tags, get_macro=cdecl macros, get_typedef=cdecl typedefs, macros=(fn () => macros)}
+end
 
 fun parseq fname cppflags trunit =
-   parse fname cppflags (qlToString trunit);
+   parse fname cppflags (qlToString trunit)
 
-val rewriteq = rewrite o qlToString;
+val rewriteq = rewrite o qlToString
 
-val rewritepq = fn params => (rewrite_param params) o qlToString;
+val rewritepq = fn params => (rewrite_param params) o qlToString
 
-val rewritetdq = rewritetd o qlToString;
+val rewritetdq = rewritetd o qlToString
 
-val rewritetdpq = fn params => (rewrite_paramtd params) o qlToString;
+val rewritetdpq = fn params => (rewrite_paramtd params) o qlToString
 
-val matchq = match o qlToString;
+val matchq = match o qlToString
 
 val _ = Rewrite.printTreeDirect 0
                 (RewriteMain.parse_c_string "typedef unsigned int ui;\
                                            \ typedef ui *pui;\
-                                           \ typedef unsigned int *pui2;");
+                                           \ typedef unsigned int *pui2;")
 
 (* Now we take the declaration-specifiers list of a typedef
    declaration and turn it into the implied specifier-qualifier-list
@@ -593,6 +600,17 @@ fun resolve substruct (decls : decls) t =
                                                    [Term("int")])])),
                         tdid)
                   end
+             | ((Term_)::_) =>
+                  let val rtd = debug fname "resolve_decls returned" 
+                                  (resolve_decls tags tdid 
+                                     (NonTerm("init-declarator-list",
+                                              [NonTerm("init-declarator",
+                                                       [NonTerm("declarator",
+                                                                [NonTerm("direct-declarator",
+                                                                         [NonTerm("identifier",
+                                                                                  [Term("fred")])])])])])))
+                   in mkDecl decl_class (tdd, rtd)
+                  end
              | _ => t
        end
     and new_resolve_decls tags t t' =
@@ -770,7 +788,7 @@ fun resolve substruct (decls : decls) t =
        in iter t t'
        end
    in resolve_decl [] t
-   end;
+   end
 
 val td = parseq "structdef" "" `
   typedef unsigned int *pui;
@@ -779,39 +797,50 @@ val td = parseq "structdef" "" `
   extern ui func (const ui *pcui);
   static const ui *puiv;  
   static const pui *ppuiv;  
-  typedef struct tag *ps;`;
+  typedef struct tag *ps;`
 
-val _ = printTree (#get_tag td "tag");
-val _ = printTree (resolve true td (#get_decl td "ps"));
-val _ = printTree (resolve true td (#get_decl td "puiv"));
-val _ = printTree (resolve true td (#get_decl td "ppuiv"));
-val _ = printTree (resolve true td (#get_decl td "func"));
+val _ = printTree (#get_tag td "tag")
+val _ = printTree (resolve true td (#get_decl td "ps"))
+val _ = printTree (resolve true td (#get_decl td "puiv"))
+val _ = printTree (resolve true td (#get_decl td "ppuiv"))
+val _ = printTree (resolve true td (#get_decl td "func"))
 
 val fdecl = parseq "fdecl" "" `
    typedef unsigned int ui;
    typedef ui ( *funcp ) (ui i);
-   extern ui *func (ui i, const funcp cfp[]);`;
+   extern ui *func (ui i, const funcp cfp[]);
+`;
 
-val _ = printTree (#get_decl fdecl "func");
-val _ = printTree (resolve true fdecl (#get_decl fdecl "func"));
-val _ = printTree (#get_typedef fdecl "ui");
-val _ = printTree (resolve true fdecl (#get_decl fdecl "funcp"));
+val _ = printTree (#get_decl fdecl "func")
+val _ = printTree (resolve true fdecl (#get_decl fdecl "func"))
+val _ = printTree (#get_typedef fdecl "ui")
+val _ = printTree (resolve true fdecl (#get_decl fdecl "funcp"))
 
 val cpdecl = parseq "cpdecl" "" `
    typedef unsigned int *pui;
    typedef const pui *cppui;
-   typedef unsigned int * const *cppui2;`;
+   typedef unsigned int * const *cppui2;
+`;
 
-val _ = printTree (resolve true cpdecl (#get_typedef cpdecl "cppui"));
-val _ = printTree (#get_typedef cpdecl "cppui2");
+val _ = printTree (resolve true cpdecl (#get_typedef cpdecl "cppui"))
+val _ = printTree (#get_typedef cpdecl "cppui2")
 
 val ctdecl = parseq "ctdecl" "" `
-   typedef unsigned int ui;
-   typedef const ui cui;`;
+   typedef long int size_t;
+   typedef long unsigned int __off_t;
+   typedef void *ptr_t;
+   extern void *mmap (void *__addr, size_t __len, int __prot, int __flags, int __fd, __off_t __offset);
+`;
 
-val _ = printTree (resolve true ctdecl (#get_typedef ctdecl "cui"));
+val _ = printTree (resolve true ctdecl (#get_typedef ctdecl "size_t"))
+val _ = printTree (resolve true ctdecl (#get_decl ctdecl "mmap"))
+
+val _ = Meta.quietdec := true
 
 val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n";
+
+val _ = Meta.quietdec := false;
+
 val _ = #print_decl gdkdecls "gdk_window_new";
 val _ = Meta.exec (#define_enum gdkdecls "GdkEventType");
 
@@ -821,8 +850,166 @@ val _ = printTree (resolve true gdkdecls (#get_typedef gdkdecls "GdkWindow"));
 val _ = printTree (resolve true gdkdecls (#get_decl gdkdecls "gdk_window_new"));
 val _ = printTree (resolve false gdkdecls (#get_decl gdkdecls "gdk_window_new"));
 
-
 (*           val _ = GrammarSyntax.debug_on "tree_rewrite_param" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "resolve_decl_specs" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "matches" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "tree_tree_list_subst_leaves" (GrammarSyntax.On 10) *)
+
+
+fun findmacros (pat,pat') =
+    let val regex = Regex.regcomp pat [Regex.Extended]
+        val regex' = Regex.regcomp pat' [Regex.Extended]
+    in List.filter (fn (n,d) => Regex.regexecBool regex [] n andalso
+                                Regex.regexecBool regex' [] d)
+    end;
+
+val evalString = (CSyntax.eval []) o RewriteMain.parse_c_cexp_string
+val ascval = fn ((n,d),(n',d')) => (Word.compare (evalString d, evalString d'))
+val ascnm = fn ((n,d),(n',d')) => (String.compare (n, n'))
+val sortByAscVal = Listsort.sort ascval
+val sortByAscName = Listsort.sort ascnm
+val IntegerConstant = "^(0x[0-9a-fA-F]+|[0-9]+)[LUlu]*$"
+
+val mmandecls = parse "sys/mman.h" "" "#include <unistd.h>\n#include <sys/mman.h>\n"
+val simple = List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
+val mmapmacros = List.map (fn (n,(_,(a,d))) => (n,d)) (simple ((#macros mmandecls)()))
+
+val mmapraw = printTree (#get_decl mmandecls "mmap")
+val mmap = printTree (resolve false mmandecls (#get_decl mmandecls "mmap"))
+val getpagesize = printTree (resolve false mmandecls (#get_decl mmandecls "getpagesize"))
+val munmap = printTree (resolve true mmandecls (#get_decl mmandecls "munmap"))
+val msync = printTree (resolve true mmandecls (#get_decl mmandecls "msync"))
+val mprotect = printTree (resolve false mmandecls (#get_decl mmandecls "mprotect"))
+
+val macs = (sortByAscVal o (findmacros ("^MAP_.*",IntegerConstant))) mmapmacros
+val macs' = List.map (fn (n,d) => (n,evalString d)) macs
+val dt = CSyntax.enum_datatype [("MMap",macs')] "MMap"
+val _ = Meta.exec dt
+
+val macs'' = (sortByAscVal o (findmacros ("^PROT_.*",IntegerConstant))) mmapmacros
+val macs''' = List.map (fn (n,d) => (n,evalString d)) macs''
+val dt'' = CSyntax.enum_datatype [("MMapProt",macs''')] "MMapProt"
+val _ = Meta.exec dt''
+
+val smacs'' = (sortByAscVal o (findmacros ("^MS_.*",IntegerConstant))) mmapmacros
+val smacs''' = List.map (fn (n,d) => (n,evalString d)) smacs''
+val sdt'' = CSyntax.enum_datatype [("MSync",smacs''')] "MSync"
+val _ = Meta.exec sdt''
+
+val scetd = #define_enum mmandecls "SC_Consts"
+val _ = Meta.exec scetd
+
+val csetd = #define_enum mmandecls "CS_Consts"
+val _ = Meta.exec csetd
+
+val dlxh = Dynlib.dlopen
+              {lib = "",
+               flag = Dynlib.RTLD_LAZY,
+               global = false}
+
+(*
+#define Push_roots(name, size)						      \
+   value name [(size) + 2];						      \
+   { long _; for (_ = 0; _ < (size); name [_++] = Val_long (0)); }	      \
+   name [(size)] = (value) (size);					      \
+   name [(size) + 1] = (value) c_roots_head;				      \
+   c_roots_head = &(name [(size)]);
+
+#define Pop_roots() {c_roots_head = (value* ) c_roots_head [1]; }
+*)
+
+val c_roots_head = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "c_roots_head")));
+val sysconfp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "sysconf")));
+val confstrp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "confstr")));
+val string_lengthp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "string_length")));
+
+val _ = Jit.jit_set_memory_functions Ffi.my_alloc Ffi.my_realloc Ffi.my_free
+
+val () = Jit.init_jit Jit.argv0
+
+local open Jit
+   val jit_ = Jit.jit_new_state ()
+   val () = jit_prolog (jit_)
+   val v = jit_arg (jit_)
+   val () = jit_getarg (jit_, V0, v)
+   val _ = jit_rshi (jit_, V1, V0, 1) (* V1 := Long_val(v) *)
+   val _ = jit_prepare (jit_)
+   val _ = jit_pushargr (jit_, V1)
+   val _ = jit_finishi (jit_, sysconfp)
+   val _ = jit_retval (jit_, R0)
+   val _ = jit_lshi (jit_, R0, R0, 1)
+   val _ = jit_addi (jit_, R0, R0, 1) (* R0 := Val_long(R0) *)
+   val _ = jit_retr (jit_, R0)
+   val sysconfcallptr = jit_emit (jit_)
+in
+   val sysconf : word -> int = Ffi.app1 sysconfcallptr
+end
+
+val sysconf_settings =
+       List.map
+            (fn v => (SC_Consts.toString v, sysconf(SC_Consts.toWord v)))
+            SC_Consts.flags
+
+fun findconfvals pat =
+    let val regex = Regex.regcomp pat [Regex.Extended]
+    in List.filter (fn (n,d) => Regex.regexecBool regex [] n)
+    end;
+
+val stuff' = findconfvals "SC_NPROCESSORS|SC_LEVEL[12]_.?CACHE|SC_(AV)?PHYS_PAGES" sysconf_settings;
+
+local open Jit
+   val wsz = 4
+   val jit_ = Jit.jit_new_state ()
+   val () = jit_prolog (jit_)
+   val v = jit_arg (jit_)
+   val () = jit_getarg (jit_, V0, v)
+   val _  = jit_ldxi (jit_, V1, V0, wsz * 0); (* V1 = Field(v,0) *)
+   val _  = jit_rshi (jit_, V1, V1, 1);       (* V1 = Long_val(V1) *)
+   val _  = jit_ldxi (jit_, V2, V0, wsz * 1); (* V2 = Field(v,1) *)
+   val _  = jit_ldxi (jit_, R1, V2, 0);       (* R1 = Field(V2,0) *)
+   val _ = jit_prepare (jit_)
+   val _ = jit_pushargr (jit_, R1)
+   val _ = jit_finishi (jit_, string_lengthp)
+   val _ = jit_retval (jit_, R0)
+   val _ = jit_prepare (jit_)
+   val _ = jit_pushargr (jit_, V1)
+   val _ = jit_pushargr (jit_, R1)
+   val _ = jit_pushargr (jit_, R0)
+   val _ = jit_finishi (jit_, confstrp)
+   val _ = jit_retval (jit_, R0)
+   val _ = jit_lshi (jit_, R0, R0, 1)
+   val _ = jit_addi (jit_, R0, R0, 1) (* R0 := Val_long(R0) *)
+   val _ = jit_retr (jit_, R0)
+   val confstrcallptr = jit_emit (jit_)
+in
+   val confstr : word * Word8Array.array -> int = Ffi.app1 confstrcallptr
+end
+
+val confstr = fn c =>
+         let val w = CS_Consts.toWord c
+             val n = confstr (w,Word8Array.array (0,0w0));
+             val arr = Word8Array.array (n,0w0)
+         in ignore (confstr(w,arr));
+             Ffi.svec_getvecstring
+                   (Word8ArraySlice.vector
+                        (Word8ArraySlice.slice (arr,0,SOME (n-1))))
+         end;
+
+val confstring_settings =
+       List.map
+            (fn v => (CS_Consts.toString v, confstr v))
+            CS_Consts.flags
+
+val stuff'' = findconfvals "CS_LFS_.*" confstring_settings;
+val libc_version = confstr CS_Consts.CS_GNU_LIBC_VERSION;
+val posix_tools_path = confstr CS_Consts.CS_PATH;
+
+val stuff = (sortByAscName o (findmacros ("^__[US][0-9]+_TYPE$",".*"))) mmapmacros
+
+structure MMapProtBits = BitSet(structure Enum = MMapProt)
+structure MMapBits = BitSet(structure Enum = MMap)
+structure MSyncBits = BitSet(structure Enum = MSync)
+
+open MMap
+open MMapProt
+open MSync

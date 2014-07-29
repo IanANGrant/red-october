@@ -24,3 +24,5 @@
 
 /* At most 50 Mb of FFI garbage to collect .... */
 #define MAX_FFI_ALLOC 50000000
+
+#define FFI_MEM_WITH_REALLOC

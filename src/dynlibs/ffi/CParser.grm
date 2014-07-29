@@ -142,6 +142,9 @@ open CSyntax
 %start File
 %type <CSyntax.Tree> File
 
+%start ConstExp
+%type <CSyntax.Tree> ConstExp
+
 %type <CSyntax.Tree> ExternalDeclarations ExternalDeclaration
 FunctionDefinition DeclarationList Declaration InitDeclaratorList
 InitDeclarator StaticAssert DeclarationSpecifiers
@@ -174,13 +177,18 @@ DecimalInteger HexadecimalInteger OctalInteger IntegerSuffix
 UnsignedSuffix LongSuffix StringLiteral CharacterLiteral Identifier
 FloatingSuffix DigitSequence ExponentPart FractionalConstant
 FloatingPointConstant HashToken HashDefinition HashDefineParameterList
-ParametricIdentifier HashDefine CPPLines CPPIdentifier
+ParametricIdentifier HashDefine CPPLines CPPIdentifier ConstExp
 
 %%
 
 File :
     ExternalDeclarations EOF { $1 }
   | EOF                      { mkNonTerm("EMPTY",[]) }
+;
+
+ConstExp :
+    ConstantExpression EOF { $1 }
+  | EOF                    { mkNonTerm("EMPTY",[]) }
 ;
 
 CPPFile :

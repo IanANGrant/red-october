@@ -1,3 +1,11 @@
+CParser.sml
+CPPInfoParser.sml
+GrammarParser.sml
+RewriteParser.sml
+CPPInfoLexer.sml
+CPPLexer.sml
+GrammarLexer.sml
+RewriteLexer.sml
 hello
 hello.c
 hello.o

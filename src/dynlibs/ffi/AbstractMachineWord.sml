@@ -3,13 +3,12 @@ functor AbstractMachineWord(structure Enc : WordEnc
                                 where type state = Jit.jit_typed_value
                                   and type gpr = Jit.jit_gpr_t)
    :> WordPrim where type word = Enc.word
-                 and  type largeword = Enc.largeword =
+                and  type largeword = Enc.largeword =
 struct
    type word = Enc.word
    type largeword = Enc.largeword
    val wordSize = Enc.wordSize
    local
-      val WORDSIZE = Enc.wordSize
       fun binop jit_binop =
          let open Jit
             val jit_ = jit_new_state ()
@@ -116,7 +115,7 @@ struct
       val uprim    = applyun o unop
       val rprim    = relop
    in
-      val fromInt  = applyun fromInt_
+      val fromInt = applyun fromInt_
       val toInt = toInt
       val toIntX = toInt
       val toLargeInt = toInt
@@ -138,7 +137,6 @@ struct
       val op ~>> = bprim Ops.jit_rshr
       val op >>  = bprim Ops.jit_rshr_u
       val op <<  = bprim Ops.jit_lshr
-      val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (WORDSIZE,2)))) - fromInt 1
       val andb   = bprim Ops.jit_andr
       val orb    = bprim Ops.jit_orr
       val xorb   = bprim Ops.jit_xorr
@@ -149,5 +147,6 @@ struct
       val op <=  = rprim Ops.jit_ler_u
       val op >   = rprim Ops.jit_gtr_u
       val op >=  = rprim Ops.jit_ger_u
+      val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (wordSize,2)))) - fromInt 1
    end
 end
