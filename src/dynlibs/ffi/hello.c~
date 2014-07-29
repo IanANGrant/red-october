@@ -1,9 +1,0 @@
-struct tag {int i;struct tag *p;} const typedef s, *ps;
-
-long typedef long const unsigned int *pcull, * const acpcull[];
-
-extern int *func1(int i), func2(pcull p);
-
-int main(int argc, char *argv[]) {
-   return 0;
-}
