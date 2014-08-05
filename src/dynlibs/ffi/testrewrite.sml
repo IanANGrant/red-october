@@ -1,12 +1,6 @@
-load "RewriteMain";
-load "Rewrite";
-load "CSyntax";
-load "Listsort";
-load "BitSet";
-load "Ffi";
-load "Jit";
-
-app load ["Int", "Real", "Mosml", "Substring", "Regex"];
+val () = app Meta.load
+   ["Int", "Real", "Mosml", "Substring", "Regex", "Listsort", "Jit",
+    "BitSet", "RewriteMain", "CSyntax", "Prolog"];
 
 Meta.quotation := true;
 
@@ -257,7 +251,7 @@ fun foldParameterDecl f = rewritepq [("f",f)] `
       (parameter-list ⌜x⌝ ⌜f(⌜y⌝)⌝)
       ⟦parameter-list
                  ⌜x:parameter-declaration⌝⟧ =
-      (parameter-list ⌜f(⌜x⌝)⌝)`;
+      (parameter-list ⌜f(⌜x⌝)⌝)`
 
 val elimtdrw = rewriteq `                 
       ⟦declaration-specifiers
@@ -268,7 +262,7 @@ val elimtdrw = rewriteq `
             ⌜x⌝
             (declaration-specifiers
                (storage-class-specifier typedef))⟧
-      = (⟦declaration-specifiers ⌜x⌝⟧)`;
+      = (⟦declaration-specifiers ⌜x⌝⟧)`
 
 val mergepointer = rewriteq `
       ⟦merge ⌜x:type-qualifier⌝
@@ -279,7 +273,7 @@ val mergepointer = rewriteq `
           = (pointer (type-qualifier-list ⌜x⌝) ⌜z⌝)
       ⟦merge ⌜x:type-qualifier⌝
             (pointer)⟧
-          = (pointer (type-qualifier-list ⌜x⌝))`;
+          = (pointer (type-qualifier-list ⌜x⌝))`
 
 val pointer = ("pf",mergepointer)
 
@@ -388,7 +382,7 @@ fun mergedecltq dss tds = rewritepq [pointer] `
                  ⌜z⌝)⟧
       = (declaration
                  (declaration-specifiers ⌜x⌝ ⌜y⌝)
-                 ⌜z⌝)` (GrammarSyntax.NonTerm("merge",[dss,tds]));
+                 ⌜z⌝)` (GrammarSyntax.NonTerm("merge",[dss,tds]))
 
 (* merge type-qualifiers with structure declarations *)
 
@@ -457,7 +451,7 @@ fun mergestructtq sqs dss = rewritepq [pointer] `
                  ⌜z⌝)⟧
       = (struct-declaration
                  (specifier-qualifier-list ⌜x⌝ ⌜y⌝)
-                 ⌜z⌝)` (GrammarSyntax.NonTerm("merge",[sqs,dss]));
+                 ⌜z⌝)` (GrammarSyntax.NonTerm("merge",[sqs,dss]))
 
 fun mergedss dss tds = rewriteq `
     ⟦merge (declaration-specifiers ⌜_:type-specifier⌝)
@@ -469,7 +463,7 @@ fun mergedss dss tds = rewriteq `
     ⟦merge (declaration-specifiers ⌜ds⌝ ⌜dss:declaration-specifiers⌝)
        ⌜tds:declaration-specifiers⌝⟧
          = (declaration-specifiers ⌜ds⌝ ⟦merge ⌜dss⌝ ⌜tds⌝⟧)`
- (GrammarSyntax.NonTerm("merge",[dss,tds]));
+ (GrammarSyntax.NonTerm("merge",[dss,tds]))
 
 fun dstDecl t =
   let open GrammarSyntax
@@ -484,12 +478,12 @@ fun dstDecl t =
                                             t']))
             => (s,(t,t'))
         | _ => (printTree t;raise Fail "dstDecl: bad decl")
-  end;
+  end
 
 fun mkDecl s (dss,idl) =
   let open GrammarSyntax
   in (NonTerm(s,[dss,idl]))
-  end;
+  end
 
 fun resolve substruct (decls : decls) t =
    let open CSyntax
@@ -837,49 +831,49 @@ val _ = printTree (resolve true ctdecl (#get_decl ctdecl "mmap"))
 
 val _ = Meta.quietdec := true
 
-val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n";
+val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n"
 
 val _ = Meta.quietdec := false;
 
 val _ = #print_decl gdkdecls "gdk_window_new";
 val _ = Meta.exec (#define_enum gdkdecls "GdkEventType");
 
-val _ = printTree (resolve true gdkdecls (#get_decl gdkdecls "_GdkWindowAttr"));
-val _ = printTree (resolve true gdkdecls (#get_typedef gdkdecls "GdkWindowAttr"));
-val _ = printTree (resolve true gdkdecls (#get_typedef gdkdecls "GdkWindow"));
-val _ = printTree (resolve true gdkdecls (#get_decl gdkdecls "gdk_window_new"));
-val _ = printTree (resolve false gdkdecls (#get_decl gdkdecls "gdk_window_new"));
+val _ = printTree (resolve true  gdkdecls (#get_decl    gdkdecls "_GdkWindowAttr"))
+val _ = printTree (resolve true  gdkdecls (#get_typedef gdkdecls "GdkWindowAttr"))
+val _ = printTree (resolve true  gdkdecls (#get_typedef gdkdecls "GdkWindow"))
+val _ = printTree (resolve true  gdkdecls (#get_decl    gdkdecls "gdk_window_new"))
+val _ = printTree (resolve false gdkdecls (#get_decl    gdkdecls "gdk_window_new"))
 
 (*           val _ = GrammarSyntax.debug_on "tree_rewrite_param" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "resolve_decl_specs" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "matches" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "tree_tree_list_subst_leaves" (GrammarSyntax.On 10) *)
 
-
 fun findmacros (pat,pat') =
     let val regex = Regex.regcomp pat [Regex.Extended]
         val regex' = Regex.regcomp pat' [Regex.Extended]
     in List.filter (fn (n,d) => Regex.regexecBool regex [] n andalso
                                 Regex.regexecBool regex' [] d)
-    end;
+    end
 
-val evalString = (CSyntax.eval []) o RewriteMain.parse_c_cexp_string
+val evalStringInEnv = fn env => (CSyntax.eval env) o RewriteMain.parse_c_cexp_string
+val evalString = evalStringInEnv []
 val ascval = fn ((n,d),(n',d')) => (Word.compare (evalString d, evalString d'))
-val ascnm = fn ((n,d),(n',d')) => (String.compare (n, n'))
-val sortByAscVal = Listsort.sort ascval
+val ascnm =  fn ((n,d),(n',d')) => (String.compare (n, n'))
+val sortByAscVal =  Listsort.sort ascval
 val sortByAscName = Listsort.sort ascnm
 val IntegerConstant = "^(0x[0-9a-fA-F]+|[0-9]+)[LUlu]*$"
 
 val mmandecls = parse "sys/mman.h" "" "#include <unistd.h>\n#include <sys/mman.h>\n"
-val simple = List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
+val simple =     List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
 val mmapmacros = List.map (fn (n,(_,(a,d))) => (n,d)) (simple ((#macros mmandecls)()))
 
-val mmapraw = printTree (#get_decl mmandecls "mmap")
-val mmap = printTree (resolve false mmandecls (#get_decl mmandecls "mmap"))
+val mmapraw =     printTree                          (#get_decl mmandecls "mmap")
+val mmap =        printTree (resolve false mmandecls (#get_decl mmandecls "mmap"))
 val getpagesize = printTree (resolve false mmandecls (#get_decl mmandecls "getpagesize"))
-val munmap = printTree (resolve true mmandecls (#get_decl mmandecls "munmap"))
-val msync = printTree (resolve true mmandecls (#get_decl mmandecls "msync"))
-val mprotect = printTree (resolve false mmandecls (#get_decl mmandecls "mprotect"))
+val munmap =      printTree (resolve true  mmandecls (#get_decl mmandecls "munmap"))
+val msync =       printTree (resolve true  mmandecls (#get_decl mmandecls "msync"))
+val mprotect =    printTree (resolve false mmandecls (#get_decl mmandecls "mprotect"))
 
 val macs = (sortByAscVal o (findmacros ("^MAP_.*",IntegerConstant))) mmapmacros
 val macs' = List.map (fn (n,d) => (n,evalString d)) macs
@@ -894,7 +888,11 @@ val _ = Meta.exec dt''
 val smacs'' = (sortByAscVal o (findmacros ("^MS_.*",IntegerConstant))) mmapmacros
 val smacs''' = List.map (fn (n,d) => (n,evalString d)) smacs''
 val sdt'' = CSyntax.enum_datatype [("MSync",smacs''')] "MSync"
-val _ = Meta.exec sdt''
+val _ = Meta.exec sdt'';
+
+structure MMapProtBits = BitSet(structure Enum = MMapProt)
+structure MMapBits     = BitSet(structure Enum = MMap)
+structure MSyncBits    = BitSet(structure Enum = MSync)
 
 val scetd = #define_enum mmandecls "SC_Consts"
 val _ = Meta.exec scetd
@@ -902,10 +900,27 @@ val _ = Meta.exec scetd
 val csetd = #define_enum mmandecls "CS_Consts"
 val _ = Meta.exec csetd
 
-val dlxh = Dynlib.dlopen
-              {lib = "",
-               flag = Dynlib.RTLD_LAZY,
-               global = false}
+val pcetd = #define_enum mmandecls "PC_Consts"
+val _ = Meta.exec pcetd;
+
+val posix_consts'' = (sortByAscName o (findmacros ("^_POSIX_.*",".*"))) mmapmacros
+val smacs''' = List.map (fn (n,d) => (n,evalString d)) posix_consts''
+val pcnstdt'' = CSyntax.enum_datatype [("Posix",smacs''')] "Posix"
+val _ = Meta.exec pcnstdt'';
+val pcs = List.map (fn v => (Posix.toString v,Word.toInt (Posix.toWord v)
+                                                handle Overflow => (~1))) Posix.flags
+
+val posix2_consts = (sortByAscName o (findmacros ("^__POSIX2.*",".*"))) mmapmacros
+val posix2_consts' = List.map (fn (n,v) => (CSyntax.mlvar n, evalString v)) posix2_consts
+val posix2_consts'' = (sortByAscName o (findmacros ("^_POSIX2.*",".*"))) mmapmacros
+val posix2_consts''' = List.map (fn (n,v) => (n,CSyntax.mlvar v)) posix2_consts''
+val smacs''' = List.map (fn (n,d) => (n,evalStringInEnv posix2_consts' d)) (posix2_consts''')
+val p2cnstdt'' = CSyntax.enum_datatype [("Posix2",smacs''')] "Posix2"
+val _ = Meta.exec p2cnstdt'';
+
+val p2cs = List.map (fn v => (Posix2.toString v,Word.toInt (Posix2.toWord v))) Posix2.flags;
+
+val dlxh = Dynlib.dlopen {lib = "", flag = Dynlib.RTLD_LAZY, global = false}
 
 (*
 #define Push_roots(name, size)						      \
@@ -918,10 +933,15 @@ val dlxh = Dynlib.dlopen
 #define Pop_roots() {c_roots_head = (value* ) c_roots_head [1]; }
 *)
 
-val c_roots_head = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "c_roots_head")));
-val sysconfp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "sysconf")));
-val confstrp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "confstr")));
-val string_lengthp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "string_length")));
+val c_roots_headp =  Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "c_roots_head")))
+val sysconfp =       Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "sysconf")))
+val pathconfp =      Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "pathconf")))
+val confstrp =       Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "confstr")))
+val string_lengthp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "string_length")))
+
+val sysconfdecl =  printTree (resolve false mmandecls (#get_decl mmandecls "sysconf"))
+val confstrdecl =  printTree (resolve false mmandecls (#get_decl mmandecls "confstr"))
+val pathconfdecl = printTree (resolve false mmandecls (#get_decl mmandecls "pathconf"))
 
 val _ = Jit.jit_set_memory_functions Ffi.my_alloc Ffi.my_realloc Ffi.my_free
 
@@ -931,14 +951,14 @@ local open Jit
    val jit_ = Jit.jit_new_state ()
    val () = jit_prolog (jit_)
    val v = jit_arg (jit_)
-   val () = jit_getarg (jit_, V0, v)
-   val _ = jit_rshi (jit_, V1, V0, 1) (* V1 := Long_val(v) *)
+   val () = jit_getarg (jit_, V0, v)         (* long int sysconf (struct {int __name;} *v) *)
+   val _ = jit_rshi (jit_, V1, V0, 1)        (* V1 := Long_val(v) *)
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V1)
    val _ = jit_finishi (jit_, sysconfp)
    val _ = jit_retval (jit_, R0)
    val _ = jit_lshi (jit_, R0, R0, 1)
-   val _ = jit_addi (jit_, R0, R0, 1) (* R0 := Val_long(R0) *)
+   val _ = jit_addi (jit_, R0, R0, 1)        (* R0 := Val_long(R0) *)
    val _ = jit_retr (jit_, R0)
    val sysconfcallptr = jit_emit (jit_)
 in
@@ -947,69 +967,121 @@ end
 
 val sysconf_settings =
        List.map
-            (fn v => (SC_Consts.toString v, sysconf(SC_Consts.toWord v)))
-            SC_Consts.flags
+          (fn v => (SC_Consts.toString v,
+                    sysconf(SC_Consts.toWord v)))
+
+fun findconfnames toString names =
+   fn pat =>
+    let val regex = Regex.regcomp pat [Regex.Extended]
+    in List.filter (fn w => Regex.regexecBool regex [] (toString w)) names
+    end
+
+val findsysconfnames = findconfnames SC_Consts.toString SC_Consts.flags
 
 fun findconfvals pat =
-    let val regex = Regex.regcomp pat [Regex.Extended]
-    in List.filter (fn (n,d) => Regex.regexecBool regex [] n)
-    end;
+   let val regex = Regex.regcomp pat [Regex.Extended]
+   in List.filter (fn (n,d) => Regex.regexecBool regex [] n)
+   end
 
-val stuff' = findconfvals "SC_NPROCESSORS|SC_LEVEL[12]_.?CACHE|SC_(AV)?PHYS_PAGES" sysconf_settings;
+val stuff' = sysconf_settings
+               (findsysconfnames "SC_NPROCESSORS|SC_LEVEL[12]_.?CACHE|SC_(AV)?PHYS_PAGES");
 
 local open Jit
-   val wsz = 4
+   val wsz = Jit.WORDSIZE div 8
+   val jit_ = Jit.jit_new_state () (* SML      : Int.int * Word8Array.array -> Word.word               *)
+   val () = jit_prolog (jit_)      (* Moscow ML: Int.int * Word8Vector.vector ref -> Word.word         *)
+                                   (* CAMLrt   : value confstr (value v[2])                            *)
+   val v = jit_arg (jit_)          (* CAMLrt C : unsigned long int confstr (struct {int __name;
+                                                                             (char ** ) __bufp;} *vp)  *)
+   val () = jit_getarg (jit_, V0, v)          (* V0 = v             =  v                               *)
+   val _ = jit_ldxi (jit_, V1, V0, wsz * 0)   (* V1 = Field(v,0)    =  v[0] = vp->__name               *)
+   val _ = jit_rshi (jit_, V1, V1, 1)         (* V1 = Long_val(V1)  = __name                           *)
+   val _ = jit_ldxi (jit_, V2, V0, wsz * 1)   (* V2 = Field(v,1)    =  v[1] = vp->__bufp               *)
+   val _ = jit_ldxi (jit_, R1, V2, 0)         (* R1 = Field(V2,0)   = *(vp->__bufp) = __buf            *)
+   val _ = jit_prepare (jit_)                 (* ------------ call string_length --------------------- *)
+   val _ = jit_pushargr (jit_, R1)            (* __buf                                                 *)
+   val _ = jit_finishi (jit_, string_lengthp) (* C: unsigned long int ( *string_lengthp) (char *__buf) *)
+   val _ = jit_retval (jit_, R0)              (* R0 = string_length ( __buf ) = __len                  *)
+   val _ = jit_prepare (jit_)                 (* ------------ call confstr --------------------------- *)
+   val _ = jit_pushargr (jit_, V1)            (* __name                                                *)
+   val _ = jit_pushargr (jit_, R1)            (* __buf                                                 *)
+   val _ = jit_pushargr (jit_, R0)            (* __len                                                 *)
+   val _ = jit_finishi (jit_, confstrp)       (* C: unsigned long int ( *confstrp) (int __name,
+                                                                                    char *__buf,
+                                                                      unsigned long int __len)         *)
+                                              (* Posix: size_t confstr (int __name,
+                                                                        char *__buf, size_t __len)     *)
+   val _ = jit_retval (jit_, R0)              (* R0 = confstr (__name, __buf, __len) = __rlen          *)
+   val _ = jit_lshi (jit_, R0, R0, 1)
+   val _ = jit_addi (jit_, R0, R0, 1)         (* R0 = Val_long(__rlen) = __res : value                 *)
+   val _ = jit_retr (jit_, R0)                (* return __res                                          *)
+   val confstrcallptr = jit_emit (jit_)
+in
+   val confstr : int * Word8Array.array -> word = Ffi.app1 confstrcallptr
+end
+
+fun stringToWord8Array s =
+      Word8Array.tabulate
+        (String.size s,
+         fn n => Word8.fromInt
+                   (Char.ord
+                      (String.sub(s,n)))) 
+
+fun word8ArrayToString a =
+      CharVector.tabulate
+        (Word8Array.length a,
+         fn n => Char.chr
+                   (Word8.toInt
+                      (Word8Array.sub(a,n)))) 
+
+val confstr = fn c =>
+   let val i = Word.toInt (CS_Consts.toWord c)
+       val n = confstr (i,Word8Array.array (0,0w0));
+       val a = Word8Array.array (Word.toInt n,0w0)
+       val n' = confstr(i,a)
+   in  if n' = n
+          then
+            String.extract (word8ArrayToString a,0,SOME (Word.toInt (n-0w1)))
+          else
+            raise Fail ("Unistd.confstr: Internal error loading "^
+                         (CS_Consts.toString c)^".")
+   end
+
+val findconfstrnames = findconfnames CS_Consts.toString CS_Consts.flags
+
+val confstr_settings =
+       List.map
+            (fn v => (CS_Consts.toString v, confstr v))
+
+val info = confstr_settings (findconfstrnames "CS_GNU|CS_PATH");
+
+local open Jit
+   val wsz = Jit.WORDSIZE div 8
    val jit_ = Jit.jit_new_state ()
    val () = jit_prolog (jit_)
    val v = jit_arg (jit_)
-   val () = jit_getarg (jit_, V0, v)
-   val _  = jit_ldxi (jit_, V1, V0, wsz * 0); (* V1 = Field(v,0) *)
-   val _  = jit_rshi (jit_, V1, V1, 1);       (* V1 = Long_val(V1) *)
-   val _  = jit_ldxi (jit_, V2, V0, wsz * 1); (* V2 = Field(v,1) *)
-   val _  = jit_ldxi (jit_, R1, V2, 0);       (* R1 = Field(V2,0) *)
-   val _ = jit_prepare (jit_)
-   val _ = jit_pushargr (jit_, R1)
-   val _ = jit_finishi (jit_, string_lengthp)
-   val _ = jit_retval (jit_, R0)
+   val () = jit_getarg (jit_, V0, v)        (* long int pathconf (struct {char **s; long int i;} *v) *)
+   val _ = jit_ldxi (jit_, R0, V0, wsz * 0) (* R0 = Field(v,0)   *)
+   val _ = jit_ldxi (jit_, V1, R0, 0)       (* V1 = Field(R0,0)  *)
+   val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)   *)
+   val _ = jit_rshi (jit_, V2, V2, 1)       (* V2 = Long_val(V2) *)
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V1)
-   val _ = jit_pushargr (jit_, R1)
-   val _ = jit_pushargr (jit_, R0)
-   val _ = jit_finishi (jit_, confstrp)
+   val _ = jit_pushargr (jit_, V2)
+   val _ = jit_finishi (jit_, pathconfp)
    val _ = jit_retval (jit_, R0)
    val _ = jit_lshi (jit_, R0, R0, 1)
-   val _ = jit_addi (jit_, R0, R0, 1) (* R0 := Val_long(R0) *)
+   val _ = jit_addi (jit_, R0, R0, 1)        (* R0 := Val_long(R0) *)
    val _ = jit_retr (jit_, R0)
-   val confstrcallptr = jit_emit (jit_)
+   val pathconfcallptr = jit_emit (jit_)
 in
-   val confstr : word * Word8Array.array -> int = Ffi.app1 confstrcallptr
+   val pathconf : Word8Array.array * word -> int
+          = Ffi.app1 pathconfcallptr
 end
 
-val confstr = fn c =>
-         let val w = CS_Consts.toWord c
-             val n = confstr (w,Word8Array.array (0,0w0));
-             val arr = Word8Array.array (n,0w0)
-         in ignore (confstr(w,arr));
-             Ffi.svec_getvecstring
-                   (Word8ArraySlice.vector
-                        (Word8ArraySlice.slice (arr,0,SOME (n-1))))
-         end;
-
-val confstring_settings =
-       List.map
-            (fn v => (CS_Consts.toString v, confstr v))
-            CS_Consts.flags
-
-val stuff'' = findconfvals "CS_LFS_.*" confstring_settings;
-val libc_version = confstr CS_Consts.CS_GNU_LIBC_VERSION;
-val posix_tools_path = confstr CS_Consts.CS_PATH;
-
-val stuff = (sortByAscName o (findmacros ("^__[US][0-9]+_TYPE$",".*"))) mmapmacros
-
-structure MMapProtBits = BitSet(structure Enum = MMapProt)
-structure MMapBits = BitSet(structure Enum = MMap)
-structure MSyncBits = BitSet(structure Enum = MSync)
-
-open MMap
-open MMapProt
-open MSync
+val pathconf =
+  fn s => fn c =>
+    let val w = PC_Consts.toWord c
+        val a = stringToWord8Array s
+    in pathconf (a,w)
+    end

@@ -406,7 +406,7 @@ and TokenN = parse
 and Tokens = parse
     [`a`-`z``A`-`Z` `_`][`a`-`z``A`-`Z``0`-`9` `_`]*
         { keyword lexbuf } 
-  | [`+``/``%``-``<``>``=``!``&``|``?``^``.`]+
+  | [`+``/``%``-``<``>``=``!``&``|``^``.`]+
         { operator lexbuf }
   | "*=" { MULTIPLYASSIGN }
   | `*` { STAR }

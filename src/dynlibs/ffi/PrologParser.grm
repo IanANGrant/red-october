@@ -1,0 +1,81 @@
+%{
+open GrammarSyntax
+%}
+
+%token <string> VARIABLE
+%token <string> CONSTANT
+
+%token HEAD
+%token LPAR
+%token RPAR
+%token LBRACK
+%token RBRACK
+%token BAR
+%token COMMA
+%token DOT
+%token EOF
+
+%start File
+%type <GrammarSyntax.Tree> File 
+
+%start OneTerm
+%type <GrammarSyntax.Tree> OneTerm
+
+%type <GrammarSyntax.Tree> RuleList Rule Terms Term Atom TermList List Constant Variable
+
+%%
+
+File :
+    RuleList EOF  { $1 }
+  | EOF           { mkNonTerm("rule-list",[]) }
+;
+
+OneTerm :
+    Term EOF  { $1 }
+  | EOF       { mkNonTerm("term",[]) }
+;
+
+RuleList :
+   Rule          { mkNonTerm("rule-list", [$1]) }
+ | RuleList Rule { mkNonTerm("rule-list", [$1,$2]) }
+;
+
+Rule :
+   Term DOT             {mkNonTerm("rule",[$1])}
+ | Term HEAD Terms DOT  {mkNonTerm("rule",[$1,$3])}
+;
+
+Terms :
+   Term             {mkNonTerm("terms",[$1])}
+ | Term COMMA Terms {mkNonTerm("terms",[$1,$3])}
+;
+
+Term :
+   Atom { $1 }
+;
+
+Atom :
+   Constant LPAR TermList RPAR { mkNonTerm("atom", [$1,$3]) }
+ | Constant                    { mkNonTerm("atom", [$1]) }
+ | Variable                    { mkNonTerm("atom", [$1]) }
+ | LPAR Term RPAR              { mkNonTerm("atom", [$2]) }
+ | LBRACK List                 { mkNonTerm("atom", [$2]) }
+;
+
+TermList :
+   Term                { mkNonTerm("term-list", [$1]) }
+ | Term COMMA TermList { mkNonTerm("term-list", [$1,$3]) }
+;
+
+List :
+   Term BAR Term RBRACK { mkNonTerm("list", [$1,$3]) }
+ | Term COMMA List      { mkNonTerm("list", [$1,$3]) }
+ | Term RBRACK          { mkNonTerm("list", [$1]) }
+ | RBRACK               { mkNonTerm("list", []) }
+;
+
+Constant : CONSTANT { mkNonTerm("constant", [mkTerm($1)]) }
+;
+
+Variable : VARIABLE { mkNonTerm("variable", [mkTerm($1)]) }
+;
