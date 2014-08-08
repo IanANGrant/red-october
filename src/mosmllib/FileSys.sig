@@ -131,6 +131,13 @@ val compare   : file_id * file_id -> order
    [fileSize p] return the size, in bytes, of the file p.  Raises SysErr 
    if p does not exist or its directory is not accessible.
 
+   [tmpName ()] returns a file name suitable for creating a fresh
+   temporary file. Note that the file will have been created, with
+   mode 600, and owned by the user. This is to prevent another process
+   from intercepting the call and creating, and thereby taking
+   ownership of, the new file.  The file name will be absolute, usually
+   of the form /tmp/mosmlXXXXXX provided by POSIX mkstemp (3).
+
    [file_id] is the type of unique identities of file system objects
    (including device ids and volume ids, but possibly insensitive to
    volume changes on removable volumes, such as tapes and diskettes).
