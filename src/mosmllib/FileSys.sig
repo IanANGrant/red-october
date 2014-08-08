@@ -131,13 +131,6 @@ val compare   : file_id * file_id -> order
    [fileSize p] return the size, in bytes, of the file p.  Raises SysErr 
    if p does not exist or its directory is not accessible.
 
-   [tmpName ()] returns a file name suitable for creating a fresh
-   temporary file.  Note that there is no guarantee that the file name
-   will be unique, since a file of that name may be created between
-   the call to tmpName and a subsequent call to openOut which creates
-   the file.  The file name will be absolute, usually of the form
-   /tmp/xxxxxxxx provided by POSIX tmpnam (3).
-
    [file_id] is the type of unique identities of file system objects
    (including device ids and volume ids, but possibly insensitive to
    volume changes on removable volumes, such as tapes and diskettes).

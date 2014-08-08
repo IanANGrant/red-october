@@ -1,4 +1,6 @@
 *.o
+.deps
+Makefile.in
 /camlrt.dll
 camlrunm
 jumptbl.h

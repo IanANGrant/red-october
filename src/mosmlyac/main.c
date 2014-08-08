@@ -223,6 +223,7 @@ void create_file_names(void)
 {
     int i, len;
     char *tmpdir;
+    int of;
 
 #ifdef NO_UNIX
     len = 0;
@@ -276,10 +277,14 @@ void create_file_names(void)
     union_file_name[len + 5] = 'u';
 
 #ifndef NO_UNIX
-    mktemp(action_file_name);
-    mktemp(entry_file_name);
-    mktemp(text_file_name);
-    mktemp(union_file_name);
+    of = mkstemp(action_file_name);
+    close(of);
+    of = mkstemp(entry_file_name);
+    close(of);
+    of = mkstemp(text_file_name);
+    close(of);
+    of = mkstemp(union_file_name);
+    close(of);
 #endif
 
     len = strlen(file_prefix);

@@ -1,6 +1,7 @@
 #ifdef DEBUG
 
 #include <stdio.h>
+#include <stdlib.h>
 #include "debugger.h"
 #include "instruct.h"
 #include "memory.h"

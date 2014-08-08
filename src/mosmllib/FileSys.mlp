@@ -227,8 +227,11 @@ in
 	(rmdir_ p) handle Fail s => raiseSys "rmDir" (SOME p) s;
 
     fun tmpName () =
-	(tmpnam_ ())
-	handle Fail s => raiseSys "tmpName" NONE s
+       let open BinIO
+           val os = openOutTemp "mosmlXXXXXX"
+       in closeOut os;
+          nameOut os
+       end handle Fail s => raiseSys "tmpName" NONE s
 
     fun modTime p = 
 	(Time.fromReal (modtime_ p))

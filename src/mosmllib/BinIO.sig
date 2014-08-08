@@ -22,7 +22,9 @@ val lookahead    : instream -> elem option
 type outstream
 
 val openOut      : string -> outstream
+val openOutTemp  : string -> outstream
 val openAppend   : string -> outstream
+val nameOut      : outstream -> string
 val closeOut     : outstream -> unit
 val output       : outstream * vector -> unit
 val output1      : outstream * elem -> unit

@@ -720,7 +720,6 @@ value sml_getrutime (value v) /* ML */
   return res;
 }
 
-
 value sml_errno(value arg)          /* ML */
 {
   return Val_long(errno);
@@ -981,21 +980,11 @@ value sml_access(value path, value permarg)          /* ML */
 
 value sml_tmpnam(value v)          /* ML */
 { char *res;
-#ifdef WIN32
-  value value_res;
- 
-  res = _tempnam(NULL, "mosml");
-  if (res == NULL)
-    failwith("tmpnam");
-  value_res = copy_string(res);
-  free(res);
-  return value_res;
-#else
-  res = tmpnam(NULL);
-  if (res == NULL) 
-    failwith("tmpnam");  
-  return copy_string(res);
-#endif
+  int ret;
+
+  ret = mkstemp(String_val(v));
+  if (ret == -1) sys_error(String_val(v));
+  return Val_long(ret);
 }
 
 value sml_errormsg(value err)   /* ML */

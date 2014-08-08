@@ -171,7 +171,7 @@ int main(int argc, char * argv[])
         break;
       case 'V':
         fprintf(stderr, "The Caml Light runtime system, version %s\n",
-                VERSION);
+                RTVERSION);
 	sys_exit(Val_int(0));
       default:
         fatal_error_arg("Unknown option %s.\n", argv[i]);

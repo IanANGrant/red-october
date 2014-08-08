@@ -340,12 +340,12 @@ initials "My ransom is this frail and worthless trunk";
 
 fun batchInitials (is, os) =
   while not (TextIO.endOfStream is) 
-  do TextIO.output(os, initials (TextIO.inputLine is) ^ "\n");
+  do TextIO.output(os, initials (Option.valOf (TextIO.inputLine is)) ^ "\n");
 
 fun promptInitials (is, os) =
   while (TextIO.output(os, "Input line? ");  TextIO.flushOut os;
 	 not (TextIO.endOfStream is)) 
-  do TextIO.output(os, "Initials:   " ^ initials(TextIO.inputLine is) ^ "\n");
+  do TextIO.output(os, "Initials:   " ^ initials(Option.valOf (TextIO.inputLine is)) ^ "\n");
 
 
 (*** Conversion to HTML ***)
@@ -361,12 +361,12 @@ fun htmlCvt fileName =
     let val is = TextIO.openIn fileName
 	and os = TextIO.openOut (fileName ^ ".html")
         fun cvt _ "" = ()
-	  | cvt _ "\n" = cvt true (TextIO.inputLine is)
+	  | cvt _ "\n" = cvt true (Option.valOf (TextIO.inputLine is))
 	  | cvt first s =
 		(TextIO.output (os, 
 				if first then firstLine s
 				else "<BR>" ^ s);
-		 cvt false (TextIO.inputLine is));
+		 cvt false (Option.valOf (TextIO.inputLine is)));
     in  cvt true "\n";  TextIO.closeIn is;  TextIO.closeOut os  end;
 
 

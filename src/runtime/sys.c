@@ -274,7 +274,11 @@ void poll_break()
 
 /* Added by sestoft@dina.kvl.dk to make signals work under recent linuxes: */
 
-void mysignal(int signum, sighandler_return_type (*handler)(int)) {
+#ifndef HAS_SIGHANDLER_T
+typedef void (*__sighandler_t)(int);
+#endif
+
+void mysignal(int signum, __sighandler_t handler) {
 #ifdef linux
   struct sigaction sigact;
   sigset_t emptyset;
@@ -288,7 +292,7 @@ void mysignal(int signum, sighandler_return_type (*handler)(int)) {
 #endif
 }
 
-sighandler_return_type intr_handler(int sig)
+void intr_handler(int sig)
 {
 #ifndef BSD_SIGNALS
   mysignal (SIGINT, intr_handler);
@@ -314,7 +318,7 @@ value sys_catch_break(value onoff)    /* ML */
   return Atom(0);
 }
 
-sighandler_return_type float_handler(int sig)
+void float_handler(int sig)
 {
 #ifndef BSD_SIGNALS
   mysignal (SIGFPE, float_handler);

@@ -1,1 +1,1 @@
-#define VERSION "0.8e for Moscow ML"
+#define RTVERSION "0.8e for Moscow ML"

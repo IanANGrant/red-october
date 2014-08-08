@@ -1,0 +1,7 @@
+To use the autoconfurismus, you will need recent versions of the
+auto4ck tools. Type something like
+
+   autoreconf -vif
+
+and then you should find you have the necessary libtool and configure
+scripts.

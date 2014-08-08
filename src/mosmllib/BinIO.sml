@@ -107,6 +107,23 @@ type outstream = { closed: bool, oc: out_channel, name : string } ref;
 
 prim_val outToText : outstream -> TextIO.outstream = 1 "identity"
 
+local
+    prim_val open_descriptor_out : int -> out_channel = 1 "open_descriptor";
+    prim_val mkstemp             : vector -> int      = 1 "sml_tmpnam"
+    prim_val toString            : vector -> string   = 1 "identity"
+in
+   fun openOutTemp (s : string) : outstream =
+       let val asword = (fn c => Word8.fromInt (Char.ord c))
+           val template = Word8Vector.tabulate (String.size s,(fn i => asword (String.sub (s,i))))
+           val oc = open_descriptor_out (mkstemp template)
+       in 
+          ref {closed=false, oc=oc, name=(toString template)}
+       end handle exn as SysErr _ => raiseIo "openOutTemp" s exn;
+end
+
+fun nameOut (os : outstream) : string =
+    #name (!os)
+
 fun openOut (s : string) : outstream =
     ref {closed=false, oc=caml_open_out_bin s, name=s}
     handle exn as SysErr _ => raiseIo "openOut" s exn;

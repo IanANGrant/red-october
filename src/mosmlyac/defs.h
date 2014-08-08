@@ -1,9 +1,8 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <ctype.h>
-#include <stdio.h>
-#ifdef ANSI
-#include <stdlib.h>
-#endif
+#include <string.h>
 
 #ifdef macintosh
 #include <CursorCtl.h>
@@ -426,11 +425,10 @@ extern void reflexive_transitive_closure(unsigned *R, int n);
 
 /* system variables */
 
-extern int errno;
+/* extern int errno; */
 
 
-/* system functions */
-
+/* system functions 
 #ifndef ANSI
 
 extern void free();
@@ -440,3 +438,4 @@ extern char *realloc();
 extern char *strcpy();
 
 #endif
+*/

@@ -6,15 +6,21 @@ OPTS=-fno-defer-pop
 CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR)
 BASELIBS=-lm -ldl
 
-all: libcrypt.so 
-	@echo "Now execute 'mosml crypt.sml' to test the C function"
+all: libmcrypt.so 
+	@echo "Now execute 'mosml testcrypt.sml' to test the C function"
 
 crypt.o: crypt.c
 	$(CC) $(CFLAGS) -c -o crypt.o crypt.c
 
-libcrypt.so: crypt.o
-	$(DYNLD) -lcrypt -o libcrypt.so crypt.o
-#	$(DYNLD)         -o libcrypt.so crypt.o
+libmcrypt.so: crypt.o
+	$(DYNLD) -lcrypt -o libmcrypt.so crypt.o
+#	$(DYNLD)         -o libmcrypt.so crypt.o
+
+install:
+	cp libmcrypt.so $(LIBDIR)
+
+test:
+	mosml testcrypt.sml
 
 clean:
 	rm -f *.o

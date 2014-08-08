@@ -57,23 +57,22 @@ val fulllib = ["Option", "List", "ListPair", "Strbase", "Char", "String",
 	       "Bool", "Int", "Real", "Math",
 	       "Word", "Word8", "Word8Vector", "Word8Array", 
 	       "Word8VectorSlice", "Word8ArraySlice", "Byte",
-	       "BinIO", "CharVector", "CharArray",
+	       "BinIO", "CharVector", "UTF8", "CharArray",
 	       "CharVectorSlice", "CharArraySlice",
 	       "Time", "Timer", "Date", "Path",
 	       "FileSys", "Process", "OS", 
-	       "Mosml", "PP", "CommandLine"]
+	       "Mosml", "PP", "CommandLine"];
+
+val deflib = ["Option", "List", "Strbase", "Char", "String",
+              "StringCvt", "Int", "TextIO", "BasicIO", "Vector",
+              "Array", "Misc", "Word", "Word8", "Word8Vector", "CharVector", 
+              "UTF8"]
 
 val preloadedUnitSets = [
-  ("default",  ["Option", "List", "Strbase", "Char", "String",
-		"StringCvt", "TextIO", "BasicIO", "Vector",
-		"Array", "Misc"]),
+  ("default",  deflib),
   ("full",     fulllib),
-  ("sml90",    ["Option", "List", "Strbase", "Char", "String",
-                "StringCvt", "TextIO", "BasicIO", "Vector",
-		"Array", "Misc", "SML90"]),
-  ("nj93",     ["Option", "List", "Strbase", "Char", "String",
-		"StringCvt", "TextIO", "BasicIO", "NJ93", "Vector",
-		"Array", "Misc"])
+  ("sml90",    List.@(deflib, ["SML90"])),
+  ("nj93",     List.@(deflib, ["NJ93"]))
 ];
 
 val preopenedPreloadedUnitSets = [

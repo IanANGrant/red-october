@@ -251,8 +251,19 @@ fun eval env e =
          | ev (NonTerm("assignment-expression",[e])) = ev e
          | ev (NonTerm("constant-expression",[e])) = ev e
          | ev (NonTerm("conditional-expression",[e])) = ev e
+         | ev (NonTerm("conditional-expression",[c,e,e'])) = if (ev c = 0w0) then (ev e') else (ev e)
          | ev (NonTerm("logical-or-expression",[e])) = ev e
+         | ev (NonTerm("logical-or-expression",[e,e'])) = if ev e <> 0w0 
+                                                              then 0w1
+                                                              else if ev e' = 0w0
+                                                                      then 0w0
+                                                                      else 0w1 
          | ev (NonTerm("logical-and-expression",[e])) = ev e
+         | ev (NonTerm("logical-and-expression",[e,e'])) = if ev e = 0w0 
+                                                              then 0w0 
+                                                              else if ev e' = 0w0
+                                                                      then 0w0
+                                                                      else 0w1 
          | ev (NonTerm("inclusive-or-expression",[e])) = ev e
          | ev (NonTerm("inclusive-or-expression",[e,e'])) = Word.orb(ev e,ev e')
          | ev (NonTerm("exclusive-or-expression",[e])) = ev e
@@ -260,12 +271,25 @@ fun eval env e =
          | ev (NonTerm("and-expression",[e])) = ev e
          | ev (NonTerm("and-expression",[e,e'])) = Word.andb(ev e,ev e')
          | ev (NonTerm("equality-expression",[e])) = ev e
+         | ev (NonTerm("equality-expression",[e,NonTerm("equality-operator",[Term(s)]),e'])) =
+                             (case s of "==" => if Word.compare(ev e,ev e') = EQUAL then 0w1 else 0w0
+                                      | "!=" => if Word.compare(ev e,ev e') = EQUAL then 0w0 else 0w1
+                                      | _ => raise raise Fail ("eval: no case for equality-operator "^s))
          | ev (NonTerm("relational-expression",[e])) = ev e
+         | ev (NonTerm("relational-expression",[e,Term(s),e'])) =
+                          let val (n,n') = (ev e, ev e')
+                              val r = Word.compare(n,n')
+                          in case s of "<" =>  if r = LESS    then 0w1 else 0w0
+                                     | "<=" => if r = GREATER then 0w0 else 0w1
+                                     | ">" =>  if r = GREATER then 0w1 else 0w0
+                                     | ">=" => if r = LESS    then 0w0 else 0w1
+                                     | _ => raise raise Fail ("eval: no case for relational-operator "^s)
+                          end
          | ev (NonTerm("shift-expression",[e])) = ev e
          | ev (NonTerm("shift-expression",
-                 [NonTerm("shift-expression",[e]),
+                 [e as NonTerm("shift-expression",_),
                     Term(oper),
-                  NonTerm("additive-expression",[e'])])) =
+                  e' as NonTerm("additive-expression",_)])) =
                   (let val (n,n') = (ev e, ev e')
                    in case oper 
                         of "<<" => (Word.<<(n, n'))
@@ -274,9 +298,9 @@ fun eval env e =
                    end handle Overflow => raise Fail ("eval: shift-expression: "^oper^" overflow"))
          | ev (NonTerm("additive-expression",[e])) = ev e
          | ev (NonTerm("additive-expression",
-                 [NonTerm("additive-expression",[e]),
+                 [e as NonTerm("additive-expression",_),
                     Term(oper),
-                  NonTerm("multiplicative-expression",[e'])])) =
+                  e' as NonTerm("multiplicative-expression",_)])) =
                    let val (n,n') = (ev e, ev e')
                    in case oper 
                         of "+" => (Word.+(n, n'))
@@ -285,9 +309,9 @@ fun eval env e =
                    end
          | ev (NonTerm("multiplicative-expression",[e])) = ev e
          | ev (NonTerm("multiplicative-expression",
-                 [NonTerm("multiplicative-expression",[e]),
+                 [e as NonTerm("multiplicative-expression",_),
                     Term(oper),
-                  NonTerm("cast-expression",[e'])])) =
+                  e' as NonTerm("cast-expression",_)])) =
                    let val (n,n') = (ev e, ev e')
                    in case oper 
                         of "*" => (Word.*(n, n'))
@@ -302,6 +326,7 @@ fun eval env e =
                    in case oper (* FIXME: Moscow ML's 31 bit Word.word cannot represent > 0x7FFFFFFF *)
                         of "-" => Word.xorb(Word.-(n,0w1),0wx7FFFFFFF)
                          | "~" => Word.notb(n)
+                         | "!" => if n <> 0w0 then 0w0 else 0w1
                          | s => raise Fail ("eval: no case for unary-operator "^s)
                    end
          | ev (NonTerm("postfix-expression",[e])) = ev e

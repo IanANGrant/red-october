@@ -8,7 +8,7 @@ app load ["Dynlib", "FileSys"];
 (* 2. Load the C dynamic library libcrypt.so, and get a handle to it.
       Use the absolute path because libcrypt.so is not a system DLL:     *)
 
-val dlh = Dynlib.dlopen { lib = Path.concat(FileSys.getDir (), "libcrypt.so"),
+val dlh = Dynlib.dlopen { lib = Path.concat(FileSys.getDir (), "libmcrypt.so"),
 			  flag = Dynlib.RTLD_LAZY, 
 			  global = false }
 

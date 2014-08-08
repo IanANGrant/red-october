@@ -28,11 +28,11 @@
 /* Define HAS__SETJMP if you have `_setjmp' and
    `_longjmp' as faster variants of `setjmp' and `longjmp'. */
 
-typedef int sighandler_return_type;
+#define HAS_SIGHANDLER_T
 
-/* Define as sighandler_return_type the return type of signal handlers
-   (the functions that are passed to signal()). Usually `int' on older
-   systems, `void' on newer systems. */
+/* Define HAS_SIGHANDLER_T if you have the __sighandler_t typedef
+   (usually declared in <signal.h>). If not, we assume it's 
+   void (*)(int) in runtime/sys.c */
 
 #define BSD_SIGNALS
 

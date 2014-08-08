@@ -1,4 +1,17 @@
 /Mosml.sml
+libtool
 camlrunm
+stamp-h1
+Makefile.in
+config/stamp-h1
 config/m.h
 config/s.h
+config/autoconfig.h
+config/config.h
+config/config.h.in
+configure
+config.status
+autom4te.cache
+config.log
+autoscan.log
+aclocal.m4

@@ -1,4 +1,14 @@
-This is file README for Moscow ML 2.10 for Linux/Unix (August 2013)
+This is file README for Moscow ML [Red October] 2.10 for Linux/Unix (August 2014)
+
+Red October changes:
+
+    * There is now a ./configure script in src/. This is the usual
+      'magic', and like the usual magic, it often won't work! This is
+      unusual magic, though, because it has a fall-back: ff autoconf
+      lets you down then try ./configure --enable-manual. This will do
+      very little except make sure the old Makefile.inc, Makefile
+      combination is restored. Then you can do manual configuration,
+      just like in the old days.
 
 EXTENT OF THE IMPLEMENTATION
 
