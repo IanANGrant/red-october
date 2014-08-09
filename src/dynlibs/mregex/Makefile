@@ -24,7 +24,7 @@ libmregex.so: mregex.o
 	$(DYNLD) -o libmregex.so regex-0.12/regex.o mregex.o 
 
 install:
-	cp libmregex.so $(LIBDIR)
+	$(INSTALL_DATA) libmregex.so $(DESTDIR)$(LIBDIR)
 
 test:
 	mosml testregex.sml

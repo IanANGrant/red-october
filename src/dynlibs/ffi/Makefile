@@ -41,8 +41,8 @@ testlightning: testlightning.c
               -I./lightning-2.0.4/include -Wl,-rpath,./debug -L./debug -llightning -Wl,-rpath,/home/ian3/usr/lib -o testlightning
 
 install:
-	cp libmffi.so $(LIBDIR)
-	cp Ffi.ui Ffi.uo Jit.uo Jit.ui $(LIBDIR)
+	$(INSTALL_DATA) libmffi.so $(DESTDIR)$(LIBDIR)
+	$(INSTALL_DATA) Ffi.ui Ffi.uo Jit.ui Jit.uo Ffi.sig Jit.sig $(DESTDIR)$(LIBDIR)
 
 ffi.o: ffi.c mffi.h mem.h types.h
 	$(CC) $(CFLAGS) -c -o ffi.o ffi.c

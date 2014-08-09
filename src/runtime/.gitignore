@@ -8,3 +8,5 @@ m.h
 primitives
 prims.c
 s.h
+autoconfig.h
+autoconfig.h.in

@@ -6,7 +6,7 @@ AC_INIT([redoctober], [2.2], [ian.a.n.grant@googlemail.com])
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([runtime/main.c])
 AC_CONFIG_AUX_DIR([build-aux])
-AC_CONFIG_HEADERS([config/autoconfig.h])
+AC_CONFIG_HEADERS([runtime/autoconfig.h])
 
 AM_INIT_AUTOMAKE([-Wall -Werror foreign])
 # AM_SILENT_RULES([yes])
@@ -740,14 +740,14 @@ AC_OUTPUT([Makefile \
            runtime/Makefile \
            Makefile.inc])
 
-if test -f config/m.h ; then
-   rm -f config/m.h
+if test -f runtime/m.h ; then
+   rm -f runtime/m.h
 fi
-AC_MSG_NOTICE([creating config/m.h])
-echo "#include \"autoconfig.h\"" >> config/m.h  
+AC_MSG_NOTICE([creating runtime/m.h])
+echo "#include \"autoconfig.h\"" >> runtime/m.h  
 
-if test -f config/s.h ; then
-   rm -f config/s.h
+if test -f runtime/s.h ; then
+   rm -f runtime/s.h
 fi
-AC_MSG_NOTICE([creating config/s.h])
-echo "#include \"autoconfig.h\"" >> config/s.h  
+AC_MSG_NOTICE([creating runtime/s.h])
+echo "#include \"autoconfig.h\"" >> runtime/s.h  

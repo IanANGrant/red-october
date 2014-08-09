@@ -41,7 +41,7 @@ libmpq.so: mpq.o
 #	$(DYNLD) -o libmpq.so mpq.o ${PGSQLLIBDIR}/libpq.a
 
 install:
-	cp libmpq.so $(LIBDIR)
+	$(INSTALL_DATA) libmpq.so $(DESTDIR)$(LIBDIR)
 
 test:
 	mosml testpsql.sml

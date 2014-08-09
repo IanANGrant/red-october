@@ -33,16 +33,25 @@ camlrunm_SOURCES = \
 
 camlrunmd_SOURCES = $(camlrunm_SOURCES) debugger.c
 
-camlrunm_CFLAGS = $(CW32_CFLAGS) -fno-defer-pop -fomit-frame-pointer -DTHREADED -Dunix -O2
-camlrunmd_CFLAGS = -g -I.. -I.. -DDEBUG $(camlrunm_CFLAGS)
+camlrunm_CFLAGS = $(CW32_CFLAGS) -fno-defer-pop -fomit-frame-pointer -DTHREADED -Dunix
+camlrunmd_CFLAGS = -g -I.. -DDEBUG $(camlrunm_CFLAGS)
 camlrunm_LDFLAGS = @CAMLRTLDFLAGS@ -rdynamic -Wl,-rpath,@libdir@/mosml
 camlrunmd_LDFLAGS = $(camlrunm_LDFLAGS) 
 
 BUILT_SOURCES = primitives prims.c opnames.h jumptbl.h
 
-nodist_camlrunm_SOURCES = $(BUILT_SOURCES)
+nodist_camlrunm_SOURCES = $(BUILT_SOURCES) autoconfig.h
 
-nodist_camlrunmd_SOURCES = $(BUILT_SOURCES)
+nodist_camlrunmd_SOURCES = $(BUILT_SOURCES) autoconfig.h
+
+camlrunm_instdir=@includedir@/mosml
+
+camlrunm_inst_HEADERS =     alloc.h     exec.h      gc.h        io.h       m.h        opnames.h  \
+  s.h           unalignd.h \
+  autoconfig.h  expand.h    globals.h   jumptbl.h   minor_gc.h  prims.h    signals.h  version.h  \
+  callback.h    fail.h      instruct.h  major_gc.h  misc.h      reverse.h  stacks.h \
+  config.h      freelist.h  interp.h    md5sum.h    mlvalues.h  roots.h    str.h \
+  debugger.h    gc_ctrl.h   intext.h    memory.h    mosml.h     runtime.h  sys.h
 
 CLEANFILES = $(BUILT_SOURCES)
 

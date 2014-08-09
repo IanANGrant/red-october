@@ -17,7 +17,7 @@ libmcrypt.so: crypt.o
 #	$(DYNLD)         -o libmcrypt.so crypt.o
 
 install:
-	cp libmcrypt.so $(LIBDIR)
+	$(INSTALL_DATA) libmcrypt.so $(DESTDIR)$(LIBDIR)
 
 test:
 	mosml testcrypt.sml

@@ -41,6 +41,7 @@ clean:
 	rm -f Vector.sml Word.sml Word8Array.sml Word8Vector.sml Weak.sml
 
 install:
+	test -d $(DESTDIR)$(LIBDIR) || mkdir -p $(DESTDIR)$(LIBDIR)
 	${INSTALL_DATA} README $(DESTDIR)$(LIBDIR)
 	${INSTALL_DATA} *.ui $(DESTDIR)$(LIBDIR)
 	${INSTALL_DATA} *.uo $(DESTDIR)$(LIBDIR)
