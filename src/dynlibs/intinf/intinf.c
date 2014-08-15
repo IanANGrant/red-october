@@ -187,6 +187,11 @@ value largeint_make2(value prec)
   return li;
 }
 
+value largeint_cptr(value li)
+{ 
+  return (value) Large_val(li);
+}
+
 value largeint_make_si(value src)			
 { 
   value li = largeint_alloc();

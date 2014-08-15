@@ -26,7 +26,7 @@ struct
                 val raiseprimitive0 = Jit.Pointer (Ffi.svec_getcptrvalue Ffi.raiseprimitive0)
                 val ref' = jit_bnei (jit_, r2, 0);
                 val _ = jit_prepare (jit_);
-                val _ = jit_pushargi (jit_, 0w28); (* excn Div defined in globals.h *)
+                val _ = jit_pushargi_u (jit_, 0w28); (* excn Div defined in globals.h *)
                 val _ = jit_finishi (jit_,raiseprimitive0);
          
                 val () = jit_patch (jit_, ref');

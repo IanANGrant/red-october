@@ -31,6 +31,10 @@ val largeint_make_si : Int.int -> largeint
     = app1 (dlsym dlh "largeint_make_si")
 val largeint_clear   : largeint -> unit
     = app1 (dlsym dlh "largeint_clear")
+
+val getCptr : largeint -> Dynlib.cptr
+    = app1 (dlsym dlh "largeint_cptr")
+
 val largeint_set     : largeint -> largeint -> unit
     = app2 (dlsym dlh "largeint_set")
 val largeint_set_si  : largeint -> Int.int -> unit

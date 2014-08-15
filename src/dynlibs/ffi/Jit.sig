@@ -62,7 +62,8 @@ val jit_disassemble : jit_typed_value -> unit
 val jit_realize : jit_typed_value -> unit
 val jit_emit : jit_typed_value -> Dynlib.cptr
 val jit_pushargr : jit_typed_value * jit_gpr_t -> unit
-val jit_pushargi : jit_typed_value * word -> unit
+val jit_pushargi : jit_typed_value * int -> unit
+val jit_pushargi_u : jit_typed_value * word -> unit
 val jit_finishi : jit_typed_value * jit_typed_value -> jit_typed_value
 val jit_finishr : jit_typed_value * jit_gpr_t -> jit_typed_value
 val jit_getarg : jit_typed_value * jit_gpr_t * jit_typed_value -> unit

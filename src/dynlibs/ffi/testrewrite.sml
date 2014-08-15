@@ -48,7 +48,7 @@ fun parse fname cppflags trunit =
 let 
    open GrammarSyntax
    open CSyntax
-   val cppcmd = "cpp -undef -std=iso9899:1999 "^cppflags
+   val cppcmd = "LD_LIBRARY_PATH=/home/ian3/usr/lib cpp -undef -std=iso9899:1999 "^cppflags
    val cppmcmd = cppcmd^" -dM"
    val cdeft = RewriteMain.parse_cpp_pipe cppmcmd fname trunit
    val _ = load_macros cdeft
@@ -829,6 +829,27 @@ val ctdecl = parseq "ctdecl" "" `
 val _ = printTree (resolve true ctdecl (#get_typedef ctdecl "size_t"))
 val _ = printTree (resolve true ctdecl (#get_decl ctdecl "mmap"))
 
+val enumdecl = parseq "enumdecl" "" `
+typedef enum scm_t_foreign_type
+  {
+    SCM_FOREIGN_TYPE_VOID,
+    SCM_FOREIGN_TYPE_FLOAT,
+    SCM_FOREIGN_TYPE_DOUBLE,
+    SCM_FOREIGN_TYPE_UINT8,
+    SCM_FOREIGN_TYPE_INT8,
+    SCM_FOREIGN_TYPE_UINT16,
+    SCM_FOREIGN_TYPE_INT16,
+    SCM_FOREIGN_TYPE_UINT32,
+    SCM_FOREIGN_TYPE_INT32,
+    SCM_FOREIGN_TYPE_UINT64,
+    SCM_FOREIGN_TYPE_INT64,
+    SCM_FOREIGN_TYPE_LAST = SCM_FOREIGN_TYPE_INT64
+  } scm_t_foreign_type;
+`;
+
+val _ = printTree ((#get_decl enumdecl "scm_t_foreign_type"))
+val _ = printTree ((#get_tag enumdecl "scm_t_foreign_type"))
+val _ = print (#define_enum enumdecl "scm_t_foreign_type")
 val _ = Meta.quietdec := true
 
 val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n"
@@ -1085,3 +1106,9 @@ val pathconf =
         val a = stringToWord8Array s
     in pathconf (a,w)
     end
+
+val guiledecls = parse "libguile.h" "$(pkg-config guile-2.0 --cflags-only-I)" "#include <libguile.h>\n"
+val simple =     List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
+val guilemacros = List.map (fn (n,(_,(a,d))) => (n,d)) ( ((#macros guiledecls)()))
+val scmmacs = findmacros ("^SCM_(UNDEFINED|TRUE|FALSE|EOL|MAKIFLAG_BITS|MAKE_ITAG8_BITS)$",".*") guilemacros
+val scmmacs' = findmacros ("tc8",".*") guilemacros

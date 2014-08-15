@@ -164,6 +164,12 @@ val svec_setcptrword : Word.word -> Dynlib.cptr
 val svec_setvecword : Word.word -> vector
     = app1 (dlsym dlh "svec_setvecword")
 
+val svec_setvecint : Int.int -> vector
+    = app1 (dlsym dlh "svec_setvecword")
+
+val svec_getvecint : vector -> Int.int
+    = app1 (dlsym dlh "svec_getvecword")
+
 val svec_getvecword : vector -> Word.word
     = app1 (dlsym dlh "svec_getvecword")
 
@@ -292,7 +298,6 @@ val ffi_call_ : Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> unit
 
 val ffi_call_n_ : Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> Dynlib.cptr -> unit
     = app4 (dlsym dlh "ffi_call_n_")
-
 
 fun assq n l =
   let fun lookup k =

@@ -147,6 +147,10 @@ val svec_getvecword : Word8Vector.vector -> Word.word
 
 val svec_setvecword : Word.word -> Word8Vector.vector
 
+val svec_getvecint : Word8Vector.vector -> Int.int
+
+val svec_setvecint : Int.int -> Word8Vector.vector
+
 val svec_getvalue   : svector -> Int.int -> Int.int -> Word8Vector.vector
 
 val svec_setvalue   : svector -> Int.int -> Word8Vector.vector -> Int.int

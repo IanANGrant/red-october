@@ -17,7 +17,7 @@ fun dnz jit_binop (jit_, r3, r1, r2) =
        val raiseprimitive0 = Jit.Pointer (Ffi.svec_getcptrvalue Ffi.raiseprimitive0)
        val ref' = jit_bnei (jit_, r2, 0);
        val _ = jit_prepare (jit_);
-       val _ = jit_pushargi (jit_, Word.fromInt 28);
+       val _ = jit_pushargi_u (jit_, Word.fromInt 28);
        val _ = jit_finishi (jit_,raiseprimitive0);
 
        val () = jit_patch (jit_, ref');

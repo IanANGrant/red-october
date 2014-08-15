@@ -370,7 +370,8 @@ fun enumdec e =
                        [es as (NonTerm("enumerator-list",_)),
                          e as (NonTerm("enumerator",_))]))
                           = iter (enum (e,r)) es
-         | iter _ _ = raise Fail "enum_dec: iter: no case"
+         | iter _ t = (Rewrite.printTreeDirect 0 t;
+                       raise Fail "enum_dec: iter: no case")
        fun assign e =
            List.foldl (fn ((s,SOME c),a) => (s,eval a c)::a
                         | ((s,NONE),[]) => [(s,0w0)]
@@ -536,7 +537,9 @@ fun typedef def =
 
 fun enum_typedef edef =
    let val e = case typedef edef
-                 of SOME (NonTerm("enum-specifier",[e']),
+                 of SOME (NonTerm("enum-specifier",[e' as NonTerm("enumerator-list",_)]),
+                          e'') => SOME (e',e'')
+                  | SOME (NonTerm("enum-specifier",[NonTerm("identifier",_),e']),
                           e'') => SOME (e',e'')
                   | _ => NONE
    in e

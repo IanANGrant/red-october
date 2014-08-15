@@ -247,11 +247,16 @@ local open Ffi
           in argsv
           end
      |  mkargsr _ = raise Fail "Jit:jit_pushargr: argument type mismatch: expected (State,Gpr)."
-   fun mkargsi (State (ref jit_), word_) = 
-          let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecword word_] 
+   fun mkargsi (State (ref jit_), int_) =
+          let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecint int_] 
           in argsv
           end
      |  mkargsi _ = raise Fail "Jit:jit_pushargi: argument type mismatch: expected (State,Word)."
+   fun mkargsi_u (State (ref jit_), word_) =
+          let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecword word_] 
+          in argsv
+          end
+     |  mkargsi_u _ = raise Fail "Jit:jit_pushargi_u: argument type mismatch: expected (State,Word)."
    fun mkretval _ = ()
    val jit_pushargr_sym = "_jit_pushargr"
    val jit_pushargr_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargr_sym)
@@ -262,6 +267,8 @@ in
                          jit_pushargr_type mkargsr mkretval
    val jit_pushargi = ffi_trampoline "jit_pushargi" jit_pushargi_
                          jit_pushargr_type mkargsi mkretval
+   val jit_pushargi_u = ffi_trampoline "jit_pushargi" jit_pushargi_
+                         jit_pushargr_type mkargsi_u mkretval
 end;
 
 local

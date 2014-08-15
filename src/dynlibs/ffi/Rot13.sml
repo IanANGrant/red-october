@@ -25,7 +25,7 @@ end
 structure Ebg13Jbeq8 =
 struct
    local
-      structure Rot13=
+      structure Rot13struct=
          Rot13(type X=Char.char
                val a = #"a"
                val A = #"A"
@@ -33,7 +33,7 @@ struct
                val isLower=Char.isLower
                val ord=Char.ord
                val chr=Char.chr)
-      val r13 = Word8Vector.tabulate (256, Word8.fromInt o Rot13.encode)
+      val r13 = Word8Vector.tabulate (256, Word8.fromInt o Rot13struct.encode)
    in
       fun encode w = Word8Vector.sub (r13, Word8.toInt w)
       val qrpbqr = encode

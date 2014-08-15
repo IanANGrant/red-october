@@ -451,6 +451,12 @@ and String = parse
       { UTF8StringOfUCSEscapeSequence lexbuf 1
         handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
         String lexbuf }
+  | `\\` [`u``U`] `+` [`0`-`9``a`-`f``A`-`F`]? [`0`-`9``a`-`f``A`-`F`]?
+         [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`] 
+         [`0`-`9``a`-`f``A`-`F`] [`0`-`9``a`-`f``A`-`F`]
+      { UTF8StringOfUCSEscapeSequence lexbuf 1
+        handle UTF8.BadUTF8 s => skipString s SkipString lexbuf;
+        String lexbuf }
   | `\\`
       { skipString "ill-formed escape sequence" SkipString lexbuf }
   | (eof | `\^Z`)

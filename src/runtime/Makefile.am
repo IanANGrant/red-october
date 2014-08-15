@@ -34,8 +34,14 @@ camlrunm_SOURCES = \
 camlrunmd_SOURCES = $(camlrunm_SOURCES) debugger.c
 
 camlrunm_CFLAGS = $(CW32_CFLAGS) -fno-defer-pop -fomit-frame-pointer -DTHREADED -Dunix
-camlrunmd_CFLAGS = -g -I.. -DDEBUG $(camlrunm_CFLAGS)
 camlrunm_LDFLAGS = @CAMLRTLDFLAGS@ -rdynamic -Wl,-rpath,@libdir@/mosml
+
+if GUILERT
+  camlrunm_CFLAGS += @GUILE_CFLAGS@
+  camlrunm_LDFLAGS += @GUILE_LIBS@
+endif
+
+camlrunmd_CFLAGS = -g -I.. -DDEBUG $(camlrunm_CFLAGS)
 camlrunmd_LDFLAGS = $(camlrunm_LDFLAGS) 
 
 BUILT_SOURCES = primitives prims.c opnames.h jumptbl.h

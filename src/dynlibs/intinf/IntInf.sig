@@ -61,6 +61,8 @@ val sign     : int -> Int.int
 val sameSign : int * int -> bool
 val compare  : int * int -> order
 
+val getCptr : int -> Dynlib.cptr
+
 val fromInt    : Int.int -> int
 val toInt      : int -> Int.int		(* Overflow *)
 val toLarge    : int -> int

@@ -9,7 +9,7 @@ struct
          fun jit_raise_exn (jit_, excn) =
              let val raiseprimitive0 = Jit.Pointer (Ffi.svec_getcptrvalue Ffi.raiseprimitive0)
                  val _ = jit_prepare (jit_)
-                 val _ = jit_pushargi (jit_, excn)
+                 val _ = jit_pushargi_u (jit_, excn)
                  val _ = jit_finishi (jit_,raiseprimitive0)
              in ()
              end
