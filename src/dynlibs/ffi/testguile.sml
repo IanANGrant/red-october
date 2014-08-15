@@ -72,8 +72,27 @@ val scm_variable_refp = jitptr dlxh "scm_variable_ref"
 val scm_public_variablep = jitptr dlxh "scm_public_variable"
 val scm_call_np = jitptr dlxh "scm_call_n"
 
+val wsz = Jit.WORDSIZE div 8
+
+fun jit_atom0 (jit_, v1) =
+   let open Jit
+       val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
+       val _ = jit_movi_p (jit_, v1, first_atoms)
+       val _ = jit_addi (jit_, v1, v1, wsz * 1)
+   in ()
+   end
+
+fun jit_atom (jit_, v1, v2) =
+   let open Jit
+       val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
+       val _ = jit_muli (jit_, v2, v2, wsz)
+       val _ = jit_movi_p (jit_, v1, first_atoms)
+       val _ = jit_addi (jit_, v1, v1, wsz * 1)
+       val _ = jit_addr (jit_, v1, v1, v2)
+   in ()
+   end
+
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -117,17 +136,10 @@ fun qlToString l =
    in iter "" l
    end;
 
+val scm_evalq = scm_eval_string o qlToString
+
 fun scm_pred1 jit_pred =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
-      fun jit_atom (jit_, v1, v2) =
-         let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-             val _ = jit_muli (jit_, v2, v2, wsz)
-             val _ = jit_movi_p (jit_, v1, first_atoms)
-             val _ = jit_addi (jit_, v1, v1, wsz * 1)
-             val _ = jit_addr (jit_, v1, v1, v2)
-         in ()
-         end
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -146,15 +158,6 @@ fun scm_pred1 jit_pred =
 
 fun scm_c_pred1 jit_pred =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
-      fun jit_atom (jit_, v1, v2) =
-         let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-             val _ = jit_muli (jit_, v2, v2, wsz)
-             val _ = jit_movi_p (jit_, v1, first_atoms)
-             val _ = jit_addi (jit_, v1, v1, wsz * 1)
-             val _ = jit_addr (jit_, v1, v1, v2)
-         in ()
-         end
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -169,15 +172,6 @@ fun scm_c_pred1 jit_pred =
 
 fun scm_pred2 jit_pred =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
-      fun jit_atom (jit_, v1, v2) =
-         let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-             val _ = jit_muli (jit_, v2, v2, wsz)
-             val _ = jit_movi_p (jit_, v1, first_atoms)
-             val _ = jit_addi (jit_, v1, v1, wsz * 1)
-             val _ = jit_addr (jit_, v1, v1, v2)
-         in ()
-         end
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -197,13 +191,6 @@ fun scm_pred2 jit_pred =
    end
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
-      fun jit_atom0 (jit_, v1) =
-         let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-             val _ = jit_movi_p (jit_, v1, first_atoms)
-             val _ = jit_addi (jit_, v1, v1, wsz * 1)
-         in ()
-         end
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -222,7 +209,6 @@ local open Jit
    end
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -246,7 +232,6 @@ local open Jit
    SCM_API SCM scm_bytevector_to_pointer (SCM bv, SCM offset); *)
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -274,7 +259,6 @@ local open Jit
    libguile/tags.h and libguile/gc.h *)
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -287,7 +271,6 @@ local open Jit
    end
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -314,7 +297,6 @@ local open Jit
    end
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -338,7 +320,6 @@ local open Jit
    end
 
 local open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -364,7 +345,6 @@ local open Jit
 
 fun scm_unary jit_unop =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -378,7 +358,6 @@ fun scm_unary jit_unop =
 
 fun scm_binary jit_binop =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -394,7 +373,6 @@ fun scm_binary jit_binop =
 
 fun scm_unary_int jit_unop =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -410,7 +388,6 @@ fun scm_unary_int jit_unop =
 
 fun scm_unary_word jit_unop =
    let open Jit
-      val wsz = Jit.WORDSIZE div 8
       val jit_ = Jit.jit_new_state ()
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
@@ -426,7 +403,6 @@ fun scm_unary_word jit_unop =
 
 local
    open Jit
-   val wsz = Jit.WORDSIZE div 8
    fun jit_unopf scm_funp =
       fn (jit_,r1,r0) =>
          let
@@ -440,14 +416,6 @@ local
              val _ = jit_lshi (jit_, r0, r0, 1)
              val _ = jit_addi (jit_, r0, r0, 1)
          in () end
-   fun jit_atom (jit_, v1, v2) =
-      let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-          val _ = jit_muli (jit_, v2, v2, wsz)
-          val _ = jit_movi_p (jit_, v1, first_atoms)
-          val _ = jit_addi (jit_, v1, v1, wsz * 1)
-          val _ = jit_addr (jit_, v1, v1, v2)
-      in ()
-      end
    fun jit_intconv scm_funp jit_unop vmin vmax =
       fn (jit_,r1,r0) =>
          let
@@ -558,30 +526,23 @@ val sml_string = sml_string_from_bytevector o scm_string_to_utf8
 
 val scm_list = List.foldr scm_cons scm_nil
 
-local
-   val scmreadproc = scm_public_variable (scm_list [scm_symbol "guile"], scm_symbol "read")
-   val read = scm_variable_ref scmreadproc
-   val scmcwisproc = scm_public_variable (scm_list[scm_symbol "guile"], scm_symbol "call-with-input-string")
-   val cwis = scm_variable_ref scmcwisproc
-in
+fun scm_pub_ref module varname =
+   let val modlist = scm_list o (List.map scm_symbol)
+       val modsym = modlist module
+       val varsym = scm_symbol varname
+       val variable = scm_public_variable (modsym,varsym)
+   in if scm_boolean_p variable
+         andalso scm_eq_p(variable,scm_false)
+      then raise Fail ("scm_pub_ref: not bound: "^varname)
+      else scm_variable_ref variable
+   end
 
- (* Will these local <cptr> SCM objects be protected from GC by the
-      Guile collector?  I need to understand how variable binding is
-      implemented in the CAML bytecode interpreter. If there are C
-      stack pointers to bound object values, then this is OK, because
-      the Guile GC will be tracing the CAML runtime's C stack looking
-      for references during its mark phase.
+val scm_display_proc = scm_pub_ref ["guile"] "display"
+val scm_read_proc =    scm_pub_ref ["guile"] "read"
+val scm_newline_proc = scm_pub_ref ["guile"] "newline"
+val scm_callwis_proc = scm_pub_ref ["guile"] "call-with-input-string"
 
-      But whether or not this is a problem: a better way to do this
-      sort of thing is to use R6RS modules to bind references to
-      functions like these. So we define a "red-october" module at
-      init-time, and this contains all the useful procs and things we
-      want to rely on being around for the whole time the Scheme
-      sub-system is loaded.
- *)
-
-   fun scm_read s = scm_call_n (cwis,#[scm_string s,read])
-end
+fun scm_read s = scm_call_n (scm_callwis_proc,#[scm_string s,scm_read_proc])
 
 local
    val scmdisplayproc = scm_evalq ` 
@@ -589,12 +550,22 @@ local
 		           (with-fluids ((%default-port-encoding "UTF-8"))
 		              (call-with-output-string
                                 (lambda (p)
-                                  (display x p)))))`;
+                                  (display x p)))))`
+ (* Will these local <cptr> SCM objects be protected from GC by the
+      Guile collector?  I need to understand how variable binding is
+      implemented in the CAML bytecode interpreter. If there are C
+      stack pointers to bound object values, then this is OK, because
+      the Guile GC will be tracing the CAML runtime's C stack looking
+      for references during its mark phase.
+      But whether or not this is a problem: a better way to do this
+      sort of thing is to use R6RS modules to bind references to
+      functions like these. So we define a "red-october" module at
+      init-time, and this contains all the useful procs and things we
+      want to rely on being around for the whole time the Scheme
+      sub-system is loaded. *)
 in
    fun sml_string_display scm = sml_string (scm_call_n (scmdisplayproc,#[scm]))
 end
-
-val scm_evalq = scm_eval_string o qlToString
 
 val _ = scm_evalq `
     (define (factorial n)           
@@ -621,17 +592,21 @@ fun scm_repl () =
       loop (read "Moscow ML Guile REPL\nType `(quit)' to exit.\n> ")
    end
 
-val scmrnum = scm_eval_string "(factorial 50)"
-val mpz = IntInf.init2 (0x16,0x0);
-val mpzp = IntInf.getCptr mpz;
-val _ = scm_to_mpz (scmrnum,mpzp);
+fun sml_largeint i =
+   let val mpz = IntInf.init2 (0x16,0x0);
+       val mpzp = IntInf.getCptr mpz;
+       val _ = scm_to_mpz (i,mpzp);
+   in mpz
+   end
+
+val scmrnum = scm_evalq `(factorial 50)`
+val mpz = sml_largeint scmrnum;
 val fact50 = IntInf.toString mpz;
 
 fun scm_start_repl_server () =
-   let val _ = scm_eval_string "(use-modules (system repl server))"
-       val _ = scm_eval_string "(spawn-server)"
-   in ignore (scm_eval_string "(display \"A Guile REPL is now running on localhost:37146\\n\")")
-   end
+   scm_evalq `(use-modules (system repl server))
+              (spawn-server)
+              (display "A Guile REPL is now running on localhost:37146\n")`;
 
 val scmstr = scm_evalq `"Hello, World\n"`;
 val scmbv = scm_string_to_utf8 scmstr;
@@ -639,22 +614,12 @@ val str = sml_string_from_cptr (scm_c_bytevector_contents scmbv, scm_c_bytevecto
 val w8v = sml_vector_from_cptr (scm_c_bytevector_contents scmbv, scm_c_bytevector_length scmbv);
 val chlst = Word8Vector.foldr (fn (w,a) => (Char.chr(Word8.toInt w))::a) [] w8v;
 
-val scmdisplayproc = scm_public_variable (scm_eval_string "(list 'guile)", scm_eval_string "'display");
-val scm_display = scm_variable_ref scmdisplayproc;
-val scmrnum = scm_call_n (scm_display,#[scm_eval_string "(list 1 2 3)"]);
-
-val scmreadproc = scm_public_variable (scm_eval_string "(list 'guile)", scm_eval_string "'read");
-val read = scm_variable_ref scmreadproc;
-val scmnewlineproc = scm_public_variable (scm_eval_string "(list 'guile)", scm_eval_string "'newline");
-val newline = scm_variable_ref scmnewlineproc;
-
-val call_with_input_string = scm_public_variable (scm_eval_string "(list 'guile)", scm_eval_string "'call-with-input-string");
-val cwis = scm_variable_ref call_with_input_string; 
-val scmrlist = scm_call_n (cwis,#[scm_eval_string "\"(list 1 2 3)\"",read]);
-
-val bools = scm_list [scm_true, scm_false, scm_false];
-val scmtv = scm_list_p bools;
-val boolsstr = scm_call_n (scm_display,#[bools]);
+val scmrnum = scm_call_n (scm_display_proc,#[scm_eval_string "(list 'red 'yellow 'green)"])
+val _ = scm_call_n (scm_newline_proc,#[]);
+val scmrlist = scm_call_n (scm_callwis_proc, #[scm_eval_string "\"(list 1 2 3)\"", scm_read_proc])
+val bools = scm_list [scm_true, scm_false, scm_false]
+val boolsstr = scm_call_n (scm_display_proc,#[bools])
+val _ = scm_call_n (scm_newline_proc,#[]);
  
 (* This seems to segfault mosml:
 val sv = Ffi.svec_from_string "read";
@@ -664,11 +629,6 @@ val bv = scm_pointer_to_bytevector (scmcptr,scm_eval_string "4",
                                       scm_c_const "UNDEFINED",
                                       scm_c_const "UNDEFINED");
 *)
-
-val bvsym = scm_symbol "read";
-
-val _ = scm_call_n (scm_display,#[bvsym]);
-val _ = scm_call_n (newline,#[]);
 
 val scmbplusdefd = scm_defined_p(scm_symbol "+",scm_c_const "UNDEFINED");
 
@@ -694,13 +654,6 @@ and scm_inexact =
 val scm_shellp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "scm_shell")))
 
 local open Jit
-   val wsz = Jit.WORDSIZE div 8
-   fun jit_atom0 (jit_, v1) =
-      let val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
-          val _ = jit_movi_p (jit_, v1, first_atoms)
-          val _ = jit_addi (jit_, v1, v1, wsz * 1)
-      in ()
-      end
    val jit_ = Jit.jit_new_state ()
    val () = jit_prolog (jit_)
    val v = jit_arg (jit_)

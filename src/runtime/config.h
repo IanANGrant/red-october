@@ -18,14 +18,14 @@
 
 /* Library dependencies */
 
-#ifdef HAS_MEMMOVE
-#define bcopy(src,dst,len) memmove((dst), (src), (len))
-#else
 #ifdef HAS_BCOPY
 /* Nothing to do */
 #else
 #ifdef HAS_MEMCPY
 #define bcopy(src,dst,len) memcpy((dst), (src), (len))
+#else
+#ifdef HAS_MEMMOVE
+#define bcopy(src,dst,len) memmove((dst), (src), (len))
 #else
 #define bcopy(src,dst,len) memmov((dst), (src), (len))
 #define USING_MEMMOV

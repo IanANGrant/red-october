@@ -26,7 +26,7 @@ camlrunm_SOURCES = \
    callback.c  extern.c    freelist.c  interncp.c  main.c      minor_gc.c  roots.c    sys.c  \
    compare.c   externcp.c  gc_ctrl.c   interp.c    major_gc.c  misc.c      runtime.c  unix.c \
    fail.c      ints.c      md5sum.c    mosml.c     signals.c   dynlib.c    fix_code.c hash.c \
-   io.c        memory.c    stacks.c
+   io.c        memory.c    stacks.c    guilert.c
 
 # what about this DOS stuff?
 # graph.c msdos.c

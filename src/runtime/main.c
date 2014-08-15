@@ -11,10 +11,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef HAVE_GUILE
-#include <libguile.h>
-#endif
-
 #include "version.h"
 #include "alloc.h"
 #include "exec.h"
@@ -41,22 +37,6 @@ extern char *getenv ();
 
 #ifndef O_BINARY
 #define O_BINARY 0
-#endif
-
-#ifdef HAVE_GUILE
-
-int caml_main (int argc, char **argv);
-
-void main_trampoline(void *data, int argc, char *argv[])
-{
-  (void) caml_main(argc,argv);
-}
-
-int main (int argc, char **argv)
-{
-   scm_boot_guile (argc, argv, main_trampoline, 0);
-   return 0; /* never reached. */
-}
 #endif
 
 header_t first_atoms[256];
