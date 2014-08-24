@@ -19,6 +19,7 @@ type substring
 type syserror
 type 'a vector
 eqtype word
+eqtype cptr
 eqtype word8
 datatype 'a list = nil | op :: of 'a * 'a list
 datatype 'a ref  = ref of 'a 
@@ -46,6 +47,7 @@ exception Invalid_argument of string
 exception Io of {function : string, name : string, cause : exn }
 exception Out_of_memory
 exception SysErr of string * syserror option
+exception Language of cptr
 
 (* SML Basis Library values *)
 

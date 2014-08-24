@@ -1600,6 +1600,24 @@ char* exnmessage_aux(value exn)
 #endif
     free(causetxt);
     return buf;
+  } else if (strref == Field(global_data, SYS__EXN_LANGUAGE)) {
+#if defined(__CYGWIN__) || defined(hpux)
+      sprintf(buf, "%s: <cptr %p>", String_val(strval), argval);
+#elif defined(WIN32)
+      _snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+#else
+      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+#endif
+      return buf;
+  } else if (Is_in_heap(argval) == 0) {
+#if defined(__CYGWIN__) || defined(hpux)
+      sprintf(buf, "%s: <cptr %p>", String_val(strval), argval);
+#elif defined(WIN32)
+      _snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+#else
+      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+#endif
+      return buf;
   } else if (Is_block(argval)) {
     if (Tag_val(argval) == String_tag) { 
 #if defined(__CYGWIN__) || defined(hpux)

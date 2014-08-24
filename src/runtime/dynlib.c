@@ -111,6 +111,18 @@ value dynlib_dlopen(value libname, value flagval) /* ML */
     cflags = RTLD_NOW;
   else
     cflags = RTLD_LAZY;
+#if defined(HAS_RTLD_DEEPBIND)
+  if (4 & mlflags) 
+    cflags |= RTLD_DEEPBIND;
+#endif 
+#if defined(HAS_RTLD_NODELETE)
+  if (8 & mlflags) 
+    cflags |= RTLD_NODELETE;
+#endif 
+#if defined(HAS_RTLD_NOLOAD)
+  if (16 & mlflags) 
+    cflags |= RTLD_NOLOAD;
+#endif 
 #ifndef __osf__     
   if (2 & mlflags)
     cflags += RTLD_GLOBAL;

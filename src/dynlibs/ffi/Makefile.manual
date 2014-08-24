@@ -20,10 +20,17 @@ CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR) $(ADDINCDIRS) -I.
 
 MOSMLTOOLS=camlrunm $(TOOLDIR)
 
-MOSMLC=mosmlc -orthodox -c
-MOSMLL=mosmlc
-MOSMLLEX=mosmllex
-MOSMLYACC=mosmlyac
+ROOTDIR:=../../
+
+MOSMLC=$(ROOTDIR)/camlrunm $(ROOTDIR)/mosmlcmp -stdlib $(ROOTDIR)/mosmllib -P default
+MOSMLL=$(ROOTDIR)/camlrunm $(ROOTDIR)/mosmllnk -stdlib $(ROOTDIR)/mosmllib -P default
+MOSMLLEX=$(ROOTDIR)/camlrunm $(ROOTDIR)/mosmllex
+MOSMLYACC=$(ROOTDIR)/mosmlyac/mosmlyac
+
+# MOSMLC=mosmlc -orthodox -c
+# MOSMLL=mosmlc
+# MOSMLLEX=mosmllex
+# MOSMLYACC=mosmlyac
 
 all: libmffi.so Ffi.uo Jit.uo CParser.uo                              \
     CPPLexer.uo GrammarParser.uo GrammarLexer.uo GrammarSyntax.uo     \
@@ -40,9 +47,12 @@ testlightning: testlightning.c
 	gcc testlightning.c  `pkg-config --cflags --libs glib-2.0` \
               -I./lightning-2.0.4/include -Wl,-rpath,./debug -L./debug -llightning -Wl,-rpath,/home/ian3/usr/lib -o testlightning
 
+jsexample : jsexample.cpp
+	g++ `js24-config --cflags` `js24-config --libs` -Wno-invalid-offsetof -o jsexample  jsexample.cpp
+
 install:
-	cp libmffi.so $(LIBDIR)
-	cp Ffi.ui Ffi.uo Jit.uo Jit.ui $(LIBDIR)
+	$(INSTALL_DATA) libmffi.so $(DESTDIR)$(LIBDIR)
+	$(INSTALL_DATA) Ffi.ui Ffi.uo Jit.ui Jit.uo Ffi.sig Jit.sig $(DESTDIR)$(LIBDIR)
 
 ffi.o: ffi.c mffi.h mem.h types.h
 	$(CC) $(CFLAGS) -c -o ffi.o ffi.c
@@ -145,10 +155,10 @@ Location2.uo : Location2.sml Location2.ui
 	$(MOSMLC) Location2.sml
 
 PrimEncSig.ui : Jit.uo PrimEncSig.sml
-	$(MOSMLC) -toplevel Jit.uo -c PrimEncSig.sml
+	$(MOSMLC) -toplevel PrimEncSig.sml
 
-PrimEnc.uo : PrimEncSig.ui PrimEnc.sml
-	$(MOSMLC) -toplevel Jit.uo PrimEncSig.ui -c PrimEnc.sml
+PrimEnc.uo : PrimEncSig.sml PrimEnc.sml
+	$(MOSMLC) -toplevel PrimEncSig.sml PrimEnc.sml
 
 SpeedTest.uo : SpeedTest.sml
 	$(MOSMLC) SpeedTest.sml
@@ -157,7 +167,7 @@ Globals.uo : Globals.sml
 	$(MOSMLC) -toplevel Globals.sml
 
 WordPrim.uo : WordPrim.sml
-	$(MOSMLC) -toplevel -c WordPrim.sml
+	$(MOSMLC) -toplevel WordPrim.sml
 
 WordPrim.ui : WordPrim.uo
 
@@ -171,7 +181,7 @@ BitSet.uo : BitSet.sml
 	$(MOSMLC) -toplevel BitSet.sml
 
 WordN.uo : WordN.sml  WordPrim.ui WordReprSig.ui
-	$(MOSMLC) -toplevel WordReprSig.ui WordPrim.ui -c WordN.sml
+	$(MOSMLC) -toplevel WordReprSig.ui WordPrim.ui WordN.sml
 
 # WordN.ui : WordN.sig
 #	$(MOSMLC) -toplevel -c WordN.sig
@@ -179,39 +189,38 @@ WordN.uo : WordN.sml  WordPrim.ui WordReprSig.ui
 #WordN.uo : WordPrim.ui WordN.sml WordN.ui
 #	$(MOSMLC) -toplevel WordN.ui WordPrim.ui -c WordN.sml
 
-WordFormat.uo WordFormat.ui : WordFormat.sml WordReprSig.ui
-	$(MOSMLC) -toplevel WordReprSig.ui -c WordFormat.sml
+WordFormat.uo WordFormat.ui : WordFormat.sml WordReprSig.sml
+	$(MOSMLC) -toplevel WordReprSig.sml WordFormat.sml
 
-CompTestWord.uo CompTestWord.ui : Globals.uo WordReprSig.ui WordFormat.ui CompTestWord.sml
-	$(MOSMLC) -toplevel Globals.ui WordReprSig.ui WordFormat.ui -c CompTestWord.sml
+CompTestWord.uo CompTestWord.ui : Globals.sml WordReprSig.sml WordFormat.sml CompTestWord.sml
+	$(MOSMLC) -toplevel Globals.sml WordFormat.sml WordReprSig.sml  CompTestWord.sml
 
-TestWord.uo : Globals.ui CompTestWord.ui WordFormat.ui WordReprSig.ui TestWord.sml
-	$(MOSMLC) -toplevel Globals.ui CompTestWord.ui WordFormat.ui WordReprSig.ui -c TestWord.sml
+TestWord.uo : Globals.sml CompTestWord.sml WordFormat.sml WordReprSig.sml TestWord.sml
+	$(MOSMLC) -toplevel Globals.sml WordFormat.sml  WordReprSig.sml CompTestWord.sml TestWord.sml
 
 WordEncSig.ui : Jit.uo PrimEncSig.ui WordEncSig.sml  
-	$(MOSMLC) -toplevel PrimEncSig.ui Jit.uo -c WordEncSig.sml
+	$(MOSMLC) -toplevel  WordEncSig.sml
 
 WordOpsSig.ui : Jit.ui WordOpsSig.sml
-	$(MOSMLC) -toplevel Jit.ui -c WordOpsSig.sml
+	$(MOSMLC) -toplevel  WordOpsSig.sml
 
 WordOps.uo : Jit.uo WordOpsSig.sml WordOps.sml
-	$(MOSMLC) -toplevel Jit.uo WordOpsSig.ui -c WordOps.sml
+	$(MOSMLC) -toplevel WordOpsSig.sml WordOps.sml
 
-VectorWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui VectorWordEnc.sml
-	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c VectorWordEnc.sml
+VectorWordEnc.uo : WordPrim.sml WordEncSig.sml PrimEncSig.sml VectorWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.sml PrimEncSig.sml WordEncSig.sml VectorWordEnc.sml
 
 VectorSliceWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui VectorSliceWordEnc.sml
-	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c VectorSliceWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.sml PrimEncSig.sml WordEncSig.sml VectorSliceWordEnc.sml
 
-ArraySliceWordEnc.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui ArraySliceWordEnc.sml
-	$(MOSMLC) -toplevel WordPrim.ui PrimEncSig.ui WordEncSig.ui -c ArraySliceWordEnc.sml
-
+ArraySliceWordEnc.uo : WordPrim.sml WordEncSig.sml PrimEncSig.sml ArraySliceWordEnc.sml
+	$(MOSMLC) -toplevel WordPrim.sml PrimEncSig.sml WordEncSig.sml ArraySliceWordEnc.sml
 
 AbstractMachineWord.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui WordOps.uo AbstractMachineWord.sml 
-	$(MOSMLC) -toplevel WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui WordOps.uo -c AbstractMachineWord.sml
+	$(MOSMLC) -toplevel WordEncSig.sml WordOpsSig.sml WordPrim.sml AbstractMachineWord.sml
 
 MachineWord.uo : MachineWord.sml WordPrim.ui
-	$(MOSMLC) -toplevel WordPrim.ui -c MachineWord.sml
+	$(MOSMLC) -toplevel WordPrim.ui MachineWord.sml
 
 test:
 	mosml testffi.sml
@@ -255,13 +264,13 @@ testrewrite.uo: Jit.ui Ffi.ui GrammarSyntax.uo RewriteMain.uo CSyntax.uo \
 TestWord.uo: CompTestWord.uo Globals.uo SpeedTest.ui 
 GrammarLexer.uo: GrammarParser.ui 
 VectorWordEnc.uo: Jit.ui PrimEnc.uo 
-Rot13.uo: Rot13.uo 
 Prolog.uo: Prolog.ui GrammarSyntax.uo PrologParser.ui PrologLexer.uo 
 CSyntax.uo: GrammarSyntax.uo Hasht.ui Rewrite.uo 
 PrologParser.ui: GrammarSyntax.uo 
 testffi.uo: Jit.ui Ffi.ui 
 testprolog.uo: Prolog.ui 
 RewriteParser.ui: GrammarSyntax.uo 
+testguile.uo: Jit.ui Ffi.ui 
 SpeedTest.uo: SpeedTest.ui 
 GrammarParser.ui: GrammarSyntax.uo 
 CParser.ui: CSyntax.uo 

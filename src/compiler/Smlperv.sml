@@ -214,7 +214,8 @@ val sml_initial_TE =
    ("frag",      (APPtyfun (NAMEtyapp tyname_frag), initial_frag_CE)),
    ("ref",       (APPtyfun (NAMEtyapp tyname_ref), ConEnv [])),
    ("exn",       (APPtyfun (NAMEtyapp tyname_exn), ConEnv [])),
-   ("ppstream",  (APPtyfun (NAMEtyapp tyname_ppstream), ConEnv []))
+   ("ppstream",  (APPtyfun (NAMEtyapp tyname_ppstream), ConEnv [])),
+   ("cptr",      (APPtyfun (NAMEtyapp tyname_cptr), ConEnv []))
 ];
 
 val sml_initial_T = 
@@ -268,7 +269,8 @@ val predefExceptions = [
   ("Bind",             ("exn_bind",      0, sc_exn)),
   ("Match",            ("exn_match",     0, sc_exn)),
   ("Option",           ("exn_option",    0, sc_exn)),
-  ("Span",             ("exn_span",      0, sc_exn))
+  ("Span",             ("exn_span",      0, sc_exn)),
+  ("Language",         ("exn_language",  1, trivial_scheme(type_arrow type_of_language_exn type_exn)))
 ];
 
 val () =

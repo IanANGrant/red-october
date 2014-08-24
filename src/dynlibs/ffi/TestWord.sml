@@ -28,7 +28,7 @@ struct
           :> CompTestWord where type wordA = Params.WordA.word
                             and type wordB = Params.WordB.word
      fun testopspeed which args =
-        let val optst = 
+         let val optst = 
                if which 
                   then fn (_,opA,_) => fn (wsA,_) => (SOME (opA wsA),NONE)
                   else fn (_,_,opB) => fn (_,wsB) => (NONE,SOME (opB wsB)) 

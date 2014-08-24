@@ -1,9 +1,4 @@
-val _ = List.app Meta.load ["Jit", "WordReprSig", "Globals", "Random",
-         "Bool", "SpeedTest", "WordN", "MachineWord",
-         "AbstractMachineWord", "PrimEnc", "WordOps",
-         "ArraySliceWordEnc", "VectorSliceWordEnc", "VectorWordEnc",
-         "WordFormat", "CompTestWord", "TestWord", "IntInf",
-         "Listsort", "UTF8"];
+val _ = List.app Meta.load ["TestWord", "WordN", "Jit"];
 
 val _ = Meta.orthodox();
 val _ = Meta.quietdec := true;

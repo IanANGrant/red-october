@@ -276,8 +276,8 @@ val doubleVectorToReal : Word8Vector.vector -> real
 val realToFloatVector : real -> Word8Vector.vector
 val floatVectorToReal : Word8Vector.vector -> real
 
-val vectorToList : Word8Vector.vector -> word8 list
-val listToVector : word8 list -> Word8Vector.vector
+val vectorToList : Word8Vector.vector -> Word8.word list
+val listToVector : Word8.word list -> Word8Vector.vector
 
 val vectorFromWordList : Word.word list -> Word8Vector.vector
 val wordListFromVector : Word8Vector.vector -> Word.word list

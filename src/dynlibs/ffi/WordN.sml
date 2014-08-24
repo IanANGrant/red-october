@@ -4,50 +4,41 @@
 
 (* This unit relies on two's complement representation *)
 
-functor WordN(structure Prim : WordPrim) :> Word 
+functor WordN(structure Prim : Word) :> Word 
     where type word = Prim.word = 
 struct
     type word = Prim.word
     type largeword = Prim.largeword
 
     val wordSize = Prim.wordSize
-
     val toInt = Prim.toInt;
     val toIntX = Prim.toIntX;
     val fromInt = Prim.fromInt
     val toLargeInt = Prim.toLargeInt;
     val toLargeIntX = Prim.toLargeIntX;
     val fromLargeInt = Prim.fromLargeInt;
-
     val toLargeWord = Prim.toLargeWord;
     val toLargeWordX = Prim.toLargeWordX;
     val fromLargeWord = Prim.fromLargeWord;
-
     val toLarge = Prim.toLarge;
     val toLargeX = Prim.toLargeX;
     val fromLarge = Prim.fromLarge;
-
     val orb = Prim.orb;
     val andb = Prim.andb;
     val xorb = Prim.xorb;
     val notb = Prim.notb;
-
     val op ~ = Prim.~;
-
     val op << = Prim.<<;
     val op >> = Prim.>>;
     val op ~>> = Prim.~>>;
-
     val op *    : word * word -> word = Prim.*;
     val op +    : word * word -> word = Prim.+;
     val op -    : word * word -> word = Prim.-;
     val op div  : word * word -> word = Prim.div;
     val op mod  : word * word -> word = Prim.mod;
-
     local 
       open StringCvt
       fun skipWSget getc source = getc (dropl Char.isSpace getc source)
-
       (* Below, 48 = Char.ord #"0" and 55 = Char.ord #"A" - 10. *)
       fun decval c = fromInt (Char.ord c) - fromInt 48;
       fun hexval c = 
@@ -55,18 +46,16 @@ struct
 	      fromInt (Char.ord c) - fromInt 48
 	  else 
 	      (fromInt (Char.ord c) - fromInt 55) mod (fromInt 32);
-
       fun prhex i = 
 	  if toInt i < 10 then Char.chr(toInt (i + fromInt 48))
 	  else Char.chr(toInt (i + fromInt 55));
-
       fun conv radix i = 
 	  let fun h n res = 
-		  if Prim.eq (n, fromInt 0) then res
+		  if Prim.compare (n, fromInt 0) = EQUAL then res
 		  else h (n div radix) (prhex (n mod radix) :: res)
 	      fun tostr n = h (n div radix) [prhex (n mod radix)]
-	  in String.implode (tostr i) end
-
+	  in String.implode (tostr i)
+          end
     in
       fun scan radix getc source =
 	  let open StringCvt
@@ -113,28 +102,23 @@ struct
 		| SOME _ => dig1 (getc source)
 		| NONE   => NONE 
 	  end;
-
       fun fmt BIN = conv (fromInt  2)
 	| fmt OCT = conv (fromInt  8)
 	| fmt DEC = conv (fromInt 10)
 	| fmt HEX = conv (fromInt 16)
-
       fun toString w   = conv (fromInt 16) w
       fun fromString s = scanString (scan HEX) s
     end (* local for string functions *)
-
+    val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (wordSize,2)))) - fromInt 1
     val op >    : word * word -> bool = Prim.>;
     val op >=   : word * word -> bool = Prim.>=;
     val op <    : word * word -> bool = Prim.<;
     val op <=   : word * word -> bool = Prim.<=;
-
     fun min(w1 : word, w2) = if w1 > w2 then w2 else w1;
     fun max(w1 : word, w2) = if w1 > w2 then w1 else w2;
     fun compare (x, y: word) = 
 	if x<y then LESS else if x>y then GREATER else EQUAL;
-
     fun toInt w = 
-	if w > Prim.MAXPOS then raise Overflow
+	if w > MAXPOS then raise Overflow
 	else toIntX w
-
 end

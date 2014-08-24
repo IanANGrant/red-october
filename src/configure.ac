@@ -109,7 +109,33 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h float.h limits.h memory.h     \
                   netinet/in.h stddef.h stdint.h stdlib.h strings.h \ 
                   string.h sys/param.h sys/socket.h sys/time.h      \
                   sys/timeb.h unistd.h utime.h dirent.h termios.h   \
-                  signal.h setjmp.h])
+                  signal.h setjmp.h dlfcn.h])
+
+         if test "x$ac_cv_lib_dl_dlopen" = "xyes" \
+           -a "x$ac_cv_header_dlfcn_h" = "xyes" ; then
+              AC_CHECK_DECL([RTLD_DEEPBIND],
+                [AC_DEFINE([HAS_RTLD_DEEPBIND],[1],
+                           [Define to 1 if HAS_RTLD_DEEPBIND is defined.])],
+                [],
+                  [[#include <dlfcn.h>
+                ]])
+              AC_CHECK_DECL([RTLD_NODELETE],
+                [AC_DEFINE([HAS_RTLD_NODELETE],[1],
+                           [Define to 1 if HAS_RTLD_NODELETE is defined.])],
+                [],
+                  [[#include <dlfcn.h>
+                ]])
+              AC_CHECK_DECL([RTLD_NOLOAD],
+                [AC_DEFINE([HAS_RTLD_NOLOAD],[1],
+                           [Define to 1 if HAS_RTLD_NOLOAD is defined.])],
+                [],
+                  [[#include <dlfcn.h>
+                ]])
+         fi
+
+AC_SUBST(HAS_RTLD_DEEPBIND)
+AC_SUBST(HAS_RTLD_NODELETE)
+AC_SUBST(HAS_RTLD_NOLOAD)
 
 dnl We require the pkg.m4 set of macros from pkg-config.
 dnl Make sure it's available.

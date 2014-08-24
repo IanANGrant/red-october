@@ -1,5 +1,5 @@
-(* This is a transliteration of the Prolog interpreter in John
-   Harrison's Cambridge lecture notes. *)
+(* (Apart from the != predicate) This is a transliteration of the
+   Prolog interpreter in John Harrison's Cambridge lecture notes. *)
 
 datatype term =
    Fn of string * term list
@@ -10,34 +10,23 @@ datatype outcome =
  | No
 
 local open GrammarSyntax
-   fun parseRulesPlain file stream lexbuf =
-       let val expr = PrologParser.File PrologLexer.Token lexbuf
-       in
-          Parsing.clearParser();
-   	  expr
-       end handle exn => (Parsing.clearParser(); raise exn);
-   fun parseTermPlain file stream lexbuf =
-       let val expr = PrologParser.OneTerm PrologLexer.Token lexbuf
-       in
-          Parsing.clearParser();
-          expr
-       end handle exn => (Parsing.clearParser(); raise exn);
-   fun createLexerString (s : string) =
-      Lexing.createLexerString s
-   fun processString pfn s =
-      pfn "string" s (createLexerString s)
-   val parse_rules_string = processString parseRulesPlain
-   val parse_term_string = processString parseTermPlain
+   fun parser startsymbol = 
+       let fun parse file stream lexbuf =
+          let val expr = startsymbol PrologLexer.Token lexbuf
+          in Parsing.clearParser();
+   	     expr
+          end handle exn => (Parsing.clearParser(); raise exn)
+       in parse end
+   fun processString pfn = fn s =>
+      pfn "string" s (Lexing.createLexerString s)
    fun qlToString l =
       let fun iter r [] = r
             | iter r ((QUOTE s)::fs) = iter (r^s) fs
             | iter r ((ANTIQUOTE s)::fs) = iter (r^s) fs
       in iter "" l
       end
-   fun parserulesq rules =
-      parse_rules_string (qlToString rules)
-   fun parsetermq term =
-      parse_term_string (qlToString term)
+   val parserulesq = processString (parser PrologParser.File) o qlToString
+   val parsetermq = processString (parser PrologParser.OneTerm) o qlToString
    fun fails s t = (printTree t;raise Fail (s^": no case."))
    fun mkTerm (NonTerm("atom",
                        [NonTerm("constant",
@@ -56,7 +45,8 @@ local open GrammarSyntax
            = Fn(".",[mkTerm a,mkList l])
      | mkList (NonTerm("list",[a as NonTerm("atom",_)]))
            = Fn(".",[mkTerm a,Fn("[]",[])])
-     | mkList (NonTerm("list",[a as NonTerm("atom",_),a' as NonTerm("atom",_)]))
+     | mkList (NonTerm("list",[a as NonTerm("atom",_),
+                               a' as NonTerm("atom",_)]))
            = Fn(".",[mkTerm a,mkTerm a'])
      | mkList (NonTerm("list",[]))
            = Fn("[]",[])
@@ -67,7 +57,7 @@ local open GrammarSyntax
      | mkArgs (NonTerm("term-list",[a as NonTerm("atom",_)]))
            = [mkTerm a]
      | mkArgs t = fails "mkArgs" t
-   and mkTerms (NonTerm("terms",[a as NonTerm("atom",_),
+   fun mkTerms (NonTerm("terms",[a as NonTerm("atom",_),
                                  ts as NonTerm("terms",_)]))
                  = (mkTerm a)::(mkTerms ts)
      | mkTerms (NonTerm("terms",[a as NonTerm("atom",_)]))
@@ -97,12 +87,13 @@ local
    fun assoc i =
       (Option.map (fn (_,v) => v)) o (List.find (fn (k,_) => k = i))
    fun subs insts =
-     fn (tm as (Var y)) => (case assoc y insts of NONE => tm | SOME v => v)
-      | (Fn(s,l)) => Fn(s,List.map (subs insts) l)
+     fn (tm as (Var y)) =>
+           (case assoc y insts of NONE => tm | SOME v => v)
+      | (Fn(s,l)) =>
+           Fn(s,List.map (subs insts) l)
    fun augment1 theta (x,s) =
       let val s' = subs theta s
-      in
-         if occurs_in x s andalso not (s = Var(x))
+      in if occurs_in x s andalso not (s = Var(x))
             then raise Fail "Occurs check."
             else (x,s')
       end
@@ -158,8 +149,11 @@ local
                          | eqgoal _ = false
                        val (conc,assums) = rename_rule (Int.toString n) rule
                        val goal = hd goals
-                       val insts' = if eqgoal goal then insts else unify conc goal insts
-                       fun occurs (v,_) = occurs_in v conc orelse List.exists (occurs_in v) assums
+                       val insts' = if eqgoal goal
+                                       then insts (* CHECK! This is probably wrong. *)
+                                       else unify conc goal insts
+                       fun occurs (v,_) = occurs_in v conc
+                                   orelse List.exists (occurs_in v) assums
                        val (loc,glob) = List.partition occurs insts'
                        val goals' = (List.map (subs loc) assums) @ (tl goals)
                    in expand (n+1) rules glob goals'

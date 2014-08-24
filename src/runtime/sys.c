@@ -65,7 +65,8 @@ char* globalexn[] = {
        "Match",
        "Io",
        "Option",
-       "Span" };
+       "Span",
+       "Language"};
 
 void sys_error(char * arg)
 {

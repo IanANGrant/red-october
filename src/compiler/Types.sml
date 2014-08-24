@@ -63,12 +63,12 @@ datatype ScopeViolation =
     TYNAMEsv of TyName
   | TYPEVARsv of TypeVar;
 (* unification *)
-datatype reason = 
+datatype reason =
     UnifyCircular | UnifyEquality | UnifyExplicit
   | UnifyTup | UnifyRec of Lab | UnifyOther
   | UnifyMod of matchReason option * matchReason option
   | UnifyScope of TypeVar * ScopeViolation
-and matchReason = 
+and matchReason =
     MissingValue of path * string * VarInfo
 |   MissingStructure of path * string * ModInfo
 |   MissingFunctor of path * string * FunInfo
@@ -146,6 +146,8 @@ and tyname_syserror = mktyname "OS" "syserror"
 and tyname_vector = mkSML "vector" 
     {tnStamp=mkSMLStamp(),  tnKind=ARITYkind 1, tnEqu=TRUEequ,  tnSort=PARAMETERts, tnLevel=0, tnConEnv=ref NONE}
 and tyname_word = mktyname "Word" "word" 
+    {tnStamp=mkSMLStamp(),  tnKind=ARITYkind 0, tnEqu=TRUEequ,  tnSort=PARAMETERts, tnLevel=0, tnConEnv=ref NONE}
+and tyname_cptr = mktyname "Dynlib" "cptr" 
     {tnStamp=mkSMLStamp(),  tnKind=ARITYkind 0, tnEqu=TRUEequ,  tnSort=PARAMETERts, tnLevel=0, tnConEnv=ref NONE}
 and tyname_word8 = mktyname "Word8" "word8" 
     {tnStamp=mkSMLStamp(),  tnKind=ARITYkind 0, tnEqu=TRUEequ,  tnSort=PARAMETERts, tnLevel=0, tnConEnv=ref NONE}
@@ -1842,6 +1844,7 @@ val type_string    = type_con [] tyname_string;
 val type_substring = type_con [] tyname_substring;
 val type_syserror  = type_con [] tyname_syserror;
 val type_word      = type_con [] tyname_word;
+val type_cptr      = type_con [] tyname_cptr;
 val type_word8     = type_con [] tyname_word8;
 val type_unit      = type_product [];
 fun type_vector t  = type_con [t] tyname_vector;

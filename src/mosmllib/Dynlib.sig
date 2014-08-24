@@ -6,8 +6,10 @@ type cptr
     
 exception Closed
 
-datatype flag = RTLD_LAZY | RTLD_NOW
+datatype flag = RTLD_LAZY | RTLD_NOW | RTLD_NODELETE | RTLD_NOLOAD | RTLD_DEEPBIND | Set of flag list
+
 val dlopen  : { lib : string, flag : flag, global : bool } -> dlHandle
+
 val dlsym   : dlHandle -> string -> symHandle
 val dlclose : dlHandle -> unit
 

@@ -5,13 +5,18 @@ local
 in
     (* The exn names and types of SML Basis Library exceptions *)
 
-    prim_val syserr_ref : string ref = 0 "exn_syserr"
-    prim_val io_ref     : string ref = 0 "exn_io"
+    prim_val language_ref : string ref = 0 "exn_language"
+    prim_val syserr_ref   : string ref = 0 "exn_syserr"
+    prim_val io_ref       : string ref = 0 "exn_io"
 
 (* ps: temporary fix when bootstrapping:
     val syserr_ref = ref "Fix1";
     val io_ref = ref "Fix2";
+    val language_ref = ref "Fix3";
 *)
+    val type_of_language_exn = 
+	type_cptr;
+
     val type_of_syserror_exn = (* Must match actual type of OS.SysErr *)
 	type_pair type_string (type_option type_syserror);
 
@@ -30,6 +35,8 @@ in
 	    SOME type_of_syserror_exn
 	else if strref = io_ref then 
 	    SOME type_of_io_exn
+	else if strref = language_ref then 
+	    SOME type_of_language_exn
 	else if is_block arg then 
 	    if obj_tag arg = stringTag then SOME type_string
 	    else if obj_tag arg = realTag then SOME type_real

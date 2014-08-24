@@ -6,7 +6,10 @@ val _ = Jit.jit_set_memory_functions Ffi.my_alloc Ffi.my_realloc Ffi.my_free;
 
 val () = Jit.init_jit Jit.argv0;
 
-val dlxh = Dynlib.dlopen {lib = "", flag = Dynlib.RTLD_LAZY, global = false}
+local open Dynlib
+in
+   val dlxh = dlopen {lib = "", flag = Set[RTLD_LAZY,RTLD_DEEPBIND], global = false}
+end
 
 fun jitptr hdl s =
   Jit.Pointer
@@ -111,7 +114,7 @@ local open Jit
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       val scm_call_n = Ffi.app1 fptr : Dynlib.cptr * (Dynlib.cptr Vector.vector) -> Dynlib.cptr
+       val scm_call_n = Ffi.app1 fptr : cptr * (cptr Vector.vector) -> cptr
    end
 
 local open Jit
@@ -126,7 +129,7 @@ local open Jit
    val _ = jit_retr (jit_, R0)
    val scm_eval_stringptr = jit_emit (jit_)
 in
-   val scm_eval_string : string -> Dynlib.cptr = Ffi.app1 scm_eval_stringptr
+   val scm_eval_string : string -> cptr = Ffi.app1 scm_eval_stringptr
 end
 
 fun qlToString l =
@@ -153,7 +156,7 @@ fun scm_pred1 jit_pred =
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr -> bool
+       Ffi.app1 fptr : cptr -> bool
    end
 
 fun scm_c_pred1 jit_pred =
@@ -167,7 +170,7 @@ fun scm_c_pred1 jit_pred =
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr -> bool
+       Ffi.app1 fptr : cptr -> bool
    end
 
 fun scm_pred2 jit_pred =
@@ -187,7 +190,7 @@ fun scm_pred2 jit_pred =
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> bool
+       Ffi.app1 fptr : cptr * cptr -> bool
    end
 
 local open Jit
@@ -205,7 +208,7 @@ local open Jit
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       val scm_to_mpz = Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> unit
+       val scm_to_mpz = Ffi.app1 fptr : cptr * Dynlib.cptr -> unit
    end
 
 local open Jit
@@ -223,7 +226,7 @@ local open Jit
       val _ = jit_retr (jit_, R1)
       val fptr = jit_emit (jit_)
    in
-       val scm_from_pointer = Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> Dynlib.cptr
+       val scm_from_pointer = Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> cptr
    end
 
 
@@ -251,7 +254,7 @@ local open Jit
       val fptr = jit_emit (jit_)
    in
        val scm_pointer_to_bytevector = Ffi.app1 fptr :
-             Dynlib.cptr * Dynlib.cptr * Dynlib.cptr * Dynlib.cptr-> Dynlib.cptr
+             cptr * cptr * cptr * cptr-> cptr
    end
 
 (* This should be a generic set of functions implementing the macros
@@ -267,7 +270,7 @@ local open Jit
       val _ = jit_retr (jit_, V1)
       val fptr = jit_emit (jit_)
    in
-       val scm_c_bytevector_contents = Ffi.app1 fptr : Dynlib.cptr -> Dynlib.cptr
+       val scm_c_bytevector_contents = Ffi.app1 fptr : cptr -> Dynlib.cptr
    end
 
 local open Jit
@@ -292,8 +295,8 @@ local open Jit
       val _ = jit_retr (jit_, V2)
       val fptr = jit_emit (jit_)
    in
-       val sml_string_to_bytevector = Ffi.app1 fptr : String.string -> Dynlib.cptr
-       val sml_vector_to_bytevector = Ffi.app1 fptr : Word8Vector.vector -> Dynlib.cptr
+       val sml_string_to_bytevector = Ffi.app1 fptr : String.string -> cptr
+       val sml_vector_to_bytevector = Ffi.app1 fptr : Word8Vector.vector -> cptr
    end
 
 local open Jit
@@ -315,8 +318,8 @@ local open Jit
       val _ = jit_retr (jit_, V0)
       val fptr = jit_emit (jit_)
    in
-       val sml_string_from_bytevector = Ffi.app1 fptr : Dynlib.cptr -> String.string
-       val sml_vector_from_bytevector = Ffi.app1 fptr : Dynlib.cptr -> Word8Vector.vector
+       val sml_string_from_bytevector = Ffi.app1 fptr : cptr -> String.string
+       val sml_vector_from_bytevector = Ffi.app1 fptr : cptr -> Word8Vector.vector
    end
 
 local open Jit
@@ -353,7 +356,7 @@ fun scm_unary jit_unop =
       val _ = jit_retr (jit_, R0)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr -> Dynlib.cptr
+       Ffi.app1 fptr : cptr -> cptr
    end
 
 fun scm_binary jit_binop =
@@ -368,7 +371,7 @@ fun scm_binary jit_binop =
       val _ = jit_retr (jit_, R0)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> Dynlib.cptr
+       Ffi.app1 fptr : cptr * cptr -> cptr
    end
 
 fun scm_unary_int jit_unop =
@@ -383,7 +386,7 @@ fun scm_unary_int jit_unop =
       val _ = jit_retr (jit_, R0)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr -> Int.int
+       Ffi.app1 fptr : cptr -> Int.int
    end
 
 fun scm_unary_word jit_unop =
@@ -398,7 +401,7 @@ fun scm_unary_word jit_unop =
       val _ = jit_retr (jit_, R0)
       val fptr = jit_emit (jit_)
    in
-       Ffi.app1 fptr : Dynlib.cptr -> Word.word
+       Ffi.app1 fptr : cptr -> Word.word
    end
 
 local
@@ -506,15 +509,17 @@ fun scm_c_const s =
                          ("UNDEFINED",9),("EOF",10),
                          ("UNBOUND",11)]
        val n = List.find (fn (s',_) => s'= s) scm_consts
+       prim_val cptrToScm : Dynlib.cptr -> cptr = 1 "identity"
    in
       case n of NONE => raise Fail ("scm_const: "^s^" is not the name of a known constant")
-              | SOME (_,n) => Ffi.svec_setcptrword
-                                 (Word.+(Word.<<(Word.fromInt n,0w8),0w4)) (* Don't ask! *)
+              | SOME (_,n) => cptrToScm (Ffi.svec_setcptrword
+                                 (Word.+(Word.<<(Word.fromInt n,0w8),0w4))) (* Don't ask! *)
    end
 
 val scm_true = scm_c_const "TRUE"
 val scm_false = scm_c_const "FALSE"
 val scm_nil = scm_c_const "EOL"
+val scm_eof = scm_c_const "EOF"
 val scm_undefined = scm_c_const "UNDEFINED"
 val scm_unspecified = scm_c_const "UNSPECIFIED"
 
@@ -575,19 +580,23 @@ val _ = scm_evalq `
                (loop (- n 1) ( * product n)))))
 `;
 
+exception Scheme of Dynlib.cptr
+
 fun scm_repl () =
    let val quitv = scm_list [scm_symbol "quit"]
        val readv = scm_list [scm_symbol "read"]
        fun read p = (print p; scm_primitive_eval readv)
        fun loop sexp =
-         if (scm_equal_p (quitv,sexp)) 
+         if scm_equal_p (quitv,sexp) orelse scm_equal_p (scm_eof,sexp)
             then ()
             else let val res = scm_primitive_eval sexp
                  in if scm_eq_p (res,scm_unspecified)
                        then () 
                        else print ((sml_string_display res)^"\n");
                     loop (read "> ")
-                 end
+                 end handle Language scm => 
+                       (print ("Uncaught scheme exception: "^(sml_string_display scm)^".\n");
+                        loop (read "> "))
    in
       loop (read "Moscow ML Guile REPL\nType `(quit)' to exit.\n> ")
    end
@@ -631,25 +640,6 @@ val bv = scm_pointer_to_bytevector (scmcptr,scm_eval_string "4",
 *)
 
 val scmbplusdefd = scm_defined_p(scm_symbol "+",scm_c_const "UNDEFINED");
-
-datatype scm =
-   scmSymbol of string
- | scmString of string
- | scmChar of word
- | scmCons of scm ref * scm ref
- | scmNil 
- | scmUndefined
- | scmBool of bool
- | scmExact of scm_exact
- | scmInexact of scm_inexact
-and scm_exact =
-   scm_exactInteger of scm_exactInt
- | scm_exactRational of scm_exactInt * scm_exactInt
-and scm_exactInt =
-   scm_exactSmallInt of Int.int
- | scm_exactBigInt of IntInf.int
-and scm_inexact =
-   scm_inexactRational of real
 
 val scm_shellp = Jit.Pointer (Ffi.svec_getcptrvalue (Dynlib.cptr (Dynlib.dlsym dlxh "scm_shell")))
 

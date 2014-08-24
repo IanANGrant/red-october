@@ -558,7 +558,7 @@ in
 end
 
 local
-   val nulv = Word8Vector.fromList [0wx0,0wx0,0wx0,0wx0]
+   val nulv = Word8Vector.fromList [0w0,0w0,0w0,0w0]
 in
    val NULLvec = nulv
    val NULL = svec_setcptrvalue(nulv);

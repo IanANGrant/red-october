@@ -1,0 +1,3 @@
+mozjs_24 {
+    global: *;
+};
