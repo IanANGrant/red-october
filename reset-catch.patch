@@ -1,0 +1,155 @@
+--- boot-9.scm	2014-02-14 18:00:33.000000000 -0400
++++ guile-2.0.11/module/ice-9/boot-9.scm	2014-08-22 03:31:22.296841040 -0400
+@@ -92,13 +92,13 @@
+             (apply abort-to-prompt prompt-tag thrown-k args)
+             (apply prev thrown-k args)))))
+ 
+-  (define (custom-throw-handler prompt-tag catch-k pre)
++  (define (custom-throw-handler prompt-tag catch-k pre pre-reset)
+     (let ((prev (fluid-ref %exception-handler)))
+       (lambda (thrown-k . args)
+         (if (or (eq? thrown-k catch-k) (eqv? catch-k #t))
+             (let ((running (fluid-ref %running-exception-handlers)))
+               (with-fluids ((%running-exception-handlers (cons pre running)))
+-                (if (not (memq pre running))
++                (if (or pre-reset (not (memq pre running)))
+                     (apply pre thrown-k args))
+                 ;; fall through
+                 (if prompt-tag
+@@ -107,7 +107,7 @@
+             (apply prev thrown-k args)))))
+ 
+   (set! catch
+-        (lambda* (k thunk handler #:optional pre-unwind-handler)
++        (lambda* (k thunk handler #:optional pre-unwind-handler pre-reset)
+           "Invoke @var{thunk} in the dynamic context of @var{handler} for
+ exceptions matching @var{key}.  If thunk throws to the symbol
+ @var{key}, then @var{handler} is invoked this way:
+@@ -120,9 +120,18 @@
+ @var{thunk} takes no arguments.  If @var{thunk} returns
+ normally, that is the return value of @code{catch}.
+ 
+-Handler is invoked outside the scope of its own @code{catch}.
+-If @var{handler} again throws to the same key, a new handler
+-from further up the call chain is invoked.
++@code{handler} is invoked outside the scope of its own @code{catch}.
++If @code{handler} again throws to the same key, a new handler from
++further up the call chain is invoked. @code{pre-unwind-handler} is
++invoked @emph{inside} the scope of the catch, in so far as if
++@var{key} is thrown from within the dynamic context of
++@code{pre-unwind-handler}, then @code{handler} will be invoked
++immediately, (i.e. without re-entering @code{pre-unwind-handler}. This
++behaviour can be changed by setting the optional argument
++@var{pre-reset} to @code{#t}, which makes throws within
++@code{pre-unwind-handler} re-enter the @code{pre-unwind-handler}. This
++allows exceptions to be cancelled in the @code{pre-unwind-handler}, by
++throwing to another handler in a different dynamic context.
+ 
+ If the key is @code{#t}, then a throw to @emph{any} symbol will
+ match this call to @code{catch}.
+@@ -152,7 +161,7 @@
+                (with-fluids
+                    ((%exception-handler
+                      (if pre-unwind-handler
+-                         (custom-throw-handler tag k pre-unwind-handler)
++                         (custom-throw-handler tag k pre-unwind-handler pre-reset)
+                          (default-throw-handler tag k))))
+                  (thunk)))
+              (lambda (cont k . args)
+@@ -167,7 +176,7 @@
+                          "Wrong type argument in position ~a: ~a"
+                          (list 1 k) (list k)))
+           (with-fluids ((%exception-handler
+-                         (custom-throw-handler #f k pre-unwind-handler)))
++                         (custom-throw-handler #f k pre-unwind-handler #f)))
+             (thunk))))
+ 
+   (set! throw
+--- continuations.c	2014-02-14 18:00:33.000000000 -0400
++++ guile-2.0.11/libguile/continuations.c	2014-08-22 05:50:43.126300151 -0400
+@@ -455,7 +455,7 @@
+   result = scm_c_catch (SCM_BOOL_T,
+ 			body, body_data,
+ 			handler, handler_data,
+-			pre_unwind_handler, pre_unwind_handler_data);
++			pre_unwind_handler, pre_unwind_handler_data, 0);
+ 
+   /* Return to old continuation root.
+    */
+--- load.c	2014-02-28 16:01:27.000000000 -0400
++++ guile-2.0.11/libguile/load.c	2014-08-22 05:51:03.282400099 -0400
+@@ -863,7 +863,7 @@
+                       SCM2PTR (source),
+                       auto_compile_catch_handler,
+                       SCM2PTR (source),
+-                      NULL, NULL);
++                      NULL, NULL, 0);
+ }
+ 
+ /* The auto-compilation code will residualize a .go file in the cache
+--- throw.c	2014-02-14 18:00:33.000000000 -0400
++++ guile-2.0.11/libguile/throw.c	2014-08-22 05:50:00.410088349 -0400
+@@ -65,13 +65,13 @@
+ 
+ SCM
+ scm_catch_with_pre_unwind_handler (SCM key, SCM thunk, SCM handler,
+-                                   SCM pre_unwind_handler)
++                                   SCM pre_unwind_handler, SCM pre_reset)
+ {
+   if (SCM_UNBNDP (pre_unwind_handler))
+     return scm_catch (key, thunk, handler);
+   else
+-    return scm_call_4 (scm_variable_ref (catch_var), key, thunk, handler,
+-                       pre_unwind_handler);
++    return scm_call_5 (scm_variable_ref (catch_var), key, thunk, handler,
++                       pre_unwind_handler, pre_reset);
+ }
+ 
+ static void
+@@ -192,7 +192,7 @@
+ scm_c_catch (SCM tag,
+ 	     scm_t_catch_body body, void *body_data,
+ 	     scm_t_catch_handler handler, void *handler_data,
+-	     scm_t_catch_handler pre_unwind_handler, void *pre_unwind_handler_data)
++	     scm_t_catch_handler pre_unwind_handler, void *pre_unwind_handler_data, int pre_reset)
+ {
+   SCM sbody, shandler, spre_unwind_handler;
+   
+@@ -205,7 +205,7 @@
+     spre_unwind_handler = SCM_UNDEFINED;
+   
+   return scm_catch_with_pre_unwind_handler (tag, sbody, shandler,
+-                                            spre_unwind_handler);
++                                            spre_unwind_handler, scm_from_bool(pre_reset));
+ }
+ 
+ SCM
+@@ -216,7 +216,7 @@
+   return scm_c_catch (tag,
+                       body, body_data,
+                       handler, handler_data,
+-                      NULL, NULL);
++                      NULL, NULL, 0);
+ }
+ 
+ 
+--- throw.h	2014-01-21 17:25:11.000000000 -0400
++++ guile-2.0.11/libguile/throw.h	2014-08-22 05:47:34.521364905 -0400
+@@ -37,7 +37,7 @@
+ 			 scm_t_catch_handler handler,
+ 			 void *handler_data,
+ 			 scm_t_catch_handler pre_unwind_handler,
+-			 void *pre_unwind_handler_data);
++			 void *pre_unwind_handler_data, int pre_reset);
+ 
+ SCM_API SCM scm_c_with_throw_handler (SCM tag,
+ 				      scm_t_catch_body body,
+@@ -76,7 +76,7 @@
+ SCM_API SCM scm_handle_by_throw (void *, SCM, SCM);
+ SCM_API int scm_exit_status (SCM args);
+ 
+-SCM_API SCM scm_catch_with_pre_unwind_handler (SCM tag, SCM thunk, SCM handler, SCM lazy_handler);
++SCM_API SCM scm_catch_with_pre_unwind_handler (SCM tag, SCM thunk, SCM handler, SCM lazy_handler, SCM pre_reset);
+ SCM_API SCM scm_catch (SCM tag, SCM thunk, SCM handler);
+ SCM_API SCM scm_with_throw_handler (SCM tag, SCM thunk, SCM handler);
+ SCM_API SCM scm_ithrow (SCM key, SCM args, int no_return);
