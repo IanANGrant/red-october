@@ -43,11 +43,20 @@ val scm_list_pp = jitptr dlxh "scm_list_p"
 val scm_null_pp = jitptr dlxh "scm_null_p"
 val scm_integer_pp = jitptr dlxh "scm_integer_p"
 val scm_exact_integer_pp = jitptr dlxh "scm_exact_integer_p"
+val scm_real_pp = jitptr dlxh "scm_real_p"
+val scm_rational_pp = jitptr dlxh "scm_rational_p"
+val scm_finite_pp = jitptr dlxh "scm_finite_p"
+val scm_inf_pp = jitptr dlxh "scm_inf_p"
+val scm_nan_pp = jitptr dlxh "scm_nan_p"
+
 val scm_is_signed_integerp = jitptr dlxh "scm_is_signed_integer"
 val scm_is_unsigned_integerp = jitptr dlxh "scm_is_unsigned_integer"
 val scm_to_longp = jitptr dlxh (if Jit.WORDSIZE = 32 then "scm_to_int32" else "scm_to_int64")
 val scm_to_ulongp = jitptr dlxh (if Jit.WORDSIZE = 32 then "scm_to_uint32" else "scm_to_uint64")
+val scm_from_ulongp = jitptr dlxh (if Jit.WORDSIZE = 32 then "scm_from_uint32" else "scm_from_uint64")
+val scm_from_longp = jitptr dlxh (if Jit.WORDSIZE = 32 then "scm_from_int32" else "scm_from_int64")
 val scm_to_mpzp = jitptr dlxh "scm_to_mpz"
+val scm_from_mpzp = jitptr dlxh "scm_from_mpz"
 val scm_from_pointerp = jitptr dlxh "scm_from_pointer"
 val scm_to_pointerp = jitptr dlxh "scm_to_pointer"
 val scm_pointer_pp = jitptr dlxh "scm_pointer_p"
@@ -76,10 +85,10 @@ val scm_public_variablep = jitptr dlxh "scm_public_variable"
 val scm_call_np = jitptr dlxh "scm_call_n"
 
 val wsz = Jit.WORDSIZE div 8
+val first_atoms = Jit.Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
 
 fun jit_atom0 (jit_, v1) =
    let open Jit
-       val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
        val _ = jit_movi_p (jit_, v1, first_atoms)
        val _ = jit_addi (jit_, v1, v1, wsz * 1)
    in ()
@@ -87,7 +96,6 @@ fun jit_atom0 (jit_, v1) =
 
 fun jit_atom (jit_, v1, v2) =
    let open Jit
-       val first_atoms = Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
        val _ = jit_muli (jit_, v2, v2, wsz)
        val _ = jit_movi_p (jit_, v1, first_atoms)
        val _ = jit_addi (jit_, v1, v1, wsz * 1)
@@ -102,9 +110,9 @@ local open Jit
       val () = jit_getarg (jit_, V0, v)
       val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
       val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)  *)
-      val _ = jit_subi (jit_, R0, V2, wsz * 1)
-      val _ = jit_ldr (jit_, R1, R0)
-      val _ = jit_rshi (jit_, V0, R1, 10)
+      val _ = jit_subi (jit_, R0, V2, wsz * 1) (* R0 = Op_val(V2) *)
+      val _ = jit_ldr (jit_, R1, R0)           (* R1 = Hd_op(R0) *)
+      val _ = jit_rshi (jit_, V0, R1, 10)      (* V0 = Wosize_hd(R1) *)
       val _ = jit_prepare (jit_)
       val _ = jit_pushargr (jit_, V1)
       val _ = jit_pushargr (jit_, V2)
@@ -228,7 +236,6 @@ local open Jit
    in
        val scm_from_pointer = Ffi.app1 fptr : Dynlib.cptr * Dynlib.cptr -> cptr
    end
-
 
 (* SCM_API SCM scm_pointer_to_bytevector (SCM pointer, SCM type,
                                        SCM offset, SCM len);
@@ -389,6 +396,20 @@ fun scm_unary_int jit_unop =
        Ffi.app1 fptr : cptr -> Int.int
    end
 
+fun scm_int_unary jit_unop =
+   let open Jit
+      val jit_ = Jit.jit_new_state ()
+      val () = jit_prolog (jit_)
+      val v = jit_arg (jit_)
+      val () = jit_getarg (jit_, V0, v)
+      val _ = jit_rshi (jit_, V0, V0, 1)
+      val () = jit_unop (jit_, R0, V0)
+      val _ = jit_retr (jit_, R0)
+      val fptr = jit_emit (jit_)
+   in
+       Ffi.app1 fptr : Int.int -> cptr
+   end
+
 fun scm_unary_word jit_unop =
    let open Jit
       val jit_ = Jit.jit_new_state ()
@@ -402,6 +423,33 @@ fun scm_unary_word jit_unop =
       val fptr = jit_emit (jit_)
    in
        Ffi.app1 fptr : cptr -> Word.word
+   end
+
+fun scm_word_unary jit_unop =
+   let open Jit
+      val jit_ = Jit.jit_new_state ()
+      val () = jit_prolog (jit_)
+      val v = jit_arg (jit_)
+      val () = jit_getarg (jit_, V0, v)
+      val _ = jit_rshi (jit_, V0, V0, 1)
+      val () = jit_unop (jit_, R0, V0)
+      val _ = jit_retr (jit_, R0)
+      val fptr = jit_emit (jit_)
+   in
+       Ffi.app1 fptr : Word.word -> cptr
+   end
+
+fun scm_cptr_unary jit_unop =
+   let open Jit
+      val jit_ = Jit.jit_new_state ()
+      val () = jit_prolog (jit_)
+      val v = jit_arg (jit_)
+      val () = jit_getarg (jit_, V0, v)
+      val () = jit_unop (jit_, R0, V0)
+      val _ = jit_retr (jit_, R0)
+      val fptr = jit_emit (jit_)
+   in
+       Ffi.app1 fptr : Dynlib.cptr -> cptr
    end
 
 local
@@ -475,6 +523,11 @@ in
    val scm_exact_integer_p = scm_pred1 (jit_unopf scm_exact_integer_pp)  
    val scm_unsigned_integer_p = scm_c_pred1 jit_uintp
    val scm_signed_integer_p = scm_c_pred1 jit_intp
+   val scm_real_p = scm_pred1 (jit_unopf scm_real_pp)
+   val scm_rational_p = scm_pred1 (jit_unopf scm_rational_pp)
+   val scm_finite_p = scm_pred1 (jit_unopf scm_finite_pp)
+   val scm_inf_p = scm_pred1 (jit_unopf scm_inf_pp)
+   val scm_nan_p = scm_pred1 (jit_unopf scm_nan_pp)
    val scm_null_p = scm_pred1 (jit_unopf scm_null_pp)
    val scm_variable_p = scm_pred1 (jit_unopf scm_variable_pp)
    val scm_variable_bound_p = scm_pred1 (jit_unopf scm_variable_bound_pp)
@@ -498,6 +551,9 @@ in
    val scm_variable_ref = scm_unary (jit_unopf scm_variable_refp)
    val scm_to_ulong = scm_unary_word (jit_unopf scm_to_ulongp)
    val scm_to_long = scm_unary_int (jit_unopf scm_to_longp)
+   val scm_from_ulong = scm_word_unary (jit_unopf scm_from_ulongp)
+   val scm_from_long = scm_int_unary (jit_unopf scm_from_longp)
+   val scm_from_mpz = scm_cptr_unary (jit_unopf scm_from_mpzp)
    val scm_c_bytevector_length = scm_unary_int (jit_unopf scm_c_bytevector_lengthp)
    val scm_public_variable = scm_binary (jit_binop scm_public_variablep)
 end
@@ -611,6 +667,8 @@ fun sml_largeint i =
 val scmrnum = scm_evalq `(factorial 50)`
 val mpz = sml_largeint scmrnum;
 val fact50 = IntInf.toString mpz;
+val mpzscm = scm_from_mpz (IntInf.getCptr mpz)
+val true = fact50 = sml_string_display mpzscm
 
 fun scm_start_repl_server () =
    scm_evalq `(use-modules (system repl server))

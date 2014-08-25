@@ -1,10 +1,16 @@
+liblaname = libcamlrunm-@VERSION@.la
 bin_PROGRAMS = camlrunm
+lib_LTLIBRARIES = $(liblaname)
 
 if DEBUG
   bin_PROGRAMS += camlrunmd
 endif
 
 EXTRA_PROGRAMS = camlrunmd
+
+AM_CPPFLAGS = -I$(top_srcdir) -I$(top_builddir)
+
+AM_CFLAGS = $(GCC_CFLAGS)
 
 if CROSSW32
 #   CW32_CFLAGS = -DCAMLRT -DWIN32 -D_CONSOLE -D_MBCS
@@ -21,36 +27,44 @@ all-local: ../camlrunm$(EXEEXT)
 ../camlrunm$(EXEEXT) : camlrunm
 	cp camlrunm ../camlrunm$(EXEEXT)
 
-camlrunm_SOURCES = \
+BUILT_SOURCES = primitives prims.c opnames.h jumptbl.h
+
+camlrunm_SOURCES = guilert.c
+
+LIBSOURCES = \
    alloc.c     expand.c    floats.c    intern.c    lexing.c    meta.c      parsing.c  str.c  \
    callback.c  extern.c    freelist.c  interncp.c  main.c      minor_gc.c  roots.c    sys.c  \
    compare.c   externcp.c  gc_ctrl.c   interp.c    major_gc.c  misc.c      runtime.c  unix.c \
    fail.c      ints.c      md5sum.c    mosml.c     signals.c   dynlib.c    fix_code.c hash.c \
-   io.c        memory.c    stacks.c    guilert.c
+   io.c        memory.c    stacks.c
 
 # what about this DOS stuff?
 # graph.c msdos.c
 
-camlrunmd_SOURCES = $(camlrunm_SOURCES) debugger.c
+libcamlrunm_@VERSION@_la_SOURCES = $(LIBSOURCES)
+
+camlrunmd_SOURCES = $(camlrunm_SOURCES) $(LIBSOURCES) debugger.c
 
 camlrunm_CFLAGS = $(CW32_CFLAGS) -fno-defer-pop -fomit-frame-pointer -DTHREADED -Dunix
-camlrunm_LDFLAGS = @CAMLRTLDFLAGS@ -rdynamic -Wl,-rpath,@libdir@/mosml
+camlrunm_LDADD = $(liblaname)
+camlrunm_LDFLAGS = $(CAMLRTLDFLAGS) -rdynamic -Wl,-rpath,$(libdir)/mosml
+
+libcamlrunm_@VERSION@_la_CFLAGS = $(camlrunm_CFLAGS)
 
 if GUILERT
-  camlrunm_CFLAGS += @GUILE_CFLAGS@
-  camlrunm_LDFLAGS += @GUILE_LIBS@
+  camlrunm_CFLAGS += $(GUILE_CFLAGS)
+  camlrunm_LDFLAGS += $(GUILE_LIBS)
 endif
 
 camlrunmd_CFLAGS = -g -I.. -DDEBUG $(camlrunm_CFLAGS)
 camlrunmd_LDFLAGS = $(camlrunm_LDFLAGS) 
 
-BUILT_SOURCES = primitives prims.c opnames.h jumptbl.h
-
 nodist_camlrunm_SOURCES = $(BUILT_SOURCES) autoconfig.h
 
 nodist_camlrunmd_SOURCES = $(BUILT_SOURCES) autoconfig.h
 
-camlrunm_instdir=@includedir@/mosml
+camlrunm_instdir=$(includedir)/mosml
+libcamlrunm_instdir=$(libdir)/mosml
 
 camlrunm_inst_HEADERS =     alloc.h     exec.h      gc.h        io.h       m.h        opnames.h  \
   s.h           unalignd.h \
@@ -67,7 +81,7 @@ PRIMS = compare.c extern.c   externcp.c floats.c gc_ctrl.c hash.c   \
         md5sum.c  callback.c dynlib.c
 
 primitives : $(PRIMS)
-	@SED@ -n -e '/\/\* ML \*\//s/.* \([a-zA-Z0-9_][a-zA-Z0-9_]*\) *(.*/\1/p' \
+	$(SED) -n -e '/\/\* ML \*\//s/.* \([a-zA-Z0-9_][a-zA-Z0-9_]*\) *(.*/\1/p' \
                    $(PRIMS) > primitives2
 	sh -c 'if cmp -s primitives primitives2; \
         then rm primitives2; \
@@ -77,19 +91,19 @@ primitives : $(PRIMS)
 prims.c : primitives
 	(echo '#include "mlvalues.h"'; \
 	 echo '#include "prims.h"'; \
-	 @SED@ -e 's/.*/extern value &();/' primitives; \
+	 $(SED) -e 's/.*/extern value &();/' primitives; \
 	 echo 'c_primitive cprim[] = {'; \
-	 @SED@ -e 's/.*/  &,/' primitives; \
+	 $(SED) -e 's/.*/  &,/' primitives; \
 	 echo '  0 };'; \
          echo 'char * names_of_cprim[] = {'; \
-	 @SED@ -e 's/.*/  "&",/' primitives; \
+	 $(SED) -e 's/.*/  "&",/' primitives; \
 	 echo '  0 };') > prims.c
 
 opnames.h : instruct.h
-	@SED@ -e '/\/\*/d' \
+	$(SED) -e '/\/\*/d' \
             -e 's/enum /char * names_of_/' \
             -e 's/{$$/[] = {/' \
             -e 's/\([A-Z][A-Z_0-9]*\)/"\1"/g' instruct.h > opnames.h
 
 jumptbl.h : instruct.h
-	@AWK@ -f ../tools/make-jumptbl instruct.h > jumptbl.h
+	$(AWK) -f ../tools/make-jumptbl instruct.h > jumptbl.h

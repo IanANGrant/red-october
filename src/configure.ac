@@ -86,6 +86,7 @@ AC_MSG_RESULT([$host_os])
 AC_SUBST(linux)
 
 # Checks for programs.
+AM_PROG_AR
 AC_PROG_SED
 AC_PROG_AWK
 AC_PROG_CC

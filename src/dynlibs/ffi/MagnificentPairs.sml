@@ -324,26 +324,30 @@ abstype 'a point = POINT
          diff : 'a point -> 'a point,
          move : 'a point -> 'a point,
          scale : 'a -> 'a point,
-         length : 'a}
+         proj : 'a point -> 'a}
 with
-   fun new i (op +) (op -) (op * ) mag =
+   fun new i (op +) (op -) (op * ) dot =
       let fun self x =
              POINT {getx = x,
                     move = fn (POINT pr) => (self (x + (#getx pr))),
-                    scale = fn i => (self (x * i)),
                     diff = fn (POINT pr) =>
                              self (x - (#getx pr)),
-                    length = mag(x)}
+                    scale = fn i => (self (x * i)),
+                    proj = fn (POINT pr) =>
+                                dot(x, (#getx pr))}
        in self i
        end
    fun getx (POINT pr) = #getx pr
    fun diff (POINT pr) = #diff pr
    fun move (POINT pr) = #move pr
    fun scale (POINT pr) = #scale pr
-   fun length (POINT pr) = #length pr
+   fun proj (POINT pr) = #proj pr
 end
 
-fun realpoint (f : real vector) =
+val op >> = fn (x,y) => move x y
+infix 5 >>
+
+fun realpoint (origin : real) (f : real vector) =
   new f (fn (v,v') => 
            let val (n,n',n'') = (Vector.length v,Vector.length v',Vector.length f)
            in if n <> n' orelse n <> n''
@@ -352,40 +356,119 @@ fun realpoint (f : real vector) =
                         (n, fn i => Vector.sub (v,i) + (Vector.sub (v',i)))
            end)
         (fn (v,v') => 
-           let val (n,n',n'') = (Vector.length v,Vector.length v',Vector.length f)
+           let val (n,n',n'') =
+                     (Vector.length v,
+                      Vector.length v',
+                      Vector.length f)
            in if n <> n' orelse n <> n''
                  then raise Size
                  else Vector.tabulate
                         (n, fn i => Vector.sub (v,i) - (Vector.sub (v',i)))
            end)
-        (fn (v,s) => 
+        (fn (v,s) =>
            let val (n,n') = (Vector.length v,Vector.length f)
            in if n <> n' then raise Fail "Internal error"
                          else Vector.tabulate (n, fn i => Vector.sub (v,i) * s)
            end)
-        (fn (v) => 
-            Math.sqrt(Vector.foldri 
-                      (fn (i,x,r) => r + x*x)
-                      0.0 v))
+        (fn (v,v') => Vector.foldri (fn (i,s,r) => r + (Vector.sub (v',i) * s)) origin v)
 
 fun real1point (f : real) =
-   realpoint #[f];
+   realpoint 0.0  #[f]
 
 fun real2point (x : real, y : real) =
-   realpoint #[x,y];
+   realpoint 0.0 #[x,y]
 
 val p = real1point 1.0
 val q = real1point 0.0
-val 1.0 = length(diff p q)
+val 1.0 = proj p (diff p q)
 
 val o2 = real2point (0.0,0.0)
 val q2 = real2point (0.0,1.0)
 val p2 = real2point (1.0,0.0)
 val q3 = move (scale q2 5.0) (scale p2 5.0)
-val true = (length (diff p2 q2)) = (length (diff q2 p2))
+val true = (proj q2 (diff p2 q2)) = (proj p2 (diff q2 p2))
 val r = (getx q3,getx q,diff q2 q3)
 
+fun realspace (origin : 'a point) (f : 'a point vector) =
+  new f (fn (v,v') => 
+           let val (n,n',n'') =
+                       (Vector.length v,
+                        Vector.length v',
+                        Vector.length f)
+           in if n <> n' orelse n <> n''
+                 then raise Size
+                 else Vector.tabulate
+                        (n, fn i => move (Vector.sub (v,i))
+                                         (Vector.sub (v',i)))
+           end)
+        (fn (v,v') => 
+           let val (n,n',n'') =
+                     (Vector.length v,
+                      Vector.length v',
+                      Vector.length f)
+           in if n <> n' orelse n <> n''
+                 then raise Size
+                 else Vector.tabulate
+                        (n, fn i => diff (Vector.sub (v,i))
+                                         (Vector.sub (v',i)))
+           end)
+        (fn (v,s) => 
+           let val (n,n') =
+                     (Vector.length v,
+                      Vector.length f)
+               val v' = getx s
+           in if n <> n' then raise Fail "Internal error"
+                         else Vector.tabulate 
+                                (n, fn i => scale (Vector.sub (v,i))
+                                                  (Vector.sub (v',i)))
+           end)
+        (fn (v,v') => 
+           let val (n,n',n'') =
+                     (Vector.length v,
+                      Vector.length v',
+                      Vector.length f)
+           in if n <> n' orelse n <> n''
+                 then raise Size
+                 else Vector.foldri
+                        (fn (i,x,a) => move a (scale x (proj x (Vector.sub (v',i))))) origin v
+           end)
+
+fun matrix p = Vector.map getx (getx p)
+
+val sp2 = real2point (1.0,1.0)
+val v2 = realspace o2 #[p2, q2]
+val u2 = scale v2 (scale sp2 5.0)
  
+fun real3point (x : real, y : real, z : real) =
+   realpoint 0.0 #[x,y,z]
+
+val o3 = real3point (0.0,0.0,0.0)
+val p3 = real3point (1.0,0.0,0.0)
+val q3 = real3point (0.0,1.0,0.0)
+val r3 = real3point (0.0,0.0,1.0)
+val sp3 = move (move p3 q3) r3
+val sp3' = scale sp3 (1.0 / (Math.sqrt(proj sp3 sp3)))
+
+val s3 = realspace o3 #[p3, q3, r3]
+val i = scale s3 p3
+val j = scale s3 q3
+val k = scale s3 r3
+
+fun matrix' p = Vector.map matrix (getx p)
+
+val v3 = realspace (scale s3 o3) #[i,j,k]
+
+fun vec3 (x,y,z) =
+      scale (i >> j >> k)
+            ((scale p3 x) >> (scale q3 y) >> (scale r3 z))
+
+val x1 = vec3(12.0,   5.0,  2.0)
+val x2 = vec3(~5.0,  12.0, ~2.0)
+val x3 = vec3(~2.0, ~12.0,  5.0)
+
+val pv3 = (scale v3 x1) >> (scale v3 x2) >> (scale v3 x3)
+val pv3m = matrix' pv3
+
 abstype 'a Mu = In of {out : 'a Mu -> 'a} with
    fun init f = In {out = f}
    fun getf (In{out}) = out
