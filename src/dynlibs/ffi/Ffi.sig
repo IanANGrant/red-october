@@ -109,6 +109,8 @@ val my_free : Dynlib.cptr
 
 val jit_set_memfuns : unit -> unit
 
+val jit_constants : (string * word) list
+
 val ffi_report_alloc: string -> unit
 
 val svec_make : Int.int -> svector
@@ -295,6 +297,8 @@ val ffi_closure_size : Int.int
 
 val ffi_trampoline : string -> Dynlib.cptr -> ffi_type ->
                      ('a -> Word8Vector.vector) -> (Word8Vector.vector -> 'b) -> 'a -> 'b
+
+val trampolines : (string * ffi_type) list ref
 
 val mkargssvec : Word8Vector.vector list -> Word8Vector.vector * svector
 

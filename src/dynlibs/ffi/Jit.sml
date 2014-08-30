@@ -9,7 +9,7 @@ val liblightning =
                        global = false };
 
 datatype jit_gpr_t = 
-   R0 | R1 | R2 | V0 | V1 | V2 | R of int | V of int
+   R0 | R1 | R2 | V0 | V1 | V2 | FP | R of int | V of int
 
 datatype jit_fpr_t = 
    F0 | F1 | F2 | F3 | F4 | F5 | F of int
@@ -69,6 +69,8 @@ val V3 = V(3)
 val F6 = F(6);
 val F7 = F(7);
 
+val JIT_FP = Word.toInt (Ffi.jit_get_constant "FP");
+
 fun jit_gpr (R n) = 
        if n > MAX_R
           then raise Fail
@@ -78,6 +80,7 @@ fun jit_gpr (R n) =
   | jit_gpr R0 = jit_r(0)
   | jit_gpr R1 = jit_r(1)
   | jit_gpr R2 = jit_r(2)
+  | jit_gpr FP = jit_r(JIT_FP)
   | jit_gpr (V n) = 
        if n > MAX_V
           then raise Fail
@@ -242,6 +245,10 @@ local open Ffi
               Function(Structure([Pointer(Structure[]),
                                   Integer(Unsigned,Int)]),
                        SOME FFI_TYPE_VOID)
+   val jit_allocai_type = 
+              Function(Structure([Pointer(Structure[]),
+                                  Integer(Unsigned,Int)]),
+                       SOME FFI_TYPE_INT)
    fun mkargsr (State (ref jit_), gpr_) = 
           let val (argsv,svec) = mkargssvec [jit_ , svec_setvecword (jit_gpr gpr_)] 
           in argsv
@@ -252,17 +259,27 @@ local open Ffi
           in argsv
           end
      |  mkargsi _ = raise Fail "Jit:jit_pushargi: argument type mismatch: expected (State,Word)."
+   fun mkargsallocai (State (ref jit_), int_) =
+          let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecint int_] 
+          in argsv
+          end
+     |  mkargsallocai _ = raise Fail "Jit:jit_allocai: argument type mismatch: expected (State,Word)."
    fun mkargsi_u (State (ref jit_), word_) =
           let val (argsv,svec) = mkargssvec [jit_ , Ffi.svec_setvecword word_] 
           in argsv
           end
      |  mkargsi_u _ = raise Fail "Jit:jit_pushargi_u: argument type mismatch: expected (State,Word)."
    fun mkretval _ = ()
+   fun mkretvalallocai v = Word.toInt (svec_getvecword v)
+   val jit_allocai_sym = "_jit_allocai"
+   val jit_allocai_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_allocai_sym)
    val jit_pushargr_sym = "_jit_pushargr"
    val jit_pushargr_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargr_sym)
    val jit_pushargi_sym = "_jit_pushargi"
    val jit_pushargi_ =  Dynlib.cptr (Dynlib.dlsym liblightning jit_pushargi_sym)
 in
+   val jit_allocai = ffi_trampoline "jit_allocai" jit_allocai_
+                         jit_allocai_type mkargsallocai mkretvalallocai
    val jit_pushargr = ffi_trampoline "jit_pushargr" jit_pushargr_
                          jit_pushargr_type mkargsr mkretval
    val jit_pushargi = ffi_trampoline "jit_pushargi" jit_pushargi_

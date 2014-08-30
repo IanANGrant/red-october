@@ -348,7 +348,7 @@ in
    val LITTLE_ENDIAN = jit_get_little_endian();
    val BIG_ENDIAN = jit_get_big_endian();
    val jit_get_constant = ent
-   val ctbl = ctbl
+   val jit_constants = ctbl
 end
 
 local 
@@ -701,6 +701,7 @@ val gc_minor : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_minor"))
 val gc_major : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_major"))
 val gc_full_major : unit-> unit = app1 (Dynlib.cptr (Dynlib.dlsym dlxh "gc_full_major"))
 
+val trampolines = ref [] : (string * ffi_type) list ref
 
 local
    val debug = jit_get_debug()
@@ -708,8 +709,7 @@ local
        let fun iter acc (Pointer _) = ffi_type_pointer::acc
              | iter acc (Structure l) = (List.rev (ffi_arg_types l))@acc 
              | iter acc (Function _) = raise Fail "Ffi.ffi_type: argument is a function."
-             | iter acc (VariadicFunction _) = raise Fail "Ffi.ffi_type:\
-                                                      \ argument is a variadic function."
+             | iter acc (VariadicFunction _) = raise Fail "Ffi.ffi_type: argument is a variadic function."
              | iter acc (Array(Incomplete,t)) = iter acc (Pointer t)
              | iter acc (Array _) = raise Fail "Ffi.ffi_type: can't deal with arrays yet, sorry."
              | iter acc (Integer(Signed,Int)) = ffi_type_sint::acc
@@ -775,6 +775,7 @@ local
          let fun debug dfn msg = dfn (name^": "^msg^": ")
              val debugw = debug svec_debugw 
              val debugvw = debug vec_debugw
+             val _ = trampolines := (name,t)::(!trampolines)
              val vecZeros = fn n => Word8Vector.tabulate (n, fn _ => 0wx0)
              val (ttr as {nargs = nargs, argtypes = argtypes, retval = retval})
               = ffi_make_trampoline_types t

@@ -38,10 +38,10 @@ fun qlToString l =
 local open GrammarSyntax
 in
    type decls = {define_enum : string -> string, get_decl : string -> Tree,
-                 get_macro : string -> Tree * (string option * string),
+                 get_macro : string -> Tree * (string list option * string),
                  get_tag : string -> Tree, get_typedef : string -> Tree,
                  print_decl : string -> unit, 
-                 macros : unit -> (string * (Tree * (string option * string))) list}
+                 macros : unit -> (string * (Tree * (string list option * string))) list}
 end
 
 fun parse fname cppflags trunit =
@@ -850,6 +850,8 @@ typedef enum scm_t_foreign_type
 val _ = printTree ((#get_decl enumdecl "scm_t_foreign_type"))
 val _ = printTree ((#get_tag enumdecl "scm_t_foreign_type"))
 val _ = print (#define_enum enumdecl "scm_t_foreign_type")
+
+(*
 val _ = Meta.quietdec := true
 
 val gdkdecls = parse "gdk/gdk.h" "$(pkg-config --cflags-only-I gdk-3.0)" "#include \"gdk/gdk.h\"\n"
@@ -864,6 +866,7 @@ val _ = printTree (resolve true  gdkdecls (#get_typedef gdkdecls "GdkWindowAttr"
 val _ = printTree (resolve true  gdkdecls (#get_typedef gdkdecls "GdkWindow"))
 val _ = printTree (resolve true  gdkdecls (#get_decl    gdkdecls "gdk_window_new"))
 val _ = printTree (resolve false gdkdecls (#get_decl    gdkdecls "gdk_window_new"))
+*)
 
 (*           val _ = GrammarSyntax.debug_on "tree_rewrite_param" (GrammarSyntax.On 10)
              val _ = GrammarSyntax.debug_on "resolve_decl_specs" (GrammarSyntax.On 10)
@@ -1106,9 +1109,348 @@ val pathconf =
         val a = stringToWord8Array s
     in pathconf (a,w)
     end
-
+(*
 val guiledecls = parse "libguile.h" "$(pkg-config guile-2.0 --cflags-only-I)" "#include <libguile.h>\n"
 val simple =     List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
 val guilemacros = List.map (fn (n,(_,(a,d))) => (n,d)) ( ((#macros guiledecls)()))
 val scmmacs = findmacros ("^SCM_(UNDEFINED|TRUE|FALSE|EOL|MAKIFLAG_BITS|MAKE_ITAG8_BITS)$",".*") guilemacros
 val scmmacs' = findmacros ("tc8",".*") guilemacros
+*)
+
+fun findpmacros (pat,pat') =
+    let val regex = Regex.regcomp pat [Regex.Extended]
+        val regex' = Regex.regcomp pat' [Regex.Extended]
+    in List.filter (fn (n,_,d) => Regex.regexecBool regex [] n andalso
+                                 Regex.regexecBool regex' [] d)
+    end
+
+val ltdecls = parse "lightning.h" "$(pkg-config lightning --cflags-only-I)" "#include <lightning.h>\n"
+val simple =     List.filter (fn (_,(_,(NONE,_))) => true | _ => false)
+val ltmacros = List.map (fn (n,(_,(SOME a,d))) => (n,a,d)
+                          | (n,(_,(NONE,d))) => (n,[],d)) (#macros ltdecls ())
+val nnmacs = findpmacros ("^jit_new_node_",".*") ltmacros
+val nncmacs = findpmacros ("^jit_","^jit_new_node_[a-z]+ *(.+)$") ltmacros
+val notnncmacs = findpmacros ("^jit_","^jit_[^n]") ltmacros
+fun matches pat = 
+      let val regex =  Regex.regcomp pat [Regex.Extended]
+      in fn n => Regex.regexecBool regex [] n
+      end
+
+val exclmacs = matches "^(jit_new_node|jit_set|jit_get_|jit_name|jit_link|jit_callee|jit_data|jit_pointer|jit_note)"
+val othermacs = List.filter (fn (n,_,_) => not (exclmacs n)) (findpmacros ("^jit_","^_jit") ltmacros)
+
+val ltshowdecl = fn n => printTree (#get_decl ltdecls n)
+
+val delim = Regex.regcomp " *, *" []
+fun params regex s = List.rev(Regex.fold regex (op ::, #2) [] s)
+fun split s = List.map Substring.string (params delim s)
+
+val mkr = fn ([_,n,ps,_]) => (n,split ps) | _ => ("",[])
+
+val defopt = fn d => fn mo => Option.getOpt (mo,d) 
+
+val macdef = Regex.regcomp "^([a-zA-Z_0-9]+)\\(([^)]+)\\)$" [Regex.Extended]
+val strlist = (List.map Substring.string) o (Vector.foldr op :: []) o Option.valOf 
+val res = mkr o strlist o ((Regex.regnexec macdef []) o Substring.full)
+
+val dblq = List.foldr (fn (s,l) => if s = "q" then ("w"::"w"::l) else s::l) []
+val typed = Regex.regcomp "_([qpwdf]+)$" [Regex.Extended]
+val splitt = dblq o 
+             (List.map String.str) o 
+             List.rev o 
+             String.explode o 
+             (fn [_,s] => s | _ => raise Bind) o 
+             strlist o
+             (Regex.regnexec typed []) o
+             Substring.full
+
+val ascnm = (fn ((a,_,_),(b,_,_)) => String.compare (a,b))
+val sortm = Listsort.sort ascnm
+
+val nncmacs' = sortm (List.map (fn (n,ps,d) => (n,ps,res d)) nncmacs)
+val nnmacs' = sortm (List.map (fn (n,ps,d) => (n,ps,res d)) nnmacs)
+val notnncmacs' = sortm (List.map (fn (n,ps,d) => (n,ps,res d)) notnncmacs)
+val aliases = List.map (fn (n,_,(n',_)) =>(n',n)) notnncmacs'
+val othermacs' = sortm (List.map (fn (n,ps,d) => (n,"_jit"::((if ps = [""] then [] else ps)),res d)) othermacs)
+
+val selectms = fn r => 
+     let val cr = Regex.regexecBool (Regex.regcomp r [Regex.Extended]) []
+     in List.filter (fn (s,_,_) => cr s)
+     end;
+
+val tmap = [("q","quad"),("p","pointer"),("f","float"),("d","double"),("w","word")];
+val lookup = fn s => (#2) o (defopt ("",s^"?") o (List.find (fn (c,t) => c = s)))
+val tparams = ListPair.foldr (fn (p,t,l) => if p = "NULL" then l else (p,lookup t tmap)::l) [] 
+
+val types = fn (n,fps,(cn,cps)) => 
+               (n,List.length fps + 1,
+                  [("_jit","state")]@(List.rev (tparams (List.rev cps,splitt cn 
+                            handle Option => raise Fail ("option: "^cn)))),
+               (cn,"_jit"::cps))
+val ltrest = List.map types (selectms "jit_" nncmacs')
+
+val types' = fn (n,fps,(cn,cps)) => 
+                (n,List.length fps + 1,
+                   [("_jit","state"),("c","code")] @ (List.rev (tparams (List.rev cps,splitt cn 
+                             handle Option => raise Fail ("option: "^cn)))),
+                (cn,cps))
+val ltrest' = List.map types' (selectms "jit_" nnmacs')
+
+val typemap = [("f","fpr"),("d","fpr"),("i","gpr"),("u","gpr"),("l","gpr"),("c","gpr"),("s","gpr"),("us","gpr"),("uc","gpr"),("ul","gpr")]
+
+val itypemap = [("f","float"),("d","double"),("i","int"),("u","unsigned"),("l","long"),("c","char"),("s","short"),("us","unsigned short"),("uc","unsigned char"),("ul","unsigned long")]
+
+val lookupt = fn s => ((#2) o (defopt ("","word") o (List.find (fn (c,t) => c = s)))) typemap
+val lookupit = fn s => ((#2) o (defopt ("","int") o (List.find (fn (c,t) => c = s)))) itypemap
+
+val typcds = "us|uc|ul|f|d|s|c|i|l|u"
+val reals = "f|d"
+val eqs = "eq|ne"
+val ineqs = "lt|gt|le|ge"
+val eqineqs = eqs^"|"^ineqs
+val arith = "add|sub|mul|div"
+val ri = "r|i"
+val modargs = [
+   ("jit_(un)?(lt|gt|le|ge|eq|ne|ltgt|ord)(r|i)_(f|d|u)",
+            fn [_,_,insn,ri,tc] => [(1,"gpr"),(2,lookupt tc)]@(if ri="r" then [(3,lookupt tc)] else [])
+             | _ => []),
+   ("jit_b(un)?(lt|gt|le|ge|eq|ne|ltgt|ord)(r|i)_(f|d|u)",
+            fn [_,_,insn,ri,tc] => [(1,lookupt tc)]@(if ri="r" then [(2,lookupt tc)] else [])
+             | _ => []),
+   ("jit_b(lt|gt|le|ge|eq|ne)(r|i)$",
+            fn [_,insn,ri] => [(1,"gpr")]@(if ri="r" then [(2,"gpr")] else [])
+             | _ => []),
+   ("jit_(lt|gt|le|ge|eq|ne)(r|i)$",
+            fn [_,insn,ri] => [(1,"gpr"),(2,"gpr")]@(if ri="r" then [(3,"gpr")] else [])
+             | _ => []),
+   ("jit_(add|sub|mul|div|rem|rsh)(r|i)_("^typcds^")",
+            fn [_,insn,ri,tc] =>
+               let val res = if ri="i"
+                                then []
+                                else [(3,lookupt tc)]
+               in (1,lookupt tc)::(2,lookupt tc)::res
+               end
+             | _ => []),
+   ("jit_(abs|sqrt|neg)r_(f|d)",
+            fn [_,_,tc] => [(1,"fpr"),(2,"fpr")]
+             | _ => []),
+   ("jit_mov(r|i)_(f|d|w|d_w|f_w|w_d|w_f|d_ww|ww_d)$",
+            fn [_,ri,tc] => 
+               (case tc of "d" => (1,"fpr")::(if ri="r" then [(2,"fpr")] else [])
+                         | "f" =>  (1,"fpr")::(if ri="r" then [(2,"fpr")] else [])
+                         | "d_w" =>  (1,"gpr")::(if ri="r" then [(2,"fpr")] else [])
+                         | "d_ww" =>  (1,"gpr")::(2,"gpr")::(if ri="r" then [(3,"fpr")] else [])
+                         | "f_w" =>  (1,"gpr")::(if ri="r" then [(2,"fpr")] else [])
+                         | "w_d" =>  [(1,"fpr"),(2,"gpr")]
+                         | "w_f" =>  [(1,"fpr"),(2,"gpr")]
+                         | "ww_d" =>  (1,"fpr")::(2,"gpr")::(if ri="r" then [(3,"gpr")] else [])
+                         | _ => [])
+             | _ => []),
+   ("jit_b(un)?ord(i|r)_(f|d)",
+            fn [_,_,ir,_] => (1,"fpr")::(if ir = "r" then [(2,"fpr")] else [])
+             | _ => []),
+   ("jit_extr_(f|d|c|s|uc|us)",
+            fn [_,t] => (2,"fpr")::[(1,lookupt t)]
+             | _ => []),
+   ("jit_(add|sub)(x|c)(r|i)",
+            fn [_,insn,xc,ri] =>
+               let val res = if ri="i"
+                                then []
+                                else [(3,"gpr")]
+               in (1,"gpr")::(2,"gpr")::res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_bm(s|c)(r|i)",
+            fn [_,sc,ri] =>
+               let val res = if ri="i"
+                                then []
+                                else [(2,"gpr")]
+               in (1,"gpr")::res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_call(r|i)",
+            fn [_,ri] =>
+               let val res = if ri="i"
+                                then []
+                                else [(1,"gpr")]
+               in res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_b[ox](add|sub)(r|i)(_u)?",
+            fn [_,insn,ri,u] =>
+               let val res = if ri="i"
+                                then []
+                                else [(2,"gpr")]
+               in (1,"gpr")::res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_q(div|mul)(r|i)(_u)?",
+            fn [_,insn,ri,u] =>
+               let val res = if ri="i"
+                                then []
+                                else [(4,"gpr")]
+               in (1,"gpr")::(2,"gpr")::(3,"gpr")::res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_(add|sub|mul|div|rem|lsh|and|rsh|or|xor)(r|i)$",
+            fn [_,insn,ri] =>
+               let val res = if ri="i"
+                                then []
+                                else [(3,"gpr")]
+               in (1,"gpr")::(2,"gpr")::res
+               end
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_(comr|htonr|ntohr|jmpr|live|negr|movr|movi|truncr_d_i|truncr_f_i)$",
+            fn [_,insn] =>
+               (case insn of "comr" => [(1,"gpr"),(2,"gpr")]
+                           | "htonr" => [(1,"gpr"),(2,"gpr")]
+                           | "ntohr" => [(1,"gpr"),(2,"gpr")]
+                           | "movr" => [(1,"gpr"),(2,"gpr")]
+                           | "jmpr" => [(1,"gpr")]
+                           | "live" => [(1,"gpr")]
+                           | "movi" => [(1,"gpr")]
+                           | "negr" => [(1,"gpr"),(2,"gpr")]
+                           | "truncr_d_i" => [(1,"gpr"),(2,"fpr")]
+                           | "truncr_f_i" => [(1,"gpr"),(2,"fpr")]
+                           | _ => [])
+             | l => List.map (fn s => (0,s)) l),
+   ("jit_(ld|st)(x?)(r|i)_(f|d|i|u?c|u?s)",
+            fn [_,insn,x,ri,tc] =>
+               let val (srcr,dstr) = if insn="st" then (3,1) else (1,3) 
+               in [(srcr,"gpr"),(2,"gpr"),(dstr,if x = "x" then "gpr" else "pointer")]
+               end
+             | l => List.map (fn s => (0,s)) l)
+];
+
+val rematchlst = (List.map Substring.string) o (Vector.foldr op :: []) o (defopt #[])
+val compm = fn m => Regex.regcomp m [Regex.Extended]
+val modargs' = List.map (fn (re,modfn) => (compm re,modfn)) modargs
+val mods = fn s => 
+             List.foldl 
+                (fn ((re,modfn),a) =>
+                     List.@ (modfn ((rematchlst o (Regex.regnexec re []) o Substring.full) s),a))
+             [] modargs'
+
+val othermodargs = [
+   ("jit_retval_(f|d|i|c|s|uc|us)",
+            fn [_,tc] => [(0,"state"),(1,lookupt tc)]
+             | _ => []),
+   ("jit_getarg_(f|d|i|c|s|uc|us)$",
+            fn [_,tc] => [(0,"state"),(1,lookupt tc),(2,"noderef")]
+             | _ => []),
+   ("jit_patch$",
+            fn [_] => [(0,"state"),(1,"noderef")]
+             | _ => []),
+   ("jit_patch_abs$",
+            fn [_] => [(0,"state"),(1,"noderef"),(2,"pointer")]
+             | _ => []),
+   ("jit_patch_at$",
+            fn [_] => [(0,"state"),(1,"noderef"),(2,"noderef")]
+             | _ => []),
+   ("jit_address$",
+            fn [_] => [(0,"state"),(1,"noderef")]
+             | _ => []),
+   ("jit_ret(r|i)_(f|d)",
+            fn [_,ri,tc] => [(0,"state"),(1,if ri = "r" then lookupt tc else lookupit tc)]
+             | _ => []),
+   ("jit_ret(r|i)$",
+            fn [_,ri] => [(0,"state"),(1,if ri = "r" then "gpr" else "word")]
+             | _ => []),
+   ("jit_pusharg(r|i)_(f|d)",
+            fn [_,ri,tc] => [(0,"state"),(1,if ri = "r" then lookupt tc else lookupit tc)]
+             | _ => []),
+   ("jit_pusharg(r|i)$",
+            fn [_,ri] => [(0,"state"),(1,if ri = "r" then "gpr" else "word")]
+             | _ => []),
+   ("jit_allocai$",
+            fn [_] => [(0,"state"),(1, "word")]
+             | _ => []),
+   ("jit_finish(r|i)$",
+            fn [_,ri] => [(0,"state"),(1,if ri = "r" then "gpr" else "pointer")]
+             | _ => []),
+   ("jit_(print|prolog|prepare|realize|ret|epilog|emit|forward|clear_state|destroy_state|disassemble|ellipsis|arg|arg_d|arg_f|indirect|label)$",
+            fn [_,cmd] => [(0,"state")]
+             | _ => [])]
+
+val othermodargs' = List.map (fn (re,modfn) => (compm re,modfn)) othermodargs
+
+val othermods = fn s => 
+             List.foldl 
+                (fn ((re,modfn),a) =>
+                     List.@ (modfn ((rematchlst o (Regex.regnexec re []) o Substring.full) s),a))
+             [] othermodargs'
+
+val lookupa = fn (n,t) => ((#2) o (defopt (0,t) o (List.find (fn (n',_) => n = n'))))
+val lookupoa = fn (n) => ((#2) o (defopt (0,"") o (List.find (fn (n',t) => n = n'))))
+
+val do_modargs = 
+     fn amods =>
+        List.rev o #2 o (List.foldl (fn ((s,t),(i,args)) => (i+1,(s,lookupa (i,t) amods)::args)) (0,[]))
+
+val do_modotherargs = 
+     fn amods =>
+        List.rev o #2 o (List.foldl (fn (s,(i,args)) => (i+1,(s,lookupoa (i) amods)::args)) (0,[]))
+
+val modded = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) => ("noderef",name, do_modargs (mods name) args,dst)) ltrest;
+
+val modded' = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) => ("noderef",name, args,dst)) ltrest';
+
+val retvals = [
+   ("jit_address","pointer"),
+   ("jit_emit","pointer"),
+   ("jit_new_state","state"),
+   ("jit_indirect","noderef"),
+   ("jit_finishi","noderef"),
+   ("jit_arg(_[df])?","noderef"),
+   ("jit_finishi","noderef"),
+   ("jit_allocai","int")
+]
+
+val retvals' = List.map (fn (re,rv) => (compm re,rv)) retvals
+
+val findretvals = fn s => 
+             (case List.find
+                     (fn (re,rv) => Regex.regexecBool re [] s)
+                     retvals'
+                of SOME (_,t) => t
+                 | _ => "void")
+
+val othermodded = List.map (fn (name,args,dst as (dstnm,dstargs)) => (findretvals name,name, do_modotherargs (othermods name) args,dst)) othermacs';
+
+val lookupalias = fn s => ((#2) o (defopt ("","") o (List.find (fn (c,t) => c = s)))) aliases
+
+fun printargs args = 
+   (List.foldl (fn (s,a) => (if a = "" then s else a^", "^s)) "" (List.map (fn (a,t) => t^" "^a) args))
+
+fun printdargs args = 
+   (List.foldl (fn (s,a) => (if a = "" then s else a^", "^s)) "" args)
+
+fun typemap m = fn s => ((#2) o (defopt (s,s) o (List.find (fn (c,t) => c = s)))) m
+
+val maptypes = [("state","lgt_state_t"),("code","lgt_code_t"),("gpr","lgt_gpr_t"),("fpr","lgt_fpr_t"),("pointer","lgt_ptr_t"),("word","lgt_word_t"),("void","void"),("noderef","lgt_noderef_t")];
+
+fun replacejit s = fn t => Regex.replace (Regex.regcomp "^jit_" [Regex.Extended]) [Regex.Str t] s
+
+fun chgjit s = fn t => Regex.replace (Regex.regcomp "^_jit$" [Regex.Extended]) [Regex.Str t] s
+
+val printdef = List.app (fn (rv,n,args,(dstnm,dstargs)) => 
+          let val extra = lookupalias n
+              val args = List.map (fn (a,t) => (chgjit a "st",(typemap maptypes t))) args
+              val dstargs = List.map (fn a => chgjit a "st") dstargs
+              fun printit n = print ((typemap maptypes rv)^" "^(replacejit n "lgt_")^"("^(printargs args)^") {\n   "^(if rv <> "void" then "return " else "")^(replacejit dstnm "lgt_")^"("^(printdargs dstargs)^");\n}\n\n")
+          in printit n; if extra <> "" then printit extra else ()
+          end)
+
+val _ = printdef othermodded;
+val _ = printdef modded';
+val _ = printdef modded;
+
+val printdef' = List.app (fn (rv,n,args,(dstnm,dstargs)) => 
+          let val extra = lookupalias n
+              fun printit n = print ((rv)^" "^(n)^"("^(printargs args)^") = "^(dstnm)^"("^(printdargs dstargs)^")\n")
+          in printit n; if extra <> "" then printit extra else ()
+          end)
+
+val _ = printdef' othermodded;
+val _ = printdef' modded';
+val _ = printdef' modded;

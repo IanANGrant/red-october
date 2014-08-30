@@ -1,6 +1,6 @@
 
 datatype jit_gpr_t = 
-   R0 | R1 | R2 | V0 | V1 | V2 | R of int | V of int
+   R0 | R1 | R2 | V0 | V1 | V2 | FP | R of int | V of int
 
 datatype jit_fpr_t = 
    F0 | F1 | F2 | F3 | F4 | F5 | F of int
@@ -62,6 +62,7 @@ val jit_disassemble : jit_typed_value -> unit
 val jit_realize : jit_typed_value -> unit
 val jit_emit : jit_typed_value -> Dynlib.cptr
 val jit_pushargr : jit_typed_value * jit_gpr_t -> unit
+val jit_allocai : jit_typed_value * int -> int
 val jit_pushargi : jit_typed_value * int -> unit
 val jit_pushargi_u : jit_typed_value * word -> unit
 val jit_finishi : jit_typed_value * jit_typed_value -> jit_typed_value
