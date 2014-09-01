@@ -53,7 +53,7 @@ val finish_jit : unit -> unit
 val jit_new_state : unit -> jit_typed_value
 val jit_clear_state : jit_typed_value -> unit
 val jit_destroy_state : jit_typed_value -> unit
-val jit_label : jit_typed_value -> jit_typed_value
+val jit_note : jit_typed_value * jit_typed_value * word -> jit_typed_value
 val jit_arg : jit_typed_value -> jit_typed_value
 val jit_prolog : jit_typed_value -> unit
 val jit_epilog : jit_typed_value -> unit

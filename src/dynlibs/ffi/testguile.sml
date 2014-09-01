@@ -31,9 +31,9 @@ val scm_eq_pp = jitptr dlxh "scm_eq_p"
 val scm_equal_pp = jitptr dlxh "scm_equal_p"
 
 val scm_c_make_bytevectorp = jitptr dlxh "scm_c_make_bytevector"
+val scm_make_bytevectorp = jitptr dlxh "scm_make_bytevector"
 val scm_bytevector_pp = jitptr dlxh "scm_bytevector_p"
 val scm_bytevector_eq_pp = jitptr dlxh "scm_bytevector_eq_p"
-val scm_c_make_bytevectorp = jitptr dlxh "scm_c_make_bytevector"
 val scm_c_bytevector_lengthp = jitptr dlxh "scm_c_bytevector_length"
 val scm_utf8_to_stringp = jitptr dlxh "scm_utf8_to_string"
 val scm_string_to_utf8p = jitptr dlxh "scm_string_to_utf8"
@@ -64,6 +64,16 @@ val scm_pointer_addressp = jitptr dlxh "scm_pointer_address"
 val scm_pointer_to_bytevectorp = jitptr dlxh "scm_pointer_to_bytevector"
 val scm_bytevector_to_pointerp = jitptr dlxh "scm_bytevector_to_pointer"
 
+val scm_bytevector_s32_native_refp = jitptr dlxh "scm_bytevector_s32_native_ref"
+val scm_bytevector_u32_native_refp = jitptr dlxh "scm_bytevector_u32_native_ref"
+val scm_bytevector_s64_native_refp = jitptr dlxh "scm_bytevector_s64_native_ref"
+val scm_bytevector_u64_native_refp = jitptr dlxh "scm_bytevector_u64_native_ref"
+
+val scm_bytevector_s32_native_set_xp = jitptr dlxh "scm_bytevector_s32_native_set_x"
+val scm_bytevector_u32_native_set_xp = jitptr dlxh "scm_bytevector_u32_native_set_x"
+val scm_bytevector_s64_native_set_xp = jitptr dlxh "scm_bytevector_s64_native_set_x"
+val scm_bytevector_u64_native_set_xp = jitptr dlxh "scm_bytevector_u64_native_set_x"
+
 val scm_array_pp = jitptr dlxh "scm_array_p"
 val scm_typed_array_pp = jitptr dlxh "scm_typed_array_p"
 
@@ -86,6 +96,14 @@ val scm_call_np = jitptr dlxh "scm_call_n"
 
 val wsz = Jit.WORDSIZE div 8
 val first_atoms = Jit.Pointer (Ffi.svec_getcptrvalue Ffi.first_atoms_)
+
+fun jit_fprolog jit_ =
+   let open Jit
+       val node = jit_note (jit_, NULLp, 0w0)
+       val _ = jit_prolog(jit_)
+   in node
+   end
+
 
 fun jit_atom0 (jit_, v1) =
    let open Jit
@@ -187,8 +205,8 @@ fun scm_pred2 jit_pred =
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
       val () = jit_getarg (jit_, V0, v)
-      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
-      val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)  *)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0) *)
+      val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1) *)
       val () = jit_pred (jit_, R0, V1, V2)
       val _ = jit_prepare (jit_)
       val _ = jit_pushargr (jit_, R0)
@@ -206,8 +224,8 @@ local open Jit
       val () = jit_prolog (jit_)
       val v = jit_arg (jit_)
       val () = jit_getarg (jit_, V0, v)
-      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
-      val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)  *)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0) *)
+      val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1) *)
       val _ = jit_prepare (jit_)
       val _ = jit_pushargr (jit_, V1)
       val _ = jit_pushargr (jit_, V2)
@@ -262,6 +280,46 @@ local open Jit
    in
        val scm_pointer_to_bytevector = Ffi.app1 fptr :
              cptr * cptr * cptr * cptr-> cptr
+   end
+
+fun jit_scm_three_args funp =
+  let open Jit
+      val jit_ = Jit.jit_new_state ()
+      val () = jit_prolog (jit_)
+      val v = jit_arg (jit_)
+      val () = jit_getarg (jit_, V0, v)
+      val _ = jit_prepare (jit_)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
+      val _ = jit_pushargr (jit_, V1)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 1) (* V1 = Field(v,1)  *)
+      val _ = jit_pushargr (jit_, V1)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 2) (* V1 = Field(v,2)  *)
+      val _ = jit_pushargr (jit_, V1)
+      val _ = jit_finishi (jit_, funp)
+      val _ = jit_retval (jit_, R1)
+      val _ = jit_retr (jit_, R1)
+      val fptr = jit_emit (jit_)
+   in
+      Ffi.app1 fptr : cptr * cptr * cptr -> cptr
+   end
+
+fun jit_scm_two_args funp =
+  let open Jit
+      val jit_ = Jit.jit_new_state ()
+      val () = jit_prolog (jit_)
+      val v = jit_arg (jit_)
+      val () = jit_getarg (jit_, V0, v)
+      val _ = jit_prepare (jit_)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
+      val _ = jit_pushargr (jit_, V1)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 1) (* V1 = Field(v,1)  *)
+      val _ = jit_pushargr (jit_, V1)
+      val _ = jit_finishi (jit_, funp)
+      val _ = jit_retval (jit_, R1)
+      val _ = jit_retr (jit_, R1)
+      val fptr = jit_emit (jit_)
+   in
+      Ffi.app1 fptr : cptr * cptr -> cptr
    end
 
 (* This should be a generic set of functions implementing the macros
@@ -555,6 +613,7 @@ in
    val scm_from_long = scm_int_unary (jit_unopf scm_from_longp)
    val scm_from_mpz = scm_cptr_unary (jit_unopf scm_from_mpzp)
    val scm_c_bytevector_length = scm_unary_int (jit_unopf scm_c_bytevector_lengthp)
+   val scm_make_bytevector = scm_binary (jit_binop scm_make_bytevectorp)
    val scm_public_variable = scm_binary (jit_binop scm_public_variablep)
 end
 
@@ -585,7 +644,24 @@ val scm_string = scm_utf8_to_string o sml_string_to_bytevector
 val scm_symbol = scm_string_to_symbol o scm_string
 val sml_string = sml_string_from_bytevector o scm_string_to_utf8
 
-val scm_list = List.foldr scm_cons scm_nil
+val scm_bytevector_u32_native_set_x = jit_scm_three_args scm_bytevector_u32_native_set_xp;
+val scm_bytevector_u32_native_ref = jit_scm_two_args scm_bytevector_u32_native_refp;
+val scm_bytevector_s32_native_set_x = jit_scm_three_args scm_bytevector_s32_native_set_xp;
+val scm_bytevector_s32_native_ref = jit_scm_two_args scm_bytevector_s32_native_refp;
+
+val scm_bytevector_u64_native_set_x = jit_scm_three_args scm_bytevector_u64_native_set_xp;
+val scm_bytevector_u64_native_ref = jit_scm_two_args scm_bytevector_u64_native_refp;
+val scm_bytevector_s64_native_set_x = jit_scm_three_args scm_bytevector_s64_native_set_xp;
+val scm_bytevector_s64_native_ref = jit_scm_two_args scm_bytevector_s64_native_refp;
+
+fun scm_mk_bytevector n = scm_make_bytevector (scm_from_ulong (Word.fromInt n),scm_from_ulong 0w0);
+
+val bv = scm_mk_bytevector (Jit.WORDSIZE div 8);
+val res' = scm_bytevector_u32_native_set_x (bv, scm_from_ulong 0w0, scm_from_ulong 0wx2a);
+val res'' = scm_bytevector_u32_native_ref (bv, scm_from_ulong 0w0);
+val res''' = scm_to_ulong res'';
+
+val scm_list = List.foldr scm_cons scm_nil;
 
 fun scm_pub_ref module varname =
    let val modlist = scm_list o (List.map scm_symbol)
@@ -603,18 +679,19 @@ val scm_read_proc =    scm_pub_ref ["guile"] "read"
 val scm_newline_proc = scm_pub_ref ["guile"] "newline"
 val scm_callwis_proc = scm_pub_ref ["guile"] "call-with-input-string"
 
-fun scm_read s = scm_call_n (scm_callwis_proc,#[scm_string s,scm_read_proc])
+fun scm_read s =
+   let val scm_read_proc =    scm_pub_ref ["guile"] "read"
+       val scm_callwis_proc = scm_pub_ref ["guile"] "call-with-input-string"
+   in scm_call_n (scm_callwis_proc,#[scm_string s,scm_read_proc])
+   end
+
 val scm_readq = scm_read o qlToString
 
 local
-   val scmdisplayproc = scm_evalq ` 
-                        (lambda (x)
-		           (with-fluids ((%default-port-encoding "UTF-8"))
-		              (call-with-output-string
-                                (lambda (p)
-                                  (display x p)))))`
  (* Will these local <cptr> SCM objects be protected from GC by the
-      Guile collector?  I need to understand how variable binding is
+      Guile collector?  (The answer seems to be "no!")
+
+      I need to understand how variable binding is
       implemented in the CAML bytecode interpreter. If there are C
       stack pointers to bound object values, then this is OK, because
       the Guile GC will be tracing the CAML runtime's C stack looking
@@ -626,8 +703,37 @@ local
       want to rely on being around for the whole time the Scheme
       sub-system is loaded. *)
 in
-   fun sml_string_display scm = sml_string (scm_call_n (scmdisplayproc,#[scm]))
+   fun sml_string_display scm =
+     let val scmdisplayproc = scm_evalq `
+                        (lambda (x)
+		           (with-fluids ((%default-port-encoding "UTF-8"))
+		              (call-with-output-string
+                                (lambda (p)
+                                  (display x p)))))`
+     in sml_string (scm_call_n (scmdisplayproc,#[scm]))
+     end
 end
+
+fun scm_write exp =
+   let val scmwriteproc = scm_evalq ` 
+                        (lambda (x)
+		           (with-fluids ((%default-port-encoding "UTF-8"))
+	 	              (call-with-output-string
+                                (lambda (p)
+                                  (write x p)))))`
+   in  sml_string (scm_call_n (scmwriteproc,#[exp]))
+   end
+
+fun scm_qlToString l =
+   let fun iter r [] = r
+         | iter r ((QUOTE s)::fs) = iter (r^s) fs
+         | iter r ((ANTIQUOTE s)::fs) = iter (r^(scm_write s)) fs
+   in iter "" l
+   end;
+
+val scm_evalqq = scm_eval_string o scm_qlToString
+
+val scm_readqq = scm_read o scm_qlToString
 
 val _ = scm_evalq `
     (define (factorial n)           
@@ -659,7 +765,7 @@ fun scm_repl () =
    end
 
 fun sml_largeint i =
-   let val mpz = IntInf.init2 (0x16,0x0);
+   let val mpz = IntInf.init2 (0x10,0x0);
        val mpzp = IntInf.getCptr mpz;
        val _ = scm_to_mpz (i,mpzp);
    in mpz
@@ -725,122 +831,21 @@ val argv0ptr = Ffi.svec_getbuffercptr Jit.argv0svec;
 val NULLptr = Ffi.svec_setcptrvalue Ffi.NULLvec;
 
 (*
+
 val _ = scm_shell (1,(argv0ptr,NULLptr));
 
 (* Never reached *)
+
 *)
 
-fun mkregmap l =
-    scm_list (List.map 
-                 (fn s => scm_cons (scm_symbol s,
-                                    scm_from_ulong (Ffi.jit_get_constant s))) l)
-
-val gprm = mkregmap ["R0","R1","R2","V0","V1","V2","FP"];
-val fprm = mkregmap ["F0","F1","F2","F3","F4","F5","F6"];
-
-val defs = scm_readq `(list
-         (use-modules (system foreign))
-         (use-modules (rnrs enums))
-         (define-enumeration lgt-gpr (list R0 R1 R2 V0 V1 V2 FP) mk-lgt-gpr)
-         (define-enumeration lgt-fpr (list F0 F1 F2 F3 F4 F5 F6) mk-lgt-fpr)
-         (define liblightning (dynamic-link "liblightning"))
-         (define lgt-init (pointer->procedure void (dynamic-func "init_jit" liblightning) (list '(* *))))
-         (define argv0 (make-c-struct (list '* '*)
-                                      (list (string->pointer "/home/ian3/usr/bin/guile") %null-pointer)))
-         (lgt-init argv0)
-         (define-wrapped-pointer-type lgt-state
-            lgt-state?
-            lgt-wrap-state lgt-unwrap-state
-            (lambda (s p)
-              (format p "#<lgt-state ~x>"
-                      (pointer-address (lgt-unwrap-state s)))))
-         (define-wrapped-pointer-type lgt-node
-            lgt-node?
-            lgt-wrap-node lgt-unwrap-node
-            (lambda (s p)
-              (format p "#<lgt-node ~x>"
-                      (pointer-address (lgt-unwrap-node s)))))
-         (define lgt-new-state
-            ;; Wrapper for jit_new_state.
-            (let ((jit-new-state (pointer->procedure '* (dynamic-func "jit_new_state" liblightning) '())))
-              (lambda ()
-                "Return a new JIT state."
-                (lgt-wrap-state (jit-new-state)))))
-         (define lgt-emit
-            ;; Wrapper for jit_emit.
-            (let ((jit-emit (pointer->procedure '* (dynamic-func "_jit_emit" liblightning) (list '*))))
-              (lambda (jit-state)
-                "Return the compiled code."
-                (jit-emit (lgt-unwrap-state jit-state)))))
-          (write (lgt-new-state))
-)`
-
-val scmwriteproc = scm_evalq ` 
-                        (lambda (x)
-		           (with-fluids ((%default-port-encoding "UTF-8"))
-	 	              (call-with-output-string
-                                (lambda (p)
-                                  (write x p)))))`
-
-fun scm_write exp = sml_string (scm_call_n (scmwriteproc,#[exp]));
-
-fun scm_type t =
-   case t
-     of "noderef" => scm_symbol "*"
-      | "state" => scm_symbol "*"
-      | "code" => scm_symbol "uint32"
-      | "void" => scm_symbol "()"
-      | "int" => scm_symbol "int"
-      | "float" => scm_symbol "float"
-      | "double" => scm_symbol "double"
-      | "pointer" => scm_symbol "*"
-      | "word" => scm_symbol "unsigned-long"
-      | "fpr" => scm_symbol "uint32"
-      | "gpr" => scm_symbol "uint32"
-      | s => raise Fail ("scm_type: no case "^s)
-
-val scm_argtypes =
-   let fun iter acc [] = acc
-         | iter (pnms,atys) ((p as (v,t))::ps) = 
-               iter (scm_cons (scm_symbol v, pnms),
-                     scm_cons (scm_type t,   atys)) ps
-   in iter (scm_nil, scm_nil)
-   end
-
-fun scm_qlToString l =
-   let fun iter r [] = r
-         | iter r ((QUOTE s)::fs) = iter (r^s) fs
-         | iter r ((ANTIQUOTE s)::fs) = iter (r^(scm_write s)) fs
-   in iter "" l
-   end;
-
-val scm_readq = scm_read o scm_qlToString
-
-fun defwrapper l =
-   let fun iter acc [] = acc
-         | iter acc ((retval, name, args, (call,_))::rest) =
-      let val rvt = scm_type retval
-          val (ans,ats) = scm_argtypes args
-          val cln = scm_string call
-          val nam = scm_symbol name
-      in iter (scm_cons (
-         scm_readq `
-           (define ^(nam))`,acc)) rest
-      end
-   in
-      iter scm_nil l
-   end
-
-val infra =
-[("pointer", "jit_address", [("_jit", "state"), ("node", "noderef")],
+val infra = [("pointer", "jit_address", [("_jit", "state"), ("node", "noderef")],
   ("_jit_address", ["_jit", "node"])),
  ("int", "jit_allocai", [("_jit", "state"), ("u", "word")],
   ("_jit_allocai", ["_jit", "u"])),
  ("noderef", "jit_arg", [("_jit", "state")], ("_jit_arg", ["_jit"])),
  ("noderef", "jit_arg_d", [("_jit", "state")], ("_jit_arg_d", ["_jit"])),
  ("noderef", "jit_arg_f", [("_jit", "state")], ("_jit_arg_f", ["_jit"])),
- ("void", "jit_clear_state", [("_jit", "state")],
-  ("_jit_clear_state", ["_jit"])),
+ ("void", "jit_clear_state", [("_jit", "")], ("_jit_clear_state", ["_jit"])),
  ("void", "jit_destroy_state", [("_jit", "state")],
   ("_jit_destroy_state", ["_jit"])),
  ("void", "jit_disassemble", [("_jit", "state")],
@@ -869,6 +874,10 @@ val infra =
   ("_jit_getarg_us", ["_jit", "u", "v"])),
  ("noderef", "jit_indirect", [("_jit", "state")], ("_jit_indirect", ["_jit"])),
  ("void", "jit_label", [("_jit", "state")], ("_jit_label", ["_jit"])),
+ ("noderef", "jit_new_node", [("_jit", "state"), ("c", "code")],
+  ("_jit_new_node", ["_jit", "c"])),
+ ("noderef", "jit_note", [("_jit", "state"), ("u", "pointer"), ("v", "word")],
+  ("_jit_note", ["_jit", "u", "v"])),
  ("void", "jit_patch", [("_jit", "state"), ("u", "noderef")],
   ("_jit_patch", ["_jit", "u"])),
  ("void", "jit_patch_abs",
@@ -921,8 +930,51 @@ val infra =
  ("void", "jit_retval_us", [("_jit", "state"), ("u", "gpr")],
   ("_jit_retval_us", ["_jit", "u"]))];
 
-val insns =
-[("noderef", "jit_absr_d", [("_jit", "state"), ("u", "fpr"), ("v", "fpr")],
+val mknodes = [("noderef", "jit_new_node_p",
+  [("_jit", "state"), ("c", "code"), ("u", "pointer")],
+  ("_jit_new_node_p", ["_jit", "c", "u"])),
+ ("noderef", "jit_new_node_pw",
+  [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word")],
+  ("_jit_new_node_pw", ["_jit", "c", "u", "v"])),
+ ("noderef", "jit_new_node_pwd",
+  [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
+   ("w", "double")], ("_jit_new_node_pwd", ["_jit", "c", "u", "v", "w"])),
+ ("noderef", "jit_new_node_pwf",
+  [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
+   ("w", "float")], ("_jit_new_node_pwf", ["_jit", "c", "u", "v", "w"])),
+ ("noderef", "jit_new_node_pww",
+  [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
+   ("w", "word")], ("_jit_new_node_pww", ["_jit", "c", "u", "v", "w"])),
+ ("noderef", "jit_new_node_qww",
+  [("_jit", "state"), ("c", "code"), ("l", "word"), ("h", "word"),
+   ("v", "word"), ("w", "word")],
+  ("_jit_new_node_qww", ["_jit", "c", "l", "h", "v", "w"])),
+ ("noderef", "jit_new_node_w",
+  [("_jit", "state"), ("c", "code"), ("u", "word")],
+  ("_jit_new_node_w", ["_jit", "c", "u"])),
+ ("noderef", "jit_new_node_wd",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "double")],
+  ("_jit_new_node_wd", ["_jit", "c", "u", "v"])),
+ ("noderef", "jit_new_node_wf",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "float")],
+  ("_jit_new_node_wf", ["_jit", "c", "u", "v"])),
+ ("noderef", "jit_new_node_wp",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "pointer")],
+  ("_jit_new_node_wp", ["_jit", "c", "u", "v"])),
+ ("noderef", "jit_new_node_ww",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word")],
+  ("_jit_new_node_ww", ["_jit", "c", "u", "v"])),
+ ("noderef", "jit_new_node_wwd",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
+   ("w", "double")], ("_jit_new_node_wwd", ["_jit", "c", "u", "v", "w"])),
+ ("noderef", "jit_new_node_wwf",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
+   ("w", "float")], ("_jit_new_node_wwf", ["_jit", "c", "u", "v", "w"])),
+ ("noderef", "jit_new_node_www",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
+   ("w", "word")], ("_jit_new_node_www", ["_jit", "c", "u", "v", "w"]))];
+
+val insns = [("noderef", "jit_absr_d", [("_jit", "state"), ("u", "fpr"), ("v", "fpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_absr_d", "u", "v"])),
  ("noderef", "jit_absr_f", [("_jit", "state"), ("u", "fpr"), ("v", "fpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_absr_f", "u", "v"])),
@@ -1280,25 +1332,25 @@ val insns =
   ("jit_new_node_p", ["_jit", "jit_code_jmpi", "NULL"])),
  ("noderef", "jit_jmpr", [("_jit", "state"), ("u", "gpr")],
   ("jit_new_node_w", ["_jit", "jit_code_jmpr", "u"])),
- ("noderef", "jit_ldi_c", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_c", [("_jit", "state"), ("u", "gpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_c", "u", "v"])),
- ("noderef", "jit_ldi_d", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_d", [("_jit", "state"), ("u", "fpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_d", "u", "v"])),
- ("noderef", "jit_ldi_f", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_f", [("_jit", "state"), ("u", "fpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_f", "u", "v"])),
- ("noderef", "jit_ldi_i", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_i", [("_jit", "state"), ("u", "gpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_i", "u", "v"])),
- ("noderef", "jit_ldi_s", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_s", [("_jit", "state"), ("u", "gpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_s", "u", "v"])),
- ("noderef", "jit_ldi_uc", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_uc", [("_jit", "state"), ("u", "gpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_uc", "u", "v"])),
- ("noderef", "jit_ldi_us", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldi_us", [("_jit", "state"), ("u", "gpr"), ("v", "pointer")],
   ("jit_new_node_wp", ["_jit", "jit_code_ldi_us", "u", "v"])),
  ("noderef", "jit_ldr_c", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_ldr_c", "u", "v"])),
- ("noderef", "jit_ldr_d", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldr_d", [("_jit", "state"), ("u", "fpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_ldr_d", "u", "v"])),
- ("noderef", "jit_ldr_f", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
+ ("noderef", "jit_ldr_f", [("_jit", "state"), ("u", "fpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_ldr_f", "u", "v"])),
  ("noderef", "jit_ldr_i", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_ldr_i", "u", "v"])),
@@ -1309,34 +1361,34 @@ val insns =
  ("noderef", "jit_ldr_us", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_ldr_us", "u", "v"])),
  ("noderef", "jit_ldxi_c",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_c", "u", "v", "w"])),
  ("noderef", "jit_ldxi_d",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "fpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_d", "u", "v", "w"])),
  ("noderef", "jit_ldxi_f",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "fpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_f", "u", "v", "w"])),
  ("noderef", "jit_ldxi_i",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_i", "u", "v", "w"])),
  ("noderef", "jit_ldxi_s",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_s", "u", "v", "w"])),
  ("noderef", "jit_ldxi_uc",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_uc", "u", "v", "w"])),
  ("noderef", "jit_ldxi_us",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "pointer")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxi_us", "u", "v", "w"])),
  ("noderef", "jit_ldxr_c",
   [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxr_c", "u", "v", "w"])),
  ("noderef", "jit_ldxr_d",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "fpr"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxr_d", "u", "v", "w"])),
  ("noderef", "jit_ldxr_f",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "fpr"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_ldxr_f", "u", "v", "w"])),
  ("noderef", "jit_ldxr_i",
   [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
@@ -1568,47 +1620,47 @@ val insns =
   ("jit_new_node_ww", ["_jit", "jit_code_sqrtr_f", "u", "v"])),
  ("noderef", "jit_sti_c", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
   ("jit_new_node_pw", ["_jit", "jit_code_sti_c", "u", "v"])),
- ("noderef", "jit_sti_d", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_sti_d", [("_jit", "state"), ("u", "pointer"), ("v", "fpr")],
   ("jit_new_node_pw", ["_jit", "jit_code_sti_d", "u", "v"])),
- ("noderef", "jit_sti_f", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_sti_f", [("_jit", "state"), ("u", "pointer"), ("v", "fpr")],
   ("jit_new_node_pw", ["_jit", "jit_code_sti_f", "u", "v"])),
  ("noderef", "jit_sti_i", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
   ("jit_new_node_pw", ["_jit", "jit_code_sti_i", "u", "v"])),
  ("noderef", "jit_sti_s", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
   ("jit_new_node_pw", ["_jit", "jit_code_sti_s", "u", "v"])),
- ("noderef", "jit_str_c", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_str_c", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_str_c", "u", "v"])),
- ("noderef", "jit_str_d", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_str_d", [("_jit", "state"), ("u", "gpr"), ("v", "fpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_str_d", "u", "v"])),
- ("noderef", "jit_str_f", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_str_f", [("_jit", "state"), ("u", "gpr"), ("v", "fpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_str_f", "u", "v"])),
- ("noderef", "jit_str_i", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_str_i", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_str_i", "u", "v"])),
- ("noderef", "jit_str_s", [("_jit", "state"), ("u", "pointer"), ("v", "gpr")],
+ ("noderef", "jit_str_s", [("_jit", "state"), ("u", "gpr"), ("v", "gpr")],
   ("jit_new_node_ww", ["_jit", "jit_code_str_s", "u", "v"])),
  ("noderef", "jit_stxi_c",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "pointer"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxi_c", "u", "v", "w"])),
  ("noderef", "jit_stxi_d",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "pointer"), ("v", "gpr"), ("w", "fpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxi_d", "u", "v", "w"])),
  ("noderef", "jit_stxi_f",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "pointer"), ("v", "gpr"), ("w", "fpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxi_f", "u", "v", "w"])),
  ("noderef", "jit_stxi_i",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "pointer"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxi_i", "u", "v", "w"])),
  ("noderef", "jit_stxi_s",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "pointer"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxi_s", "u", "v", "w"])),
  ("noderef", "jit_stxr_c",
   [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxr_c", "u", "v", "w"])),
  ("noderef", "jit_stxr_d",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "fpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxr_d", "u", "v", "w"])),
  ("noderef", "jit_stxr_f",
-  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "fpr")],
   ("jit_new_node_www", ["_jit", "jit_code_stxr_f", "u", "v", "w"])),
  ("noderef", "jit_stxr_i",
   [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
@@ -1729,48 +1781,1134 @@ val insns =
   [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
   ("jit_new_node_www", ["_jit", "jit_code_xorr", "u", "v", "w"]))];
 
-val mknodes =
-    [("noderef", "jit_new_node_p",
-      [("_jit", "state"), ("c", "code"), ("u", "pointer")],
-      ("_jit_new_node_p", ["_jit", "c", "u"])),
-     ("noderef", "jit_new_node_pw",
-      [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word")],
-      ("_jit_new_node_pw", ["_jit", "c", "u", "v"])),
-     ("noderef", "jit_new_node_pwd",
-      [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
-       ("w", "double")], ("_jit_new_node_pwd", ["_jit", "c", "u", "v", "w"])),
-     ("noderef", "jit_new_node_pwf",
-      [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
-       ("w", "float")], ("_jit_new_node_pwf", ["_jit", "c", "u", "v", "w"])),
-     ("noderef", "jit_new_node_pww",
-      [("_jit", "state"), ("c", "code"), ("u", "pointer"), ("v", "word"),
-       ("w", "word")], ("_jit_new_node_pww", ["_jit", "c", "u", "v", "w"])),
-     ("noderef", "jit_new_node_qww",
-      [("_jit", "state"), ("c", "code"), ("l", "word"), ("h", "word"),
-       ("v", "word"), ("w", "word")],
-      ("_jit_new_node_qww", ["_jit", "c", "l", "h", "v", "w"])),
-     ("noderef", "jit_new_node_w",
-      [("_jit", "state"), ("c", "code"), ("u", "word")],
-      ("_jit_new_node_w", ["_jit", "c", "u"])),
-     ("noderef", "jit_new_node_wd",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "double")],
-      ("_jit_new_node_wd", ["_jit", "c", "u", "v"])),
-     ("noderef", "jit_new_node_wf",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "float")],
-      ("_jit_new_node_wf", ["_jit", "c", "u", "v"])),
-     ("noderef", "jit_new_node_wp",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "pointer")],
-      ("_jit_new_node_wp", ["_jit", "c", "u", "v"])),
-     ("noderef", "jit_new_node_ww",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word")],
-      ("_jit_new_node_ww", ["_jit", "c", "u", "v"])),
-     ("noderef", "jit_new_node_wwd",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
-       ("w", "double")], ("_jit_new_node_wwd", ["_jit", "c", "u", "v", "w"])),
-     ("noderef", "jit_new_node_wwf",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
-       ("w", "float")], ("_jit_new_node_wwf", ["_jit", "c", "u", "v", "w"])),
-     ("noderef", "jit_new_node_www",
-      [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
-       ("w", "word")], ("_jit_new_node_www", ["_jit", "c", "u", "v", "w"]))];
+val dataflow = [("jit_absr_d", [([1], [2])]), ("jit_absr_f", [([1], [2])]),
+ ("jit_addci", [([1], [2])]), ("jit_addcr", [([1], [2, 3])]),
+ ("jit_addi", [([1], [2])]), ("jit_addi_d", [([1], [2])]),
+ ("jit_addi_f", [([1], [2])]), ("jit_addr", [([1], [2, 3])]),
+ ("jit_addr_d", [([1], [2, 3])]), ("jit_addr_f", [([1], [2, 3])]),
+ ("jit_addxi", [([1], [2])]), ("jit_addxr", [([1], [2, 3])]),
+ ("jit_andi", [([1], [2])]), ("jit_andr", [([1], [2, 3])]),
+ ("jit_beqi", [([], [1])]), ("jit_beqi_d", [([], [1])]),
+ ("jit_beqi_f", [([], [1])]), ("jit_beqr", [([], [1, 2])]),
+ ("jit_beqr_d", [([], [1, 2])]), ("jit_beqr_f", [([], [1, 2])]),
+ ("jit_bgei", [([], [1])]), ("jit_bgei_d", [([], [1])]),
+ ("jit_bgei_f", [([], [1])]), ("jit_bgei_u", [([], [1])]),
+ ("jit_bger", [([], [1, 2])]), ("jit_bger_d", [([], [1, 2])]),
+ ("jit_bger_f", [([], [1, 2])]), ("jit_bger_u", [([], [1, 2])]),
+ ("jit_bgti", [([], [1])]), ("jit_bgti_d", [([], [1])]),
+ ("jit_bgti_f", [([], [1])]), ("jit_bgti_u", [([], [1])]),
+ ("jit_bgtr", [([], [1, 2])]), ("jit_bgtr_d", [([], [1, 2])]),
+ ("jit_bgtr_f", [([], [1, 2])]), ("jit_bgtr_u", [([], [1, 2])]),
+ ("jit_blei", [([], [1])]), ("jit_blei_d", [([], [1])]),
+ ("jit_blei_f", [([], [1])]), ("jit_blei_u", [([], [1])]),
+ ("jit_bler", [([], [1, 2])]), ("jit_bler_d", [([], [1, 2])]),
+ ("jit_bler_f", [([], [1, 2])]), ("jit_bler_u", [([], [1, 2])]),
+ ("jit_bltgti_d", [([], [1])]), ("jit_bltgti_f", [([], [1])]),
+ ("jit_bltgtr_d", [([], [1, 2])]), ("jit_bltgtr_f", [([], [1, 2])]),
+ ("jit_blti", [([], [1])]), ("jit_blti_d", [([], [1])]),
+ ("jit_blti_f", [([], [1])]), ("jit_blti_u", [([], [1])]),
+ ("jit_bltr", [([], [1, 2])]), ("jit_bltr_d", [([], [1, 2])]),
+ ("jit_bltr_f", [([], [1, 2])]), ("jit_bltr_u", [([], [1, 2])]),
+ ("jit_bmci", [([1], [])]), ("jit_bmcr", [([1], [2])]),
+ ("jit_bmsi", [([1], [])]), ("jit_bmsr", [([1], [2])]),
+ ("jit_bnei", [([], [1])]), ("jit_bnei_d", [([], [1])]),
+ ("jit_bnei_f", [([], [1])]), ("jit_bner", [([], [1, 2])]),
+ ("jit_bner_d", [([], [1, 2])]), ("jit_bner_f", [([], [1, 2])]),
+ ("jit_boaddi", [([1], [])]), ("jit_boaddi_u", [([1], [])]),
+ ("jit_boaddr", [([1], [2])]), ("jit_boaddr_u", [([1], [2])]),
+ ("jit_bordi_d", [([1], []), ([], [1])]),
+ ("jit_bordi_f", [([1], []), ([], [1])]),
+ ("jit_bordr_d", [([1], [2]), ([], [1, 2])]),
+ ("jit_bordr_f", [([1], [2]), ([], [1, 2])]), ("jit_bosubi", [([1], [])]),
+ ("jit_bosubi_u", [([1], [])]), ("jit_bosubr", [([1], [2])]),
+ ("jit_bosubr_u", [([1], [2])]), ("jit_buneqi_d", [([], [1])]),
+ ("jit_buneqi_f", [([], [1])]), ("jit_buneqr_d", [([], [1, 2])]),
+ ("jit_buneqr_f", [([], [1, 2])]), ("jit_bungei_d", [([], [1])]),
+ ("jit_bungei_f", [([], [1])]), ("jit_bunger_d", [([], [1, 2])]),
+ ("jit_bunger_f", [([], [1, 2])]), ("jit_bungti_d", [([], [1])]),
+ ("jit_bungti_f", [([], [1])]), ("jit_bungtr_d", [([], [1, 2])]),
+ ("jit_bungtr_f", [([], [1, 2])]), ("jit_bunlei_d", [([], [1])]),
+ ("jit_bunlei_f", [([], [1])]), ("jit_bunler_d", [([], [1, 2])]),
+ ("jit_bunler_f", [([], [1, 2])]), ("jit_bunlti_d", [([], [1])]),
+ ("jit_bunlti_f", [([], [1])]), ("jit_bunltr_d", [([], [1, 2])]),
+ ("jit_bunltr_f", [([], [1, 2])]), ("jit_bunordi_d", [([1], []), ([], [1])]),
+ ("jit_bunordi_f", [([1], []), ([], [1])]),
+ ("jit_bunordr_d", [([1], [2]), ([], [1, 2])]),
+ ("jit_bunordr_f", [([1], [2]), ([], [1, 2])]), ("jit_bxaddi", [([1], [])]),
+ ("jit_bxaddi_u", [([1], [])]), ("jit_bxaddr", [([1], [2])]),
+ ("jit_bxaddr_u", [([1], [2])]), ("jit_bxsubi", [([1], [])]),
+ ("jit_bxsubi_u", [([1], [])]), ("jit_bxsubr", [([1], [2])]),
+ ("jit_bxsubr_u", [([1], [2])]), ("jit_calli", [([], [])]),
+ ("jit_callr", [([], [1])]), ("jit_comr", [([1], [2])]),
+ ("jit_divi", [([1], [2])]), ("jit_divi_d", [([1], [2])]),
+ ("jit_divi_f", [([1], [2])]), ("jit_divi_u", [([1], [2])]),
+ ("jit_divr", [([1], [2, 3])]), ("jit_divr_d", [([1], [2, 3])]),
+ ("jit_divr_f", [([1], [2, 3])]), ("jit_divr_u", [([1], [2, 3])]),
+ ("jit_eqi", [([1], [2])]), ("jit_eqi_d", [([1], [2])]),
+ ("jit_eqi_f", [([1], [2])]), ("jit_eqr", [([1], [2, 3])]),
+ ("jit_eqr_d", [([1], [2, 3])]), ("jit_eqr_f", [([1], [2, 3])]),
+ ("jit_extr_c", [([1], [2])]), ("jit_extr_d", [([1], [2])]),
+ ("jit_extr_d_f", [([1], [2])]), ("jit_extr_f", [([1], [2])]),
+ ("jit_extr_f_d", [([1], [2])]), ("jit_extr_s", [([1], [2])]),
+ ("jit_extr_uc", [([1], [2])]), ("jit_extr_us", [([1], [2])]),
+ ("jit_gei", [([1], [2])]), ("jit_gei_d", [([1], [2])]),
+ ("jit_gei_f", [([1], [2])]), ("jit_gei_u", [([1], [2])]),
+ ("jit_ger", [([1], [2, 3])]), ("jit_ger_d", [([1], [2, 3])]),
+ ("jit_ger_f", [([1], [2, 3])]), ("jit_ger_u", [([1], [2, 3])]),
+ ("jit_gti", [([1], [2])]), ("jit_gti_d", [([1], [2])]),
+ ("jit_gti_f", [([1], [2])]), ("jit_gti_u", [([1], [2])]),
+ ("jit_gtr", [([1], [2, 3])]), ("jit_gtr_d", [([1], [2, 3])]),
+ ("jit_gtr_f", [([1], [2, 3])]), ("jit_gtr_u", [([1], [2, 3])]),
+ ("jit_htonr", [([1], [2])]), ("jit_jmpi", []), ("jit_jmpr", [([], [1])]),
+ ("jit_ldi_c", [([1], [2, 3])]), ("jit_ldi_d", [([1], [2, 3])]),
+ ("jit_ldi_f", [([1], [2, 3])]), ("jit_ldi_i", [([1], [2, 3])]),
+ ("jit_ldi_s", [([1], [2, 3])]), ("jit_ldi_uc", [([1], [2, 3])]),
+ ("jit_ldi_us", [([1], [2, 3])]), ("jit_ldr_c", [([1], [2])]),
+ ("jit_ldr_d", [([1], [2])]), ("jit_ldr_f", [([1], [2])]),
+ ("jit_ldr_i", [([1], [2])]), ("jit_ldr_s", [([1], [2])]),
+ ("jit_ldr_uc", [([1], [2])]), ("jit_ldr_us", [([1], [2])]),
+ ("jit_ldxi_c", [([1], [2, 3])]), ("jit_ldxi_d", [([1], [2, 3])]),
+ ("jit_ldxi_f", [([1], [2, 3])]), ("jit_ldxi_i", [([1], [2, 3])]),
+ ("jit_ldxi_s", [([1], [2, 3])]), ("jit_ldxi_uc", [([1], [2, 3])]),
+ ("jit_ldxi_us", [([1], [2, 3])]), ("jit_ldxr_c", [([1], [2])]),
+ ("jit_ldxr_d", [([1], [2])]), ("jit_ldxr_f", [([1], [2])]),
+ ("jit_ldxr_i", [([1], [2])]), ("jit_ldxr_s", [([1], [2])]),
+ ("jit_ldxr_uc", [([1], [2])]), ("jit_ldxr_us", [([1], [2])]),
+ ("jit_lei", [([1], [2])]), ("jit_lei_d", [([1], [2])]),
+ ("jit_lei_f", [([1], [2])]), ("jit_lei_u", [([1], [2])]),
+ ("jit_ler", [([1], [2, 3])]), ("jit_ler_d", [([1], [2, 3])]),
+ ("jit_ler_f", [([1], [2, 3])]), ("jit_ler_u", [([1], [2, 3])]),
+ ("jit_live", [([], [1])]), ("jit_lshi", [([1], [2])]),
+ ("jit_lshr", [([1], [2, 3])]), ("jit_ltgti_d", [([1], [2])]),
+ ("jit_ltgti_f", [([1], [2])]), ("jit_ltgtr_d", [([1], [2, 3])]),
+ ("jit_ltgtr_f", [([1], [2, 3])]), ("jit_lti", [([1], [2])]),
+ ("jit_lti_d", [([1], [2])]), ("jit_lti_f", [([1], [2])]),
+ ("jit_lti_u", [([1], [2])]), ("jit_ltr", [([1], [2, 3])]),
+ ("jit_ltr_d", [([1], [2, 3])]), ("jit_ltr_f", [([1], [2, 3])]),
+ ("jit_ltr_u", [([1], [2, 3])]), ("jit_movi", [([1], [])]),
+ ("jit_movi_d", [([1], [])]), ("jit_movi_d_w", [([1], [])]),
+ ("jit_movi_d_ww", [([1, 2], [])]), ("jit_movi_f", [([1], [])]),
+ ("jit_movi_f_w", [([1], [])]), ("jit_movr", [([1], [2])]),
+ ("jit_movr_d", [([1], [2])]), ("jit_movr_d_w", [([1], [2])]),
+ ("jit_movr_d_ww", [([1, 2], [3])]), ("jit_movr_f", [([1], [2])]),
+ ("jit_movr_f_w", [([1], [2])]), ("jit_movr_w_d", [([1], [2])]),
+ ("jit_movr_w_f", [([1], [2])]), ("jit_movr_ww_d", [([1], [2, 3])]),
+ ("jit_muli", [([1], [2])]), ("jit_muli_d", [([1], [2])]),
+ ("jit_muli_f", [([1], [2])]), ("jit_mulr", [([1], [2, 3])]),
+ ("jit_mulr_d", [([1], [2, 3])]), ("jit_mulr_f", [([1], [2, 3])]),
+ ("jit_negr", [([1], [2])]), ("jit_negr_d", [([1], [2])]),
+ ("jit_negr_f", [([1], [2])]), ("jit_nei", [([1], [2])]),
+ ("jit_nei_d", [([1], [2])]), ("jit_nei_f", [([1], [2])]),
+ ("jit_ner", [([1], [2, 3])]), ("jit_ner_d", [([1], [2, 3])]),
+ ("jit_ner_f", [([1], [2, 3])]), ("jit_ntohr", [([1], [2])]),
+ ("jit_ordi_d", [([1], [2])]), ("jit_ordi_f", [([1], [2])]),
+ ("jit_ordr_d", [([1], [2, 3])]), ("jit_ordr_f", [([1], [2, 3])]),
+ ("jit_ori", [([1], [2])]), ("jit_orr", [([1], [2, 3])]),
+ ("jit_qdivi", [([1, 2], [3])]), ("jit_qdivi_u", [([1, 2], [3])]),
+ ("jit_qdivr", [([1, 2], [3, 4])]), ("jit_qdivr_u", [([1, 2], [3, 4])]),
+ ("jit_qmuli", [([1, 2], [3])]), ("jit_qmuli_u", [([1, 2], [3])]),
+ ("jit_qmulr", [([1, 2], [3, 4])]), ("jit_qmulr_u", [([1, 2], [3, 4])]),
+ ("jit_remi", [([1], [2])]), ("jit_remi_u", [([1], [2])]),
+ ("jit_remr", [([1], [2, 3])]), ("jit_remr_u", [([1], [2, 3])]),
+ ("jit_rshi", [([1], [2])]), ("jit_rshi_u", [([1], [2])]),
+ ("jit_rshr", [([1], [2, 3])]), ("jit_rshr_u", [([1], [2, 3])]),
+ ("jit_sqrtr_d", [([1], [2])]), ("jit_sqrtr_f", [([1], [2])]),
+ ("jit_sti_c", [([], [1, 2])]), ("jit_sti_d", [([], [1, 2])]),
+ ("jit_sti_f", [([], [1, 2])]), ("jit_sti_i", [([], [1, 2])]),
+ ("jit_sti_s", [([], [1, 2])]), ("jit_str_c", [([], [1])]),
+ ("jit_str_d", [([], [1])]), ("jit_str_f", [([], [1])]),
+ ("jit_str_i", [([], [1])]), ("jit_str_s", [([], [1])]),
+ ("jit_stxi_c", [([], [1, 2, 3])]), ("jit_stxi_d", [([], [1, 2, 3])]),
+ ("jit_stxi_f", [([], [1, 2, 3])]), ("jit_stxi_i", [([], [1, 2, 3])]),
+ ("jit_stxi_s", [([], [1, 2, 3])]), ("jit_stxr_c", [([], [1, 2])]),
+ ("jit_stxr_d", [([], [1, 2])]), ("jit_stxr_f", [([], [1, 2])]),
+ ("jit_stxr_i", [([], [1, 2])]), ("jit_stxr_s", [([], [1, 2])]),
+ ("jit_subci", [([1], [2])]), ("jit_subcr", [([1], [2, 3])]),
+ ("jit_subi", [([1], [2])]), ("jit_subi_d", [([1], [2])]),
+ ("jit_subi_f", [([1], [2])]), ("jit_subr", [([1], [2, 3])]),
+ ("jit_subr_d", [([1], [2, 3])]), ("jit_subr_f", [([1], [2, 3])]),
+ ("jit_subxi", [([1], [2])]), ("jit_subxr", [([1], [2, 3])]),
+ ("jit_truncr_d_i", [([1], [2])]), ("jit_truncr_f_i", [([1], [2])]),
+ ("jit_uneqi_d", [([1], [2])]), ("jit_uneqi_f", [([1], [2])]),
+ ("jit_uneqr_d", [([1], [2, 3])]), ("jit_uneqr_f", [([1], [2, 3])]),
+ ("jit_ungei_d", [([1], [2])]), ("jit_ungei_f", [([1], [2])]),
+ ("jit_unger_d", [([1], [2, 3])]), ("jit_unger_f", [([1], [2, 3])]),
+ ("jit_ungti_d", [([1], [2])]), ("jit_ungti_f", [([1], [2])]),
+ ("jit_ungtr_d", [([1], [2, 3])]), ("jit_ungtr_f", [([1], [2, 3])]),
+ ("jit_unlei_d", [([1], [2])]), ("jit_unlei_f", [([1], [2])]),
+ ("jit_unler_d", [([1], [2, 3])]), ("jit_unler_f", [([1], [2, 3])]),
+ ("jit_unlti_d", [([1], [2])]), ("jit_unlti_f", [([1], [2])]),
+ ("jit_unltr_d", [([1], [2, 3])]), ("jit_unltr_f", [([1], [2, 3])]),
+ ("jit_unordi_d", [([1], [2])]), ("jit_unordi_f", [([1], [2])]),
+ ("jit_unordr_d", [([1], [2, 3])]), ("jit_unordr_f", [([1], [2, 3])]),
+ ("jit_xori", [([1], [2])]), ("jit_xorr", [([1], [2, 3])]),
+ ("jit_finishr", [([], [1])]), ("jit_getarg_c", [([1], [])]),
+ ("jit_getarg_d", [([1], [])]), ("jit_getarg_f", [([1], [])]),
+ ("jit_getarg_i", [([1], [])]), ("jit_getarg_s", [([1], [])]),
+ ("jit_getarg_uc", [([1], [])]), ("jit_getarg_us", [([1], [])]),
+ ("jit_pushargr", [([], [1])]), ("jit_pushargr_d", [([], [1])]),
+ ("jit_pushargr_f", [([], [1])]), ("jit_retr", [([], [1])]),
+ ("jit_retr_d", [([], [1])]), ("jit_retr_f", [([], [1])]),
+ ("jit_retval_c", [([1], [])]), ("jit_retval_d", [([1], [])]),
+ ("jit_retval_f", [([1], [])]), ("jit_retval_i", [([1], [])]),
+ ("jit_retval_s", [([1], [])]), ("jit_retval_uc", [([1], [])]),
+ ("jit_retval_us", [([1], [])])];
 
+structure jit_code_t = 
+struct
+   val jit_code_data = 0
+   val jit_code_live = 1
+   val jit_code_save = 2
+   val jit_code_load = 3
+   val jit_code_name = 4
+   val jit_code_note = 5
+   val jit_code_label = 6
+   val jit_code_prolog = 7
+   val jit_code_arg = 8
+   val jit_code_addr = 9
+   val jit_code_addi = 10
+   val jit_code_addcr = 11
+   val jit_code_addci = 12
+   val jit_code_addxr = 13
+   val jit_code_addxi = 14
+   val jit_code_subr = 15
+   val jit_code_subi = 16
+   val jit_code_subcr = 17
+   val jit_code_subci = 18
+   val jit_code_subxr = 19
+   val jit_code_subxi = 20
+   val jit_code_mulr = 21
+   val jit_code_muli = 22
+   val jit_code_qmulr = 23
+   val jit_code_qmuli = 24
+   val jit_code_qmulr_u = 25
+   val jit_code_qmuli_u = 26
+   val jit_code_divr = 27
+   val jit_code_divi = 28
+   val jit_code_divr_u = 29
+   val jit_code_divi_u = 30
+   val jit_code_qdivr = 31
+   val jit_code_qdivi = 32
+   val jit_code_qdivr_u = 33
+   val jit_code_qdivi_u = 34
+   val jit_code_remr = 35
+   val jit_code_remi = 36
+   val jit_code_remr_u = 37
+   val jit_code_remi_u = 38
+   val jit_code_andr = 39
+   val jit_code_andi = 40
+   val jit_code_orr = 41
+   val jit_code_ori = 42
+   val jit_code_xorr = 43
+   val jit_code_xori = 44
+   val jit_code_lshr = 45
+   val jit_code_lshi = 46
+   val jit_code_rshr = 47
+   val jit_code_rshi = 48
+   val jit_code_rshr_u = 49
+   val jit_code_rshi_u = 50
+   val jit_code_negr = 51
+   val jit_code_comr = 52
+   val jit_code_ltr = 53
+   val jit_code_lti = 54
+   val jit_code_ltr_u = 55
+   val jit_code_lti_u = 56
+   val jit_code_ler = 57
+   val jit_code_lei = 58
+   val jit_code_ler_u = 59
+   val jit_code_lei_u = 60
+   val jit_code_eqr = 61
+   val jit_code_eqi = 62
+   val jit_code_ger = 63
+   val jit_code_gei = 64
+   val jit_code_ger_u = 65
+   val jit_code_gei_u = 66
+   val jit_code_gtr = 67
+   val jit_code_gti = 68
+   val jit_code_gtr_u = 69
+   val jit_code_gti_u = 70
+   val jit_code_ner = 71
+   val jit_code_nei = 72
+   val jit_code_movr = 73
+   val jit_code_movi = 74
+   val jit_code_extr_c = 75
+   val jit_code_extr_uc = 76
+   val jit_code_extr_s = 77
+   val jit_code_extr_us = 78
+   val jit_code_extr_i = 79
+   val jit_code_extr_ui = 80
+   val jit_code_htonr = 81
+   val jit_code_ldr_c = 82
+   val jit_code_ldi_c = 83
+   val jit_code_ldr_uc = 84
+   val jit_code_ldi_uc = 85
+   val jit_code_ldr_s = 86
+   val jit_code_ldi_s = 87
+   val jit_code_ldr_us = 88
+   val jit_code_ldi_us = 89
+   val jit_code_ldr_i = 90
+   val jit_code_ldi_i = 91
+   val jit_code_ldr_ui = 92
+   val jit_code_ldi_ui = 93
+   val jit_code_ldr_l = 94
+   val jit_code_ldi_l = 95
+   val jit_code_ldxr_c = 96
+   val jit_code_ldxi_c = 97
+   val jit_code_ldxr_uc = 98
+   val jit_code_ldxi_uc = 99
+   val jit_code_ldxr_s = 100
+   val jit_code_ldxi_s = 101
+   val jit_code_ldxr_us = 102
+   val jit_code_ldxi_us = 103
+   val jit_code_ldxr_i = 104
+   val jit_code_ldxi_i = 105
+   val jit_code_ldxr_ui = 106
+   val jit_code_ldxi_ui = 107
+   val jit_code_ldxr_l = 108
+   val jit_code_ldxi_l = 109
+   val jit_code_str_c = 110
+   val jit_code_sti_c = 111
+   val jit_code_str_s = 112
+   val jit_code_sti_s = 113
+   val jit_code_str_i = 114
+   val jit_code_sti_i = 115
+   val jit_code_str_l = 116
+   val jit_code_sti_l = 117
+   val jit_code_stxr_c = 118
+   val jit_code_stxi_c = 119
+   val jit_code_stxr_s = 120
+   val jit_code_stxi_s = 121
+   val jit_code_stxr_i = 122
+   val jit_code_stxi_i = 123
+   val jit_code_stxr_l = 124
+   val jit_code_stxi_l = 125
+   val jit_code_bltr = 126
+   val jit_code_blti = 127
+   val jit_code_bltr_u = 128
+   val jit_code_blti_u = 129
+   val jit_code_bler = 130
+   val jit_code_blei = 131
+   val jit_code_bler_u = 132
+   val jit_code_blei_u = 133
+   val jit_code_beqr = 134
+   val jit_code_beqi = 135
+   val jit_code_bger = 136
+   val jit_code_bgei = 137
+   val jit_code_bger_u = 138
+   val jit_code_bgei_u = 139
+   val jit_code_bgtr = 140
+   val jit_code_bgti = 141
+   val jit_code_bgtr_u = 142
+   val jit_code_bgti_u = 143
+   val jit_code_bner = 144
+   val jit_code_bnei = 145
+   val jit_code_bmsr = 146
+   val jit_code_bmsi = 147
+   val jit_code_bmcr = 148
+   val jit_code_bmci = 149
+   val jit_code_boaddr = 150
+   val jit_code_boaddi = 151
+   val jit_code_boaddr_u = 152
+   val jit_code_boaddi_u = 153
+   val jit_code_bxaddr = 154
+   val jit_code_bxaddi = 155
+   val jit_code_bxaddr_u = 156
+   val jit_code_bxaddi_u = 157
+   val jit_code_bosubr = 158
+   val jit_code_bosubi = 159
+   val jit_code_bosubr_u = 160
+   val jit_code_bosubi_u = 161
+   val jit_code_bxsubr = 162
+   val jit_code_bxsubi = 163
+   val jit_code_bxsubr_u = 164
+   val jit_code_bxsubi_u = 165
+   val jit_code_jmpr = 166
+   val jit_code_jmpi = 167
+   val jit_code_callr = 168
+   val jit_code_calli = 169
+   val jit_code_epilog = 170
+   val jit_code_arg_f = 171
+   val jit_code_addr_f = 172
+   val jit_code_addi_f = 173
+   val jit_code_subr_f = 174
+   val jit_code_subi_f = 175
+   val jit_code_mulr_f = 176
+   val jit_code_muli_f = 177
+   val jit_code_divr_f = 178
+   val jit_code_divi_f = 179
+   val jit_code_negr_f = 180
+   val jit_code_absr_f = 181
+   val jit_code_sqrtr_f = 182
+   val jit_code_ltr_f = 183
+   val jit_code_lti_f = 184
+   val jit_code_ler_f = 185
+   val jit_code_lei_f = 186
+   val jit_code_eqr_f = 187
+   val jit_code_eqi_f = 188
+   val jit_code_ger_f = 189
+   val jit_code_gei_f = 190
+   val jit_code_gtr_f = 191
+   val jit_code_gti_f = 192
+   val jit_code_ner_f = 193
+   val jit_code_nei_f = 194
+   val jit_code_unltr_f = 195
+   val jit_code_unlti_f = 196
+   val jit_code_unler_f = 197
+   val jit_code_unlei_f = 198
+   val jit_code_uneqr_f = 199
+   val jit_code_uneqi_f = 200
+   val jit_code_unger_f = 201
+   val jit_code_ungei_f = 202
+   val jit_code_ungtr_f = 203
+   val jit_code_ungti_f = 204
+   val jit_code_ltgtr_f = 205
+   val jit_code_ltgti_f = 206
+   val jit_code_ordr_f = 207
+   val jit_code_ordi_f = 208
+   val jit_code_unordr_f = 209
+   val jit_code_unordi_f = 210
+   val jit_code_truncr_f_i = 211
+   val jit_code_truncr_f_l = 212
+   val jit_code_extr_f = 213
+   val jit_code_extr_d_f = 214
+   val jit_code_movr_f = 215
+   val jit_code_movi_f = 216
+   val jit_code_ldr_f = 217
+   val jit_code_ldi_f = 218
+   val jit_code_ldxr_f = 219
+   val jit_code_ldxi_f = 220
+   val jit_code_str_f = 221
+   val jit_code_sti_f = 222
+   val jit_code_stxr_f = 223
+   val jit_code_stxi_f = 224
+   val jit_code_bltr_f = 225
+   val jit_code_blti_f = 226
+   val jit_code_bler_f = 227
+   val jit_code_blei_f = 228
+   val jit_code_beqr_f = 229
+   val jit_code_beqi_f = 230
+   val jit_code_bger_f = 231
+   val jit_code_bgei_f = 232
+   val jit_code_bgtr_f = 233
+   val jit_code_bgti_f = 234
+   val jit_code_bner_f = 235
+   val jit_code_bnei_f = 236
+   val jit_code_bunltr_f = 237
+   val jit_code_bunlti_f = 238
+   val jit_code_bunler_f = 239
+   val jit_code_bunlei_f = 240
+   val jit_code_buneqr_f = 241
+   val jit_code_buneqi_f = 242
+   val jit_code_bunger_f = 243
+   val jit_code_bungei_f = 244
+   val jit_code_bungtr_f = 245
+   val jit_code_bungti_f = 246
+   val jit_code_bltgtr_f = 247
+   val jit_code_bltgti_f = 248
+   val jit_code_bordr_f = 249
+   val jit_code_bordi_f = 250
+   val jit_code_bunordr_f = 251
+   val jit_code_bunordi_f = 252
+   val jit_code_arg_d = 253
+   val jit_code_addr_d = 254
+   val jit_code_addi_d = 255
+   val jit_code_subr_d = 256
+   val jit_code_subi_d = 257
+   val jit_code_mulr_d = 258
+   val jit_code_muli_d = 259
+   val jit_code_divr_d = 260
+   val jit_code_divi_d = 261
+   val jit_code_negr_d = 262
+   val jit_code_absr_d = 263
+   val jit_code_sqrtr_d = 264
+   val jit_code_ltr_d = 265
+   val jit_code_lti_d = 266
+   val jit_code_ler_d = 267
+   val jit_code_lei_d = 268
+   val jit_code_eqr_d = 269
+   val jit_code_eqi_d = 270
+   val jit_code_ger_d = 271
+   val jit_code_gei_d = 272
+   val jit_code_gtr_d = 273
+   val jit_code_gti_d = 274
+   val jit_code_ner_d = 275
+   val jit_code_nei_d = 276
+   val jit_code_unltr_d = 277
+   val jit_code_unlti_d = 278
+   val jit_code_unler_d = 279
+   val jit_code_unlei_d = 280
+   val jit_code_uneqr_d = 281
+   val jit_code_uneqi_d = 282
+   val jit_code_unger_d = 283
+   val jit_code_ungei_d = 284
+   val jit_code_ungtr_d = 285
+   val jit_code_ungti_d = 286
+   val jit_code_ltgtr_d = 287
+   val jit_code_ltgti_d = 288
+   val jit_code_ordr_d = 289
+   val jit_code_ordi_d = 290
+   val jit_code_unordr_d = 291
+   val jit_code_unordi_d = 292
+   val jit_code_truncr_d_i = 293
+   val jit_code_truncr_d_l = 294
+   val jit_code_extr_d = 295
+   val jit_code_extr_f_d = 296
+   val jit_code_movr_d = 297
+   val jit_code_movi_d = 298
+   val jit_code_ldr_d = 299
+   val jit_code_ldi_d = 300
+   val jit_code_ldxr_d = 301
+   val jit_code_ldxi_d = 302
+   val jit_code_str_d = 303
+   val jit_code_sti_d = 304
+   val jit_code_stxr_d = 305
+   val jit_code_stxi_d = 306
+   val jit_code_bltr_d = 307
+   val jit_code_blti_d = 308
+   val jit_code_bler_d = 309
+   val jit_code_blei_d = 310
+   val jit_code_beqr_d = 311
+   val jit_code_beqi_d = 312
+   val jit_code_bger_d = 313
+   val jit_code_bgei_d = 314
+   val jit_code_bgtr_d = 315
+   val jit_code_bgti_d = 316
+   val jit_code_bner_d = 317
+   val jit_code_bnei_d = 318
+   val jit_code_bunltr_d = 319
+   val jit_code_bunlti_d = 320
+   val jit_code_bunler_d = 321
+   val jit_code_bunlei_d = 322
+   val jit_code_buneqr_d = 323
+   val jit_code_buneqi_d = 324
+   val jit_code_bunger_d = 325
+   val jit_code_bungei_d = 326
+   val jit_code_bungtr_d = 327
+   val jit_code_bungti_d = 328
+   val jit_code_bltgtr_d = 329
+   val jit_code_bltgti_d = 330
+   val jit_code_bordr_d = 331
+   val jit_code_bordi_d = 332
+   val jit_code_bunordr_d = 333
+   val jit_code_bunordi_d = 334
+   val jit_code_movr_w_f = 335
+   val jit_code_movr_ww_d = 336
+   val jit_code_movr_w_d = 337
+   val jit_code_movr_f_w = 338
+   val jit_code_movi_f_w = 339
+   val jit_code_movr_d_ww = 340
+   val jit_code_movi_d_ww = 341
+   val jit_code_movr_d_w = 342
+   val jit_code_movi_d_w = 343
+   val jit_code_x86_retval_f = 344
+   val jit_code_x86_retval_d = 345
+
+   val index =
+     #[("jit_code_absr_d", 0wx107),
+       ("jit_code_absr_f", 0wxB5),
+       ("jit_code_addci", 0wxC),
+       ("jit_code_addcr", 0wxB),
+       ("jit_code_addi", 0wxA),
+       ("jit_code_addi_d", 0wxFF),
+       ("jit_code_addi_f", 0wxAD),
+       ("jit_code_addr", 0wx9),
+       ("jit_code_addr_d", 0wxFE),
+       ("jit_code_addr_f", 0wxAC),
+       ("jit_code_addxi", 0wxE),
+       ("jit_code_addxr", 0wxD),
+       ("jit_code_andi", 0wx28),
+       ("jit_code_andr", 0wx27),
+       ("jit_code_arg", 0wx8),
+       ("jit_code_arg_d", 0wxFD),
+       ("jit_code_arg_f", 0wxAB),
+       ("jit_code_beqi", 0wx87),
+       ("jit_code_beqi_d", 0wx138),
+       ("jit_code_beqi_f", 0wxE6),
+       ("jit_code_beqr", 0wx86),
+       ("jit_code_beqr_d", 0wx137),
+       ("jit_code_beqr_f", 0wxE5),
+       ("jit_code_bgei", 0wx89),
+       ("jit_code_bgei_d", 0wx13A),
+       ("jit_code_bgei_f", 0wxE8),
+       ("jit_code_bgei_u", 0wx8B),
+       ("jit_code_bger", 0wx88),
+       ("jit_code_bger_d", 0wx139),
+       ("jit_code_bger_f", 0wxE7),
+       ("jit_code_bger_u", 0wx8A),
+       ("jit_code_bgti", 0wx8D),
+       ("jit_code_bgti_d", 0wx13C),
+       ("jit_code_bgti_f", 0wxEA),
+       ("jit_code_bgti_u", 0wx8F),
+       ("jit_code_bgtr", 0wx8C),
+       ("jit_code_bgtr_d", 0wx13B),
+       ("jit_code_bgtr_f", 0wxE9),
+       ("jit_code_bgtr_u", 0wx8E),
+       ("jit_code_blei", 0wx83),
+       ("jit_code_blei_d", 0wx136),
+       ("jit_code_blei_f", 0wxE4),
+       ("jit_code_blei_u", 0wx85),
+       ("jit_code_bler", 0wx82),
+       ("jit_code_bler_d", 0wx135),
+       ("jit_code_bler_f", 0wxE3),
+       ("jit_code_bler_u", 0wx84),
+       ("jit_code_bltgti_d", 0wx14A),
+       ("jit_code_bltgti_f", 0wxF8),
+       ("jit_code_bltgtr_d", 0wx149),
+       ("jit_code_bltgtr_f", 0wxF7),
+       ("jit_code_blti", 0wx7F),
+       ("jit_code_blti_d", 0wx134),
+       ("jit_code_blti_f", 0wxE2),
+       ("jit_code_blti_u", 0wx81),
+       ("jit_code_bltr", 0wx7E),
+       ("jit_code_bltr_d", 0wx133),
+       ("jit_code_bltr_f", 0wxE1),
+       ("jit_code_bltr_u", 0wx80),
+       ("jit_code_bmci", 0wx95),
+       ("jit_code_bmcr", 0wx94),
+       ("jit_code_bmsi", 0wx93),
+       ("jit_code_bmsr", 0wx92),
+       ("jit_code_bnei", 0wx91),
+       ("jit_code_bnei_d", 0wx13E),
+       ("jit_code_bnei_f", 0wxEC),
+       ("jit_code_bner", 0wx90),
+       ("jit_code_bner_d", 0wx13D),
+       ("jit_code_bner_f", 0wxEB),
+       ("jit_code_boaddi", 0wx97),
+       ("jit_code_boaddi_u", 0wx99),
+       ("jit_code_boaddr", 0wx96),
+       ("jit_code_boaddr_u", 0wx98),
+       ("jit_code_bordi_d", 0wx14C),
+       ("jit_code_bordi_f", 0wxFA),
+       ("jit_code_bordr_d", 0wx14B),
+       ("jit_code_bordr_f", 0wxF9),
+       ("jit_code_bosubi", 0wx9F),
+       ("jit_code_bosubi_u", 0wxA1),
+       ("jit_code_bosubr", 0wx9E),
+       ("jit_code_bosubr_u", 0wxA0),
+       ("jit_code_buneqi_d", 0wx144),
+       ("jit_code_buneqi_f", 0wxF2),
+       ("jit_code_buneqr_d", 0wx143),
+       ("jit_code_buneqr_f", 0wxF1),
+       ("jit_code_bungei_d", 0wx146),
+       ("jit_code_bungei_f", 0wxF4),
+       ("jit_code_bunger_d", 0wx145),
+       ("jit_code_bunger_f", 0wxF3),
+       ("jit_code_bungti_d", 0wx148),
+       ("jit_code_bungti_f", 0wxF6),
+       ("jit_code_bungtr_d", 0wx147),
+       ("jit_code_bungtr_f", 0wxF5),
+       ("jit_code_bunlei_d", 0wx142),
+       ("jit_code_bunlei_f", 0wxF0),
+       ("jit_code_bunler_d", 0wx141),
+       ("jit_code_bunler_f", 0wxEF),
+       ("jit_code_bunlti_d", 0wx140),
+       ("jit_code_bunlti_f", 0wxEE),
+       ("jit_code_bunltr_d", 0wx13F),
+       ("jit_code_bunltr_f", 0wxED),
+       ("jit_code_bunordi_d", 0wx14E),
+       ("jit_code_bunordi_f", 0wxFC),
+       ("jit_code_bunordr_d", 0wx14D),
+       ("jit_code_bunordr_f", 0wxFB),
+       ("jit_code_bxaddi", 0wx9B),
+       ("jit_code_bxaddi_u", 0wx9D),
+       ("jit_code_bxaddr", 0wx9A),
+       ("jit_code_bxaddr_u", 0wx9C),
+       ("jit_code_bxsubi", 0wxA3),
+       ("jit_code_bxsubi_u", 0wxA5),
+       ("jit_code_bxsubr", 0wxA2),
+       ("jit_code_bxsubr_u", 0wxA4),
+       ("jit_code_calli", 0wxA9),
+       ("jit_code_callr", 0wxA8),
+       ("jit_code_comr", 0wx34),
+       ("jit_code_data", 0wx0),
+       ("jit_code_divi", 0wx1C),
+       ("jit_code_divi_d", 0wx105),
+       ("jit_code_divi_f", 0wxB3),
+       ("jit_code_divi_u", 0wx1E),
+       ("jit_code_divr", 0wx1B),
+       ("jit_code_divr_d", 0wx104),
+       ("jit_code_divr_f", 0wxB2),
+       ("jit_code_divr_u", 0wx1D),
+       ("jit_code_epilog", 0wxAA),
+       ("jit_code_eqi", 0wx3E),
+       ("jit_code_eqi_d", 0wx10E),
+       ("jit_code_eqi_f", 0wxBC),
+       ("jit_code_eqr", 0wx3D),
+       ("jit_code_eqr_d", 0wx10D),
+       ("jit_code_eqr_f", 0wxBB),
+       ("jit_code_extr_c", 0wx4B),
+       ("jit_code_extr_d", 0wx127),
+       ("jit_code_extr_d_f", 0wxD6),
+       ("jit_code_extr_f", 0wxD5),
+       ("jit_code_extr_f_d", 0wx128),
+       ("jit_code_extr_i", 0wx4F),
+       ("jit_code_extr_s", 0wx4D),
+       ("jit_code_extr_uc", 0wx4C),
+       ("jit_code_extr_ui", 0wx50),
+       ("jit_code_extr_us", 0wx4E),
+       ("jit_code_gei", 0wx40),
+       ("jit_code_gei_d", 0wx110),
+       ("jit_code_gei_f", 0wxBE),
+       ("jit_code_gei_u", 0wx42),
+       ("jit_code_ger", 0wx3F),
+       ("jit_code_ger_d", 0wx10F),
+       ("jit_code_ger_f", 0wxBD),
+       ("jit_code_ger_u", 0wx41),
+       ("jit_code_gti", 0wx44),
+       ("jit_code_gti_d", 0wx112),
+       ("jit_code_gti_f", 0wxC0),
+       ("jit_code_gti_u", 0wx46),
+       ("jit_code_gtr", 0wx43),
+       ("jit_code_gtr_d", 0wx111),
+       ("jit_code_gtr_f", 0wxBF),
+       ("jit_code_gtr_u", 0wx45),
+       ("jit_code_htonr", 0wx51),
+       ("jit_code_jmpi", 0wxA7),
+       ("jit_code_jmpr", 0wxA6),
+       ("jit_code_label", 0wx6),
+       ("jit_code_ldi_c", 0wx53),
+       ("jit_code_ldi_d", 0wx12C),
+       ("jit_code_ldi_f", 0wxDA),
+       ("jit_code_ldi_i", 0wx5B),
+       ("jit_code_ldi_l", 0wx5F),
+       ("jit_code_ldi_s", 0wx57),
+       ("jit_code_ldi_uc", 0wx55),
+       ("jit_code_ldi_ui", 0wx5D),
+       ("jit_code_ldi_us", 0wx59),
+       ("jit_code_ldr_c", 0wx52),
+       ("jit_code_ldr_d", 0wx12B),
+       ("jit_code_ldr_f", 0wxD9),
+       ("jit_code_ldr_i", 0wx5A),
+       ("jit_code_ldr_l", 0wx5E),
+       ("jit_code_ldr_s", 0wx56),
+       ("jit_code_ldr_uc", 0wx54),
+       ("jit_code_ldr_ui", 0wx5C),
+       ("jit_code_ldr_us", 0wx58),
+       ("jit_code_ldxi_c", 0wx61),
+       ("jit_code_ldxi_d", 0wx12E),
+       ("jit_code_ldxi_f", 0wxDC),
+       ("jit_code_ldxi_i", 0wx69),
+       ("jit_code_ldxi_l", 0wx6D),
+       ("jit_code_ldxi_s", 0wx65),
+       ("jit_code_ldxi_uc", 0wx63),
+       ("jit_code_ldxi_ui", 0wx6B),
+       ("jit_code_ldxi_us", 0wx67),
+       ("jit_code_ldxr_c", 0wx60),
+       ("jit_code_ldxr_d", 0wx12D),
+       ("jit_code_ldxr_f", 0wxDB),
+       ("jit_code_ldxr_i", 0wx68),
+       ("jit_code_ldxr_l", 0wx6C),
+       ("jit_code_ldxr_s", 0wx64),
+       ("jit_code_ldxr_uc", 0wx62),
+       ("jit_code_ldxr_ui", 0wx6A),
+       ("jit_code_ldxr_us", 0wx66),
+       ("jit_code_lei", 0wx3A),
+       ("jit_code_lei_d", 0wx10C),
+       ("jit_code_lei_f", 0wxBA),
+       ("jit_code_lei_u", 0wx3C),
+       ("jit_code_ler", 0wx39),
+       ("jit_code_ler_d", 0wx10B),
+       ("jit_code_ler_f", 0wxB9),
+       ("jit_code_ler_u", 0wx3B),
+       ("jit_code_live", 0wx1),
+       ("jit_code_load", 0wx3),
+       ("jit_code_lshi", 0wx2E),
+       ("jit_code_lshr", 0wx2D),
+       ("jit_code_ltgti_d", 0wx120),
+       ("jit_code_ltgti_f", 0wxCE),
+       ("jit_code_ltgtr_d", 0wx11F),
+       ("jit_code_ltgtr_f", 0wxCD),
+       ("jit_code_lti", 0wx36),
+       ("jit_code_lti_d", 0wx10A),
+       ("jit_code_lti_f", 0wxB8),
+       ("jit_code_lti_u", 0wx38),
+       ("jit_code_ltr", 0wx35),
+       ("jit_code_ltr_d", 0wx109),
+       ("jit_code_ltr_f", 0wxB7),
+       ("jit_code_ltr_u", 0wx37),
+       ("jit_code_movi", 0wx4A),
+       ("jit_code_movi_d", 0wx12A),
+       ("jit_code_movi_d_w", 0wx157),
+       ("jit_code_movi_d_ww", 0wx155),
+       ("jit_code_movi_f", 0wxD8),
+       ("jit_code_movi_f_w", 0wx153),
+       ("jit_code_movr", 0wx49),
+       ("jit_code_movr_d", 0wx129),
+       ("jit_code_movr_d_w", 0wx156),
+       ("jit_code_movr_d_ww", 0wx154),
+       ("jit_code_movr_f", 0wxD7),
+       ("jit_code_movr_f_w", 0wx152),
+       ("jit_code_movr_w_d", 0wx151),
+       ("jit_code_movr_w_f", 0wx14F),
+       ("jit_code_movr_ww_d", 0wx150),
+       ("jit_code_muli", 0wx16),
+       ("jit_code_muli_d", 0wx103),
+       ("jit_code_muli_f", 0wxB1),
+       ("jit_code_mulr", 0wx15),
+       ("jit_code_mulr_d", 0wx102),
+       ("jit_code_mulr_f", 0wxB0),
+       ("jit_code_name", 0wx4),
+       ("jit_code_negr", 0wx33),
+       ("jit_code_negr_d", 0wx106),
+       ("jit_code_negr_f", 0wxB4),
+       ("jit_code_nei", 0wx48),
+       ("jit_code_nei_d", 0wx114),
+       ("jit_code_nei_f", 0wxC2),
+       ("jit_code_ner", 0wx47),
+       ("jit_code_ner_d", 0wx113),
+       ("jit_code_ner_f", 0wxC1),
+       ("jit_code_note", 0wx5),
+       ("jit_code_ordi_d", 0wx122),
+       ("jit_code_ordi_f", 0wxD0),
+       ("jit_code_ordr_d", 0wx121),
+       ("jit_code_ordr_f", 0wxCF),
+       ("jit_code_ori", 0wx2A),
+       ("jit_code_orr", 0wx29),
+       ("jit_code_prolog", 0wx7),
+       ("jit_code_qdivi", 0wx20),
+       ("jit_code_qdivi_u", 0wx22),
+       ("jit_code_qdivr", 0wx1F),
+       ("jit_code_qdivr_u", 0wx21),
+       ("jit_code_qmuli", 0wx18),
+       ("jit_code_qmuli_u", 0wx1A),
+       ("jit_code_qmulr", 0wx17),
+       ("jit_code_qmulr_u", 0wx19),
+       ("jit_code_remi", 0wx24),
+       ("jit_code_remi_u", 0wx26),
+       ("jit_code_remr", 0wx23),
+       ("jit_code_remr_u", 0wx25),
+       ("jit_code_rshi", 0wx30),
+       ("jit_code_rshi_u", 0wx32),
+       ("jit_code_rshr", 0wx2F),
+       ("jit_code_rshr_u", 0wx31),
+       ("jit_code_save", 0wx2),
+       ("jit_code_sqrtr_d", 0wx108),
+       ("jit_code_sqrtr_f", 0wxB6),
+       ("jit_code_sti_c", 0wx6F),
+       ("jit_code_sti_d", 0wx130),
+       ("jit_code_sti_f", 0wxDE),
+       ("jit_code_sti_i", 0wx73),
+       ("jit_code_sti_l", 0wx75),
+       ("jit_code_sti_s", 0wx71),
+       ("jit_code_str_c", 0wx6E),
+       ("jit_code_str_d", 0wx12F),
+       ("jit_code_str_f", 0wxDD),
+       ("jit_code_str_i", 0wx72),
+       ("jit_code_str_l", 0wx74),
+       ("jit_code_str_s", 0wx70),
+       ("jit_code_stxi_c", 0wx77),
+       ("jit_code_stxi_d", 0wx132),
+       ("jit_code_stxi_f", 0wxE0),
+       ("jit_code_stxi_i", 0wx7B),
+       ("jit_code_stxi_l", 0wx7D),
+       ("jit_code_stxi_s", 0wx79),
+       ("jit_code_stxr_c", 0wx76),
+       ("jit_code_stxr_d", 0wx131),
+       ("jit_code_stxr_f", 0wxDF),
+       ("jit_code_stxr_i", 0wx7A),
+       ("jit_code_stxr_l", 0wx7C),
+       ("jit_code_stxr_s", 0wx78),
+       ("jit_code_subci", 0wx12),
+       ("jit_code_subcr", 0wx11),
+       ("jit_code_subi", 0wx10),
+       ("jit_code_subi_d", 0wx101),
+       ("jit_code_subi_f", 0wxAF),
+       ("jit_code_subr", 0wxF),
+       ("jit_code_subr_d", 0wx100),
+       ("jit_code_subr_f", 0wxAE),
+       ("jit_code_subxi", 0wx14),
+       ("jit_code_subxr", 0wx13),
+       ("jit_code_truncr_d_i", 0wx125),
+       ("jit_code_truncr_d_l", 0wx126),
+       ("jit_code_truncr_f_i", 0wxD3),
+       ("jit_code_truncr_f_l", 0wxD4),
+       ("jit_code_uneqi_d", 0wx11A),
+       ("jit_code_uneqi_f", 0wxC8),
+       ("jit_code_uneqr_d", 0wx119),
+       ("jit_code_uneqr_f", 0wxC7),
+       ("jit_code_ungei_d", 0wx11C),
+       ("jit_code_ungei_f", 0wxCA),
+       ("jit_code_unger_d", 0wx11B),
+       ("jit_code_unger_f", 0wxC9),
+       ("jit_code_ungti_d", 0wx11E),
+       ("jit_code_ungti_f", 0wxCC),
+       ("jit_code_ungtr_d", 0wx11D),
+       ("jit_code_ungtr_f", 0wxCB),
+       ("jit_code_unlei_d", 0wx118),
+       ("jit_code_unlei_f", 0wxC6),
+       ("jit_code_unler_d", 0wx117),
+       ("jit_code_unler_f", 0wxC5),
+       ("jit_code_unlti_d", 0wx116),
+       ("jit_code_unlti_f", 0wxC4),
+       ("jit_code_unltr_d", 0wx115),
+       ("jit_code_unltr_f", 0wxC3),
+       ("jit_code_unordi_d", 0wx124),
+       ("jit_code_unordi_f", 0wxD2),
+       ("jit_code_unordr_d", 0wx123),
+       ("jit_code_unordr_f", 0wxD1),
+       ("jit_code_x86_retval_d", 0wx159),
+       ("jit_code_x86_retval_f", 0wx158),
+       ("jit_code_xori", 0wx2C),
+       ("jit_code_xorr", 0wx2B)]
+
+   val xedni =
+        Array.vector
+          (Vector.foldri
+              (fn (i,x,a) => (Array.update (a,Word.toInt (#2 x), i);a))
+              (Array.array(Vector.length index,0))
+              index)
+
+   fun indexToString i = #1 (Vector.sub(index,Vector.sub(xedni,i)))
+
+   (* Is that a Galois connection I wonder? *)
+
+   fun search comp (vec : (string * 'a) Vector.vector) =
+      fn s =>
+         let fun iter l h =
+                 if h = l then let val p = Vector.sub(vec,h)
+                               in if comp (s, #1 p) = EQUAL
+                                     then SOME (#2 p)
+                                     else NONE
+                               end
+                          else let val m = l + (h - l) div 2
+                                   val p = Vector.sub(vec,m)
+                                   val c = comp (s,#1 p)
+                               in if c = EQUAL
+                                     then SOME (#2 p)
+                                     else if c = LESS 
+                                             then iter l m
+                                             else iter m h
+                               end
+         in iter 0 (Vector.length vec - 1)
+         end
+
+   val indexFromString = search String.compare index
+end
+
+fun mkregmap l =
+    scm_list (List.map 
+                 (fn s => scm_list [scm_symbol s,
+                                    scm_from_ulong (Ffi.jit_get_constant s)]) l)
+
+val lookup_code = scm_from_ulong o Option.valOf o jit_code_t.indexFromString
+
+val defs = scm_qlToString `
+         (use-modules (system foreign))
+         (use-modules (rnrs enums))
+         (define jit-gpr-num
+            (lambda (x)
+               (cadr (assq x (quote ^(mkregmap ["R0","R1","R2","V0","V1","V2","FP"]))))))
+         (define jit-fpr-num
+            (lambda (x)
+               (cadr (assq x (quote ^(mkregmap ["F0","F1","F2","F3","F4","F5","F6"]))))))
+         (define liblightning (dynamic-link "liblightning"))
+         (define init-jit-sym (dynamic-func "init_jit" liblightning))
+         (define init-jit (pointer->procedure void init-jit-sym (list (list '* '*))))
+         (define argv0 (make-c-struct (list '* '*)
+                                      (list (string->pointer (car (command-line)))
+                                             %null-pointer)))
+         (init-jit argv0)
+         (define-wrapped-pointer-type jit-state
+            jit-state?
+            jit-wrap-state jit-unwrap-state
+            (lambda (s p)
+              (format p "#<jit-state ~x>"
+                      (pointer-address (jit-unwrap-state s)))))
+         (define-wrapped-pointer-type jit-node
+            jit-node?
+            jit-wrap-node jit-unwrap-node
+            (lambda (s p)
+              (format p "#<jit-node ~x>"
+                      (pointer-address (jit-unwrap-node s)))))
+         (define jit-new-state
+            ;; Wrapper for jit_new_state.
+            (let* ((jit-new-state-sym (dynamic-func "jit_new_state" liblightning))
+                   (jit-new-state-proc (pointer->procedure '* jit-new-state-sym '())))
+              (lambda ()
+                "Return a new JIT state."
+                (jit-wrap-state (jit-new-state-proc)))))
+         (define jit-emit
+            ;; Wrapper for jit_emit.
+            (let* ((jit-emit-sym (dynamic-func "_jit_emit" liblightning))
+                   (jit-emit-proc (pointer->procedure '* jit-emit-sym (list '*))))
+              (lambda (jit-state)
+                "Return the compiled code."
+                (jit-emit-proc (jit-unwrap-state jit-state)))))
+         (define jit-prolog
+            ;; Wrapper for jit_prolog.
+            (let* ((jit-prolog-sym (dynamic-func "_jit_prolog" liblightning))
+                   (jit-prolog-proc (pointer->procedure void jit-prolog-sym
+                                                               (list '*))))
+              (lambda (jit-)
+                "Start a function definition."
+                (jit-prolog-proc (jit-unwrap-state jit-)))))
+         (define jit-arg
+            ;; Wrapper for jit_arg.
+            (let* ((jit-arg-sym (dynamic-func "_jit_arg" liblightning))
+                   (jit-arg-proc (pointer->procedure '* jit-arg-sym 
+                                                        (list '*))))
+              (lambda (jit-)
+                "Get a pointer to the next argument."
+                (jit-wrap-node (jit-arg-proc (jit-unwrap-state jit-))))))
+         (define jit-getarg-i
+            ;; Wrapper for jit_getarg_i.
+            (let* ((jit-getarg-i-sym (dynamic-func "_jit_getarg_i" liblightning))
+                   (jit-getarg-i-proc (pointer->procedure void jit-getarg-i-sym
+                                                         (list '* unsigned-long '*))))
+              (lambda (jit- gpr node)
+                "Load the integer argument into a register."
+                (jit-getarg-i-proc (jit-unwrap-state jit-)
+                                   (jit-gpr-num gpr)
+                                   (jit-unwrap-node node)))))
+         (define jit-retr
+            ;; Wrapper for jit_retr.
+            (let* ((jit-retr-sym (dynamic-func "_jit_retr" liblightning))
+                   (jit-retr-proc (pointer->procedure void jit-retr-sym
+                                                         (list '* unsigned-long))))
+              (lambda (jit- gpr)
+                "Return the register contents."
+                (jit-retr-proc (jit-unwrap-state jit-)
+                               (jit-gpr-num gpr)))))
+         (define jit-new-node-www
+            ;; Wrapper for jit_new-node-www.
+            (let* ((jit-new-node-www-sym (dynamic-func "_jit_new_node_www" liblightning))
+                   (jit-new-node-www-proc (pointer->procedure '* jit-new-node-www-sym 
+                                                        (list '*
+                                                              unsigned-long
+                                                              unsigned-long
+                                                              unsigned-long
+                                                              unsigned-long))))
+              (lambda (jit- c u v w)
+                "Return the next jit node."
+                (jit-wrap-node (jit-new-node-www-proc (jit-unwrap-state jit-) c u v w)))))
+          (define jit-addr
+             (let ((jit-code-addr ^(lookup_code "jit_code_addr")))
+                  (lambda (jit- r1 r2 r3)
+                       "Generate addr instruction(s)."
+                       (jit-new-node-www
+                            jit-
+                            jit-code-addr
+                           (jit-gpr-num r1)
+                           (jit-gpr-num r2)
+                           (jit-gpr-num r3)))))
+          (define jit-addi
+             (let ((jit-code-addi ^(lookup_code "jit_code_addi")))
+                  (lambda (jit- r1 r2 n)
+                       "Generate addi instruction(s)."
+                       (jit-new-node-www
+                            jit-
+                            jit-code-addi
+                           (jit-gpr-num r1)
+                           (jit-gpr-num r2)
+                            n))))
+`;
+
+(*
+(define successor
+ (let ((ptr
+   (let ((st (jit-new-state)))
+             (jit-prolog st)
+   (let ((v  (jit-arg st)))
+             (jit-getarg-i st 'R0 v)
+             (jit-addi st 'R1 'R0 1)
+             (jit-retr st 'R1)
+             (jit-emit st)))))
+        (pointer->procedure
+           unsigned-long
+           ptr
+          (list unsigned-long))))
+*)
+
+(*
+ ("void", "jit_prolog", [("_jit", "state")], ("_jit_prolog", ["_jit"])),
+ ("void", "jit_getarg_i", [("_jit", "state"), ("u", "gpr"), ("v", "noderef")],
+  ("_jit_getarg_i", ["_jit", "u", "v"])),
+ ("noderef", "jit_arg", [("_jit", "state")], ("_jit_arg", ["_jit"])),
+ ("void", "jit_retr", [("_jit", "state"), ("u", "gpr")],
+  ("_jit_retr", ["_jit", "u"])),
+ ("noderef", "jit_new_node_www",
+  [("_jit", "state"), ("c", "code"), ("u", "word"), ("v", "word"),
+   ("w", "word")], ("_jit_new_node_www", ["_jit", "c", "u", "v", "w"]))];
+ ("noderef", "jit_addr",
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "gpr")],
+  ("jit_new_node_www", ["_jit", "jit_code_addr", "u", "v", "w"])),
+ ("noderef", "jit_addi",
+  [("_jit", "state"), ("u", "gpr"), ("v", "gpr"), ("w", "word")],
+  ("jit_new_node_www", ["_jit", "jit_code_addi", "u", "v", "w"])),
+*)
+
+fun scm_type t =
+   case t
+     of "noderef" => scm_symbol "*"
+      | "state" => scm_symbol "*"
+      | "code" => scm_symbol "uint32"
+      | "void" => scm_symbol "()"
+      | "int" => scm_symbol "int"
+      | "float" => scm_symbol "float"
+      | "double" => scm_symbol "double"
+      | "pointer" => scm_symbol "*"
+      | "word" => scm_symbol "unsigned-long"
+      | "fpr" => scm_symbol "uint32"
+      | "gpr" => scm_symbol "uint32"
+      | s => raise Fail ("scm_type: no case "^s)
+
+val scm_rev =
+   let fun iter acc = fn scm =>
+      if (scm_eq_p (scm, scm_nil))
+         then acc
+         else
+            let val hd = scm_car scm
+                val tl = scm_cdr scm
+            in iter (scm_cons(hd,acc)) tl
+            end
+   in iter scm_nil
+   end
+ 
+val scm_argtypes =
+   let fun iter (pnms,atys) [] = (scm_rev pnms,scm_rev atys)
+         | iter (pnms,atys) ((p as (v,t))::ps) = 
+               iter (scm_cons (scm_symbol v, pnms),
+                     scm_cons (scm_type t,   atys)) ps
+   in iter (scm_nil, scm_nil)
+   end
+
+(* Having thought about this a bit more ... Since _we_ can compile
+   bindings, why don't we just compile them for Guile?  In general,
+   all we need to do is provide a _simple_ function call interface so
+   that our hosts can define their calling conventions, and then we
+   can build them a binary API for anything for which we have an
+   intensional representation.
+
+   Surprisingly, assembler is a much more concise and a simpler language
+   for specifying such things. C is too ambiguous: what is the
+   difference, _really,_ between a function which takes a structure
+   containing an integer and a pointer to a pointer to a character as
+   an argument, and a function which takes two arguments: an integer,
+   and a pointer to an array of pointers to characters? It is easier
+   to specify the semantics of an assembly language in terms of
+   concrete contents of registers and memory locations etc. The
+   semantics of C, on the other hand, seem inextricably wound up with
+   how things are construed: for example and array is construed as a
+   pointer when it appears fully specified in the argument to a
+   function.
+
+   But to be portable it needs to be an abstract assembler with some
+   very simple and well-specified semantics. GNU lightning fulfils one
+   out of these three requirements.
+
+*)
+
+fun defwrapper l =
+   let fun iter acc [] = acc
+         | iter acc ((retval, name, args, (call,_))::rest) =
+      let val rvt = scm_type retval
+          val (ans,ats) = scm_argtypes args
+          val cln = scm_string call
+          val nam = scm_symbol name
+      in iter (scm_qlToString `(define ^(nam) (list (quote ^(rvt)) (quote ^(ats))))`::acc) rest
+      end
+   in
+      List.rev (iter [] l)
+   end
+
+val mknodes' = defwrapper mknodes;

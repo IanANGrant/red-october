@@ -65,7 +65,7 @@ fun tag_names () =
 
 (* The table of macro names *)
 
-val macro_table = (Hasht.new 50 : (string,(Tree * (string option * string))) Hasht.t);
+val macro_table = (Hasht.new 50 : (string,(Tree * (string list option * string))) Hasht.t);
 
 fun clear_macros () = Hasht.clear macro_table;
 
@@ -609,9 +609,13 @@ fun load_macros t =
        fun plist_str l = plist
                (fn (NonTerm("identifier",[Term(s)]),r) =>
                     let val space = if r = "" then "" else ", "
-                    in r^space^s
+                    in s^space^r
                     end
                  | _ => raise Fail "plist_str: no case") "" l
+       fun plist_lst l = plist
+               (fn (NonTerm("identifier",[Term(s)]),r) =>
+                    s::r
+                 | _ => raise Fail "plist_str: no case") [] l
        fun hash_define (t as (NonTerm("hash-define",
                                  [NonTerm("identifier",[Term(s)])]))) =
                                   new_macro_name s (t,(NONE,""))
@@ -623,27 +627,27 @@ fun load_macros t =
                                  [NonTerm("parametric-identifier",[Term(s)]),
                                   l as (NonTerm("hash-define-parameter-list",_)),
                                   t' as (NonTerm("hash-definition",_))]))) =
-                                        new_macro_name s (t,(SOME (plist_str l),pdef t'))
+                                        new_macro_name s (t,(SOME (plist_lst l),pdef t'))
          | hash_define (t as (NonTerm("hash-define",
                                  [NonTerm("parametric-identifier",[Term(s)]),
                                   l as (NonTerm("hash-define-parameter-list",
                                                 [(NonTerm("identifier",[Term(s')]))]))]))) =
-                                        new_macro_name s (t,(SOME (s'),""))
+                                        new_macro_name s (t,(SOME ([s']),""))
          | hash_define (t as (NonTerm("hash-define",
                                  [NonTerm("parametric-identifier",[Term(s)]),
                                   l as (NonTerm("hash-define-parameter-list",
                                                 [NonTerm("hash-define-parameter-list",_),
                                                  NonTerm("identifier",_)]))]))) =
-                                        new_macro_name s (t,(SOME (plist_str l),""))
+                                        new_macro_name s (t,(SOME (plist_lst l),""))
          | hash_define (t as (NonTerm("hash-define",
                                  [NonTerm("parametric-identifier",[Term(s)]),
                                   l as (NonTerm("hash-define-parameter-list",
                                         [NonTerm("identifier",_)]))]))) =
-                                        new_macro_name s (t,(SOME (plist_str l),""))
+                                        new_macro_name s (t,(SOME (plist_lst l),""))
          | hash_define (t as (NonTerm("hash-define",
                                 [NonTerm("parametric-identifier",[Term(s)]),
                                  (t' as NonTerm("hash-definition",_))]))) = 
-                                 new_macro_name s (t,(SOME "",pdef t'))
+                                 new_macro_name s (t,(SOME [""],pdef t'))
          | hash_define t = (Rewrite.printTreeDirect 0 t;
                             raise Fail "hash_define: no case")
        fun iter (NonTerm("cpp-lines",[t as (NonTerm("hash-define",_))])) = hash_define t
@@ -690,6 +694,35 @@ fun enum_datatype tds s =
       "\nfun fromString s =\n    case s of"^lusdef^"\n       | w => raise Fail (\""^s
                      ^".fromString: \\\"\"^s^\"\\\" is not a defined enumeration constant\")\n"^
       "\nfun toString e =\n    case e of"^ulsdef^"\n"^
+      "\nend\n"
+   end;
+
+fun enum_hash tds s =
+   let fun dedup l =
+              List.foldr 
+                 (fn (p as (s,n),a) => 
+                     (case List.find (fn (_,n') => n'=n) a
+                        of NONE => p::a
+                         | SOME _ => a)) [] l
+       val lut_ = assq "EnumHashdef" tds s
+       val lut = List.map (fn (s,n) => (mlvar s,n)) lut_
+       val (dtl,num) = List.foldl (fn ((s,n'),(a,n)) => (a^(if a = "" then "\n   " else "\n   ")^"val "^s^" = "^(Int.toString n),n+1)) ("",0) lut
+       val ascnm =  fn ((n,d),(n',d')) => (String.compare (n, n'))
+       val lutsorted = Listsort.sort ascnm lut
+       val sdtl = List.foldl (fn ((s,n'),a) => (a^(if a = "" then "\nval hashlst = [(\"" else ",\n       (\"")^s^"\", 0wx"^(Word.toString( n'))^")")) "" lutsorted
+       val sdtl = sdtl^"]\n"
+       val dtdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n    " else "\n  | ")^s) "" lut
+       val ludef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n      | ")^
+                                  "0wx"^(Word.toString n)^" => "^s) "" (dedup lut)
+       val lusdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
+                                  "\""^s^"\" => "^s) "" (dedup lut)
+       val uldef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
+                                  s^" => "^"0wx"^(Word.toString n)) "" lut
+       val ulsdef = List.foldl (fn ((s,n),a) => a^(if a = "" then "\n         " else "\n       | ")^
+                                  s^" => \""^s^"\"") "" lut
+   in "structure "^s^" = \nstruct\n"^
+      dtl^"\n"^
+      sdtl^
       "\nend\n"
    end;
 

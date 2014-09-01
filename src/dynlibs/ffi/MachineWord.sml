@@ -36,7 +36,7 @@ struct
          fun binop jit_binop = 
          let open Jit
             val jit_ = jit_new_state ();
-            val slccall = jit_label (jit_);
+            val slccall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_);
             val v = jit_arg (jit_);
          
@@ -75,7 +75,7 @@ struct
          fun unop jit_unop = 
          let open Jit
             val jit_ = jit_new_state ();
-            val slccall = jit_label (jit_);
+            val slccall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_);
             val v = jit_arg (jit_);
          
@@ -107,7 +107,7 @@ struct
          val toInt = 
          let open Jit
             val jit_ = jit_new_state ();
-            val slccall = jit_label (jit_);
+            val slccall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_);
             val v = jit_arg (jit_);
          
@@ -132,7 +132,7 @@ struct
          val fromInt_ =
          let open Jit
             val jit_ = jit_new_state ();
-            val slccall = jit_label (jit_);
+            val slccall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_);
             val v = jit_arg (jit_);
          
@@ -168,7 +168,7 @@ struct
          fun relop jit_relop = 
          let open Jit
             val jit_ = jit_new_state ();
-            val slccall = jit_label (jit_);
+            val slccall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_);
             val v = jit_arg (jit_);
          

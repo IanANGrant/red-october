@@ -4,7 +4,7 @@ Red October changes:
 
     * There is now a ./configure script in src/. This is the usual
       'magic', and like the usual magic, it often won't work! This is
-      unusual magic, though, because it has a fall-back: ff autoconf
+      unusual magic, though, because it has a fall-back: if autoconf
       lets you down then try ./configure --enable-manual. This will do
       very little except make sure the old Makefile.inc, Makefile
       combination is restored. Then you can do manual configuration,

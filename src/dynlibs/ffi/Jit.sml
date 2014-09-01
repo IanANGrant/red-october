@@ -183,15 +183,23 @@ in
                                         jit_destroy_state_type mkargs mkretval
 end;
 
-local open Ffi
-   val jit_label_type = Function(Pointer(Structure([])), SOME FFI_TYPE_POINTER)
-   fun mkargs (State (ref jit_)) = jit_
-     | mkargs _ = raise Fail "Jit.jit_label: argument type mismatch: expected (State)."
+local
+   val jit_note_type = 
+          Ffi.Function(Ffi.Structure
+                           ([Ffi.Pointer(Ffi.Structure([])),
+                             Ffi.Pointer(Ffi.Const(Ffi.Character(Ffi.Signed))),
+                             Ffi.Const(Ffi.Integer(Ffi.Unsigned,Ffi.Int))]),
+                       SOME Ffi.FFI_TYPE_POINTER)
+   fun mkargs (State (ref jit_), Pointer s, word_) =
+          let val (argsv,svec) = Ffi.mkargssvec [jit_ ,s, Ffi.svec_setvecword word_]
+          in argsv
+          end
+     | mkargs _ = raise Fail "Jit.jit_note: argument type mismatch: expected (State,string,word)."
    fun mkretval v = Node v
-   val jit_label = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_label")
+   val jit_note = Dynlib.cptr (Dynlib.dlsym liblightning "_jit_note")
 in
-   val jit_label = ffi_trampoline "jit_label" jit_label
-                           jit_label_type mkargs mkretval
+   val jit_note = Ffi.ffi_trampoline "jit_note" jit_note
+                           jit_note_type mkargs mkretval
 end;
 
 local open Ffi

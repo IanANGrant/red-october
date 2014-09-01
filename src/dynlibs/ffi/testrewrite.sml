@@ -40,7 +40,7 @@ in
    type decls = {define_enum : string -> string, get_decl : string -> Tree,
                  get_macro : string -> Tree * (string list option * string),
                  get_tag : string -> Tree, get_typedef : string -> Tree,
-                 print_decl : string -> unit, 
+                 print_decl : string -> unit, define_enum_hash : string -> string, 
                  macros : unit -> (string * (Tree * (string list option * string))) list}
 end
 
@@ -113,7 +113,9 @@ let
      val cdecl = fn ds => #2 o exists o (find_cdecl ds)
      val print_cdecl = fn ds => (Rewrite.printTreeDirect 20) o (cdecl ds) 
      fun define_enum s = enum_datatype (CEnumTypedefs@CAnonEnums) s
+     fun define_enum_hash s = enum_hash (CEnumTypedefs@CAnonEnums) s
 in {get_decl=cdecl cdecls, print_decl=print_cdecl cdecls, define_enum=define_enum,
+    define_enum_hash=define_enum_hash,
     get_tag=cdecl tags, get_macro=cdecl macros, get_typedef=cdecl typedefs, macros=(fn () => macros)}
 end
 
@@ -1136,7 +1138,10 @@ fun matches pat =
       in fn n => Regex.regexecBool regex [] n
       end
 
-val exclmacs = matches "^(jit_new_node|jit_set|jit_get_|jit_name|jit_link|jit_callee|jit_data|jit_pointer|jit_note)"
+val codehash = #define_enum_hash ltdecls "jit_code_t"
+val _ = print codehash;
+
+val exclmacs = matches "^(jit_set|jit_get_|jit_name|jit_link|jit_callee|jit_data|jit_pointer|jit_new_node_)"
 val othermacs = List.filter (fn (n,_,_) => not (exclmacs n)) (findpmacros ("^jit_","^_jit") ltmacros)
 
 val ltshowdecl = fn n => printTree (#get_decl ltdecls n)
@@ -1196,20 +1201,17 @@ val types' = fn (n,fps,(cn,cps)) =>
                 (cn,cps))
 val ltrest' = List.map types' (selectms "jit_" nnmacs')
 
-val typemap = [("f","fpr"),("d","fpr"),("i","gpr"),("u","gpr"),("l","gpr"),("c","gpr"),("s","gpr"),("us","gpr"),("uc","gpr"),("ul","gpr")]
+val typemap = [("f","fpr"),("d","fpr"),("i","gpr"),("u","gpr"),
+               ("l","gpr"),("c","gpr"),("s","gpr"),("us","gpr"),
+               ("uc","gpr"),("ul","gpr")]
 
-val itypemap = [("f","float"),("d","double"),("i","int"),("u","unsigned"),("l","long"),("c","char"),("s","short"),("us","unsigned short"),("uc","unsigned char"),("ul","unsigned long")]
+val itypemap = [("f","float"),("d","double"),("i","int"),("u","unsigned"),
+                ("l","long"),("c","char"),("s","short"),("us","unsigned short"),
+                ("uc","unsigned char"),("ul","unsigned long")]
 
 val lookupt = fn s => ((#2) o (defopt ("","word") o (List.find (fn (c,t) => c = s)))) typemap
 val lookupit = fn s => ((#2) o (defopt ("","int") o (List.find (fn (c,t) => c = s)))) itypemap
 
-val typcds = "us|uc|ul|f|d|s|c|i|l|u"
-val reals = "f|d"
-val eqs = "eq|ne"
-val ineqs = "lt|gt|le|ge"
-val eqineqs = eqs^"|"^ineqs
-val arith = "add|sub|mul|div"
-val ri = "r|i"
 val modargs = [
    ("jit_(un)?(lt|gt|le|ge|eq|ne|ltgt|ord)(r|i)_(f|d|u)",
             fn [_,_,insn,ri,tc] => [(1,"gpr"),(2,lookupt tc)]@(if ri="r" then [(3,lookupt tc)] else [])
@@ -1223,7 +1225,7 @@ val modargs = [
    ("jit_(lt|gt|le|ge|eq|ne)(r|i)$",
             fn [_,insn,ri] => [(1,"gpr"),(2,"gpr")]@(if ri="r" then [(3,"gpr")] else [])
              | _ => []),
-   ("jit_(add|sub|mul|div|rem|rsh)(r|i)_("^typcds^")",
+   ("jit_(add|sub|mul|div|rem|rsh)(r|i)_(us|uc|ul|f|d|s|c|i|l|u)",
             fn [_,insn,ri,tc] =>
                let val res = if ri="i"
                                 then []
@@ -1241,9 +1243,9 @@ val modargs = [
                          | "d_w" =>  (1,"gpr")::(if ri="r" then [(2,"fpr")] else [])
                          | "d_ww" =>  (1,"gpr")::(2,"gpr")::(if ri="r" then [(3,"fpr")] else [])
                          | "f_w" =>  (1,"gpr")::(if ri="r" then [(2,"fpr")] else [])
-                         | "w_d" =>  [(1,"fpr"),(2,"gpr")]
-                         | "w_f" =>  [(1,"fpr"),(2,"gpr")]
-                         | "ww_d" =>  (1,"fpr")::(2,"gpr")::(if ri="r" then [(3,"gpr")] else [])
+                         | "w_d" =>  (1,"fpr")::(if ri="r" then [(2,"gpr")] else [])
+                         | "w_f" =>  (1,"fpr")::(if ri="r" then [(2,"gpr")] else [])
+                         | "ww_d" =>  (1,"fpr")::(if ri="r" then [(2,"gpr"),(3,"gpr")] else [])
                          | _ => [])
              | _ => []),
    ("jit_b(un)?ord(i|r)_(f|d)",
@@ -1315,21 +1317,110 @@ val modargs = [
                            | _ => [])
              | l => List.map (fn s => (0,s)) l),
    ("jit_(ld|st)(x?)(r|i)_(f|d|i|u?c|u?s)",
-            fn [_,insn,x,ri,tc] =>
-               let val (srcr,dstr) = if insn="st" then (3,1) else (1,3) 
-               in [(srcr,"gpr"),(2,"gpr"),(dstr,if x = "x" then "gpr" else "pointer")]
+            fn [_,insn,"x",ri,tc] =>
+               let val (srcp,dstp) = if insn="st" then (3,1) else (1,3)
+               in [(srcp,lookupt tc),(2,"gpr"),(dstp,if ri="i" then "pointer" else "gpr")]
+               end
+             | [_,insn,"",ri,tc] =>
+               let val (srcp,dstp) = if insn="st" then (2,1) else (1,2)
+               in [(srcp,lookupt tc),(dstp,if ri="i" then "pointer" else "gpr")]
                end
              | l => List.map (fn s => (0,s)) l)
+];
+
+val df = [
+   ("jit_(un)?(lt|gt|le|ge|eq|ne|ltgt|ord)(r|i)_(f|d|u)",
+            fn [_,_,insn,ri,tc] => ([1],if ri="r" then [2,3] else [2])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_b(un)?(lt|gt|le|ge|eq|ne|ltgt|ord)(r|i)_(f|d|u)",
+            fn [_,_,insn,ri,tc] => ([],if ri="r" then [1,2] else [1])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_b(lt|gt|le|ge|eq|ne)(r|i)$",
+            fn [_,insn,ri] => ([],if ri="r" then [1,2] else [1])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(lt|gt|le|ge|eq|ne)(r|i)$",
+            fn [_,insn,ri] => ([1],if ri="r" then [2,3] else [2]) 
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(add|sub|mul|div|rem|rsh)(r|i)_(us|uc|ul|f|d|s|c|i|l|u)",
+            fn [_,insn,ri,tc] => ([1],if ri="r" then [2,3] else [2]) 
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(abs|sqrt|neg)r_(f|d)",
+            fn [_,_,tc] => ([1],[2])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_mov(r|i)_(f|d|w|d_w|f_w|w_d|w_f|d_ww|ww_d)$",
+            fn [_,ri,tc] => 
+               (case tc of "d" => ([1],if ri="r" then [2] else [])
+                         | "f" => ([1],if ri="r" then [2] else [])
+                         | "d_w" => ([1],if ri="r" then [2] else [])
+                         | "d_ww" => ([1,2],if ri="r" then [3] else [])
+                         | "f_w" => ([1],if ri="r" then [2] else [])
+                         | "w_d" => ([1],if ri="r" then [2] else [])
+                         | "w_f" => ([1],if ri="r" then [2] else [])
+                         | "ww_d" => ([1],if ri="r" then [2,3] else [])
+                         | t => raise Fail ("df: regexec match: type "^t^": no case."))
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_b(un)?ord(i|r)_(f|d)",
+            fn [_,_,ri,_] => ([1],if ri="r" then [2] else [])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_extr_(f|d|c|s|uc|us)",
+            fn [_,t] => ([1],[2])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(add|sub)(x|c)(r|i)",
+            fn [_,insn,xc,ri] => ([1],if ri="r" then [2,3] else [2])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_bm(s|c)(r|i)",
+            fn [_,sc,ri] => ([1],if ri="r" then [2] else [])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_call(r|i)",
+            fn [_,ri] => ([],if ri="r" then [1] else [])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_b[ox](add|sub)(r|i)(_u)?",
+            fn [_,insn,ri,u] => ([1],if ri="r" then [2] else [])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_q(div|mul)(r|i)(_u)?",
+            fn [_,insn,ri,u] => ([1,2],if ri="r" then [3,4] else [3])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(add|sub|mul|div|rem|lsh|and|rsh|or|xor)(r|i)$",
+            fn [_,insn,ri] => ([1],if ri="r" then [2,3] else [2])
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(comr|htonr|ntohr|jmpr|live|negr|movr|movi|truncr_d_i|truncr_f_i)$",
+            fn [_,insn] =>
+               (case insn of "comr" => ([1],[2])
+                           | "htonr" => ([1],[2])
+                           | "ntohr" => ([1],[2])
+                           | "movr" => ([1],[2])
+                           | "jmpr" => ([],[1])
+                           | "live" => ([],[1])
+                           | "movi" => ([1],[])
+                           | "negr" => ([1],[2])
+                           | "truncr_d_i" => ([1],[2])
+                           | "truncr_f_i" => ([1],[2])
+                           | t => raise Fail ("df: regexec match: type: "^t^"no case."))
+             | _ => raise Fail "df: regexec match: no case."),
+   ("jit_(ld|st)(x?)(r|i)_(f|d|i|u?c|u?s)",
+            fn [_,insn,"x",ri,tc] => if insn="st" then ([],if ri="i" then [1,2,3] else [1,2])
+                                                  else ([1],if ri="i" then [2,3] else [2])
+             | [_,insn,"",ri,tc] => if insn="st" then ([],if ri="i" then [1,2] else [1])
+                                                  else ([1],if ri="i" then [2,3] else [2])
+             | _ => raise Fail "df: regexec match: no case.")
 ];
 
 val rematchlst = (List.map Substring.string) o (Vector.foldr op :: []) o (defopt #[])
 val compm = fn m => Regex.regcomp m [Regex.Extended]
 val modargs' = List.map (fn (re,modfn) => (compm re,modfn)) modargs
-val mods = fn s => 
+val df' = List.map (fn (re,rdf) => (compm re,rdf)) df
+val mods = fn s =>
              List.foldl 
                 (fn ((re,modfn),a) =>
                      List.@ (modfn ((rematchlst o (Regex.regnexec re []) o Substring.full) s),a))
              [] modargs'
+
+val dfs = fn l => fn s => 
+             List.foldl 
+                (fn ((re,modfn),a) =>
+                     (List.:: (modfn ((rematchlst o (Regex.regnexec re []) o Substring.full) s),a)
+                             handle Fail _ => a))
+             [] l;
 
 val othermodargs = [
    ("jit_retval_(f|d|i|c|s|uc|us)",
@@ -1365,12 +1456,36 @@ val othermodargs = [
    ("jit_allocai$",
             fn [_] => [(0,"state"),(1, "word")]
              | _ => []),
+   ("jit_new_node$",
+            fn [_] => [(0,"state"),(1, "code")]
+             | _ => []),
+   ("jit_note$",
+            fn [_] => [(0,"state"),(1, "pointer"),(2, "word")]
+             | _ => []),
    ("jit_finish(r|i)$",
             fn [_,ri] => [(0,"state"),(1,if ri = "r" then "gpr" else "pointer")]
              | _ => []),
-   ("jit_(print|prolog|prepare|realize|ret|epilog|emit|forward|clear_state|destroy_state|disassemble|ellipsis|arg|arg_d|arg_f|indirect|label)$",
+   ("jit_(print|prolog|prepare|realize|ret|epilog|emit|forward|clear_state \
+             \ |destroy_state|disassemble|ellipsis|arg|arg_d|arg_f|indirect|label)$",
             fn [_,cmd] => [(0,"state")]
              | _ => [])]
+
+val otherdf = [
+   ("jit_retval_(f|d|i|c|s|uc|us)",
+            fn [_,_] => ([1],[])
+             | _ => raise Fail "otherdf: regexec match: no case."),
+   ("jit_getarg_(f|d|i|c|s|uc|us)$",
+            fn [_,_] => ([1],[])
+             | _ => raise Fail "otherdf: regexec match: no case."),
+   ("jit_ret(r|i)(_(f|d))?",
+            fn (_::ri::_) => ([],if ri = "r" then [1] else [])
+             | _ => raise Fail "otherdf: regexec match: no case."),
+   ("jit_pusharg(r|i)(_(f|d))?",
+            fn (_::ri::_) => ([],if ri = "r" then [1] else [])
+             | _ => raise Fail "otherdf: regexec match: no case."),
+   ("jit_finish(r|i)$",
+            fn [_,ri] => ([],if ri = "r" then [1] else [])
+             | _ => raise Fail "otherdf: regexec match: no case.")]
 
 val othermodargs' = List.map (fn (re,modfn) => (compm re,modfn)) othermodargs
 
@@ -1391,9 +1506,19 @@ val do_modotherargs =
      fn amods =>
         List.rev o #2 o (List.foldl (fn (s,(i,args)) => (i+1,(s,lookupoa (i) amods)::args)) (0,[]))
 
-val modded = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) => ("noderef",name, do_modargs (mods name) args,dst)) ltrest;
+val otherdf' = List.map (fn (re,rdf) => (compm re,rdf)) otherdf
 
-val modded' = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) => ("noderef",name, args,dst)) ltrest';
+val thedfs = List.map (fn (name,_,_,_) => (name,dfs df' name)) ltrest;
+val theotherdfs = List.filter (fn (_,[]) => false | (_,[([],[])]) => false | _ => true) (List.map (fn (name,_,_) => (name,dfs otherdf' name)) othermacs');
+val dataflow = thedfs @ theotherdfs
+
+val modded = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) =>
+                          ("noderef",name, do_modargs (mods name) args,dst))
+                       ltrest;
+
+val modded' = List.map (fn (name,nargs,args,dst as (dstnm,dstargs)) =>
+                           ("noderef",name, args,dst))
+                        ltrest';
 
 val retvals = [
    ("jit_address","pointer"),
@@ -1403,6 +1528,8 @@ val retvals = [
    ("jit_finishi","noderef"),
    ("jit_arg(_[df])?","noderef"),
    ("jit_finishi","noderef"),
+   ("jit_new_node$","noderef"),
+   ("jit_note","noderef"),
    ("jit_allocai","int")
 ]
 
@@ -1415,7 +1542,11 @@ val findretvals = fn s =>
                 of SOME (_,t) => t
                  | _ => "void")
 
-val othermodded = List.map (fn (name,args,dst as (dstnm,dstargs)) => (findretvals name,name, do_modotherargs (othermods name) args,dst)) othermacs';
+val othermodded = List.map (fn (name,args,dst as (dstnm,dstargs)) =>
+                               (findretvals name,
+                                name,
+                                do_modotherargs (othermods name) args,dst))
+                           othermacs';
 
 val lookupalias = fn s => ((#2) o (defopt ("","") o (List.find (fn (c,t) => c = s)))) aliases
 
@@ -1427,7 +1558,9 @@ fun printdargs args =
 
 fun typemap m = fn s => ((#2) o (defopt (s,s) o (List.find (fn (c,t) => c = s)))) m
 
-val maptypes = [("state","lgt_state_t"),("code","lgt_code_t"),("gpr","lgt_gpr_t"),("fpr","lgt_fpr_t"),("pointer","lgt_ptr_t"),("word","lgt_word_t"),("void","void"),("noderef","lgt_noderef_t")];
+val maptypes = [("state","lgt_state_t"),("code","lgt_code_t"),("gpr","lgt_gpr_t"),
+                ("fpr","lgt_fpr_t"),("pointer","lgt_ptr_t"),("word","lgt_word_t"),
+                ("void","void"),("noderef","lgt_noderef_t")];
 
 fun replacejit s = fn t => Regex.replace (Regex.regcomp "^jit_" [Regex.Extended]) [Regex.Str t] s
 
@@ -1451,6 +1584,10 @@ val printdef' = List.app (fn (rv,n,args,(dstnm,dstargs)) =>
           in printit n; if extra <> "" then printit extra else ()
           end)
 
-val _ = printdef' othermodded;
-val _ = printdef' modded';
-val _ = printdef' modded;
+val _ = printLength := Option.valOf Int.maxInt;
+val _ = (print "val infra = ";printVal othermodded;print "\n");
+val _ = (print "val mknodes = ";printVal modded';print "\n");
+val _ = (print "val insns = ";printVal modded;print "\n");
+val _ = (print "val dataflow = ";printVal dataflow;print "\n");
+
+

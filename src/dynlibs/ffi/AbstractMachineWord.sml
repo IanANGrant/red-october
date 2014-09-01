@@ -12,7 +12,7 @@ struct
       fun binop jit_binop =
          let open Jit
             val jit_ = jit_new_state ()
-            val prmcall = jit_label (jit_)
+            val prmcall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_)
             val v = jit_arg (jit_)
             val () = jit_getarg (jit_, R0, v)
@@ -33,7 +33,7 @@ struct
       fun relop jit_relop = 
          let open Jit
             val jit_ = jit_new_state ()
-            val prmcall = jit_label (jit_)
+            val prmcall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_)
             val v = jit_arg (jit_)
             val () = jit_getarg (jit_, R0, v)
@@ -52,7 +52,7 @@ struct
       fun unop jit_unop = 
          let open Jit
             val jit_ = jit_new_state ()
-            val prmcall = jit_label (jit_)
+            val prmcall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_)
             val v = jit_arg (jit_)
             val () = jit_getarg (jit_, R0, v)
@@ -71,7 +71,7 @@ struct
       val toInt = 
          let open Jit
             val jit_ = jit_new_state ()
-            val prmcall = jit_label (jit_)
+            val prmcall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_)
             val v = jit_arg (jit_)
             val () = jit_getarg (jit_, R1, v)
@@ -87,7 +87,7 @@ struct
       val fromInt_ =
          let open Jit
             val jit_ = jit_new_state ()
-            val prmcall = jit_label (jit_)
+            val prmcall = jit_note (jit_, NULLp, 0w0);
             val () = jit_prolog (jit_)
             val v = jit_arg (jit_)
             val () = jit_getarg (jit_, R0, v)
