@@ -7,6 +7,8 @@
 val _ = Meta.load "Real";
 val _ = Meta.load "ListPair";
 
+val _ = Meta.quotation := true;
+
 datatype tagType =
    INT of int
  | REAL of real
@@ -125,6 +127,7 @@ val I = fn b => b
 fun LIT s p = fn b => p (b^s)
 fun % toStr_t p = fn b => fn x => p (b^toStr_t x)
 val op ++ = op o
+
 fun format fs = fs I ""
 val fInt = Int.toString
 val fStr = I : string -> string
@@ -135,29 +138,85 @@ val fWord = Word.toString
 fun tPair mkPair mkL mkR =
    fn (x1,x2) => mkPair (mkL x1,mkR x2)
 
-fun fPair l m r =
-   tPair (fn (x,x') => l^x^m^x'^r)
-
 fun tList mkCons mkNil mkElt =
    let fun mkTail [] = mkNil
          | mkTail (e::es) = mkCons (mkElt e, mkTail es)
    in mkTail
    end
 
+fun fPair l m r =
+   tPair (fn (x,x') => l^x^m^x'^r)
+
 fun fList l m r toStr =
-   let fun mkCons (e,es) = if es = r then e^es else e^m^es
+   let fun mkCons (e,es) =
+             if es = r then e^es else e^m^es
    in fn es => l^(tList mkCons r toStr es)
    end
 
-val fList' = fList "[" "," "]" 
-val t = fList' (let val fPair' = fPair  "(" "," ")" 
-                in fPair'
-                end fStr 
-                   (let val fPair' = fPair "(" "," ")" 
-                    in fPair'
-                    end fReal fInt))
-val "[(N,(42.0,1)),(P,(43.5,2))]" = format (%t)
-    [("N",(42.0,1)),("P",(43.5,2))]
+fun quote l =
+   let fun iter r [] = r
+         | iter r ((QUOTE s)::fs)     = iter (r^s) fs
+         | iter r ((ANTIQUOTE s)::fs) = iter (r^s) fs
+   in iter "" l
+   end;
+
+val fPair''  = quote `(fPair "(" "," ")")`;
+val fPair''' = quote `(fPair "{" ":" "}")`;
+val fList''  = quote `(fList "[" "," "]")`;
+val fStr''   = quote `fStr`;
+val fReal''  = quote `fReal`;
+val fInt''   = quote `fInt`;
+
+local 
+   val fList' = fn fname => fn s =>
+                 quote ` let val fList' = ^(fname)
+                         in fList'
+                         end^(s)`
+   val fPair' = fn fname => fn s => fn s' => 
+                 quote ` (let val fPair' = ^(fname)
+                          in fPair'
+                          end^(s)^(s'))`
+   val fStr'  = fn fname => " "^fname
+   val fReal' = fn fname => " "^fname
+   val fInt'  = fn fname => " "^fname
+in
+   fun mkformat fstr =
+       fn v =>
+          let val decl = quote `val ^(v) =^(fstr)`
+              val ok = Meta.exec decl
+          in if not ok
+                then raise Fail ("Internal error compiling: "^fstr)
+                else ()
+          end
+      val fListPlain = fList' fList''
+      val fPairPlain = fPair' fPair''
+      val fPairCurly = fPair' fPair'''
+      val fStrPlain  = fStr'  fStr''
+      val fRealPlain = fReal' fReal''
+      val fIntPlain  = fInt'  fInt''
+end
+
+val mt' = mkformat (fListPlain (fPairPlain
+                                   (fStrPlain)
+                                   (fPairPlain
+                                      (fRealPlain)
+                                      (fIntPlain))));
+
+val mt'' = mkformat (fListPlain (fPairCurly
+                                   (fStrPlain)
+                                   (fPairPlain
+                                      (fRealPlain)
+                                      (fIntPlain))));
+
+val _ = mt' "testme";
+
+val _ = mt'' "testme'";
+
+val "[(N,(42.0,1)),(P,(43.5,2))]" = format (%testme)
+    [("N",(42.0,1)),("P",(43.5,2))];
+
+val "[{N:(42.0,1)},{P:(43.5,2)}]" = format (%testme')
+    [("N",(42.0,1)),("P",(43.5,2))];
 
 val C' = [(tINT,
            tREAL,
@@ -185,7 +244,7 @@ val C' = [(tINT,
             | _ => raise Fail "coerce: WORD->STR: Internal error")]
 
 val r2i = coerce C' (Pair(Real,Real) --> Real) (Pair(Int,Real) --> Int)
-val iplus = r2i Real.+ 
+val iplus = r2i Real.+
 val 42 = iplus (12,30.0)
 
 datatype lexp =
@@ -233,9 +292,14 @@ val rec reifyTg =
 and reflectTg =
    fn (tBASE, e) => BASE e
     | (tFUNC(tE1,tE2),e) =>
-        FUNC (fn v1 => reflectTg (tE2, APP (e, reifyTg (tE1, v1))))
-    | _ => raise Fail "reflectTg: internal error"
+        FUNC (fn v1 => reflectTg (tE2, APP (e, reifyTg (tE1, v1))));
 
 fun reify (T as (emb, _, tE)) v = reifyTg (tE, emb v)
 
-val xxx = reify (Base ==> Base) ((fn x => fn y => x y) (fn x => x))
+val four = ((fn f => (fn x => f (f x))) (fn f => (fn x => f (f x))))
+
+val xxx = reify ((Base ==> Base) ==> Base ==> Base) four
+
+(* I don't get it. According to reify, all Church numerals are equal
+   to zero. *)
+

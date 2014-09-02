@@ -104,7 +104,6 @@ fun jit_fprolog jit_ =
    in node
    end
 
-
 fun jit_atom0 (jit_, v1) =
    let open Jit
        val _ = jit_movi_p (jit_, v1, first_atoms)
@@ -150,7 +149,7 @@ local open Jit
    val () = jit_getarg (jit_, V0, v)
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V0)
-   val _ = jit_finishi (jit_, scm_c_eval_stringp) 
+   val _ = jit_finishi (jit_, scm_c_eval_stringp)
    val _ = jit_retval (jit_, R0)
    val _ = jit_retr (jit_, R0)
    val scm_eval_stringptr = jit_emit (jit_)
@@ -310,9 +309,9 @@ fun jit_scm_two_args funp =
       val v = jit_arg (jit_)
       val () = jit_getarg (jit_, V0, v)
       val _ = jit_prepare (jit_)
-      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0) *)
       val _ = jit_pushargr (jit_, V1)
-      val _ = jit_ldxi (jit_, V1, V0, wsz * 1) (* V1 = Field(v,1)  *)
+      val _ = jit_ldxi (jit_, V1, V0, wsz * 1) (* V1 = Field(v,1) *)
       val _ = jit_pushargr (jit_, V1)
       val _ = jit_finishi (jit_, funp)
       val _ = jit_retval (jit_, R1)
@@ -2681,7 +2680,6 @@ struct
                                end
          in iter 0 (Vector.length vec - 1)
          end
-
    val indexFromString = search String.compare index
 end
 
@@ -2888,15 +2886,168 @@ val scm_argtypes =
    to specify the semantics of an assembly language in terms of
    concrete contents of registers and memory locations etc. The
    semantics of C, on the other hand, seem inextricably wound up with
-   how things are construed: for example and array is construed as a
+   how things are construed: for example an array is construed as a
    pointer when it appears fully specified in the argument to a
    function.
 
    But to be portable it needs to be an abstract assembler with some
    very simple and well-specified semantics. GNU lightning fulfils one
    out of these three requirements.
-
 *)
+
+fun tPair mkPair mkL mkR =
+   fn (x1,x2) => mkPair (mkL x1,mkR x2)
+
+fun tList mkCons mkNil mkElt =
+   let fun mkTail [] = mkNil
+         | mkTail (e::es) = mkCons (mkElt e, mkTail es)
+   in mkTail
+   end
+
+fun mkPairJit mkPair =
+   tPair (fn (x,x') => mkPair x x')
+
+local
+   open Jit
+   val spr = ref ~1
+   val max = ref ~1
+in
+   fun jit_alloc_stack (jit_, n) =
+      let val sp = jit_allocai (jit_, n * wsz)
+          val _ = max := sp + (n * wsz)
+          val _ = spr := sp
+      in ()
+      end
+   fun jit_local (jit_, n) =
+      let val sp = !spr
+          val sp' = sp + (n * wsz)
+      in if sp' >= (!max)
+            then raise Fail "Dude! You blew your stack!"
+            else sp before spr := sp'
+      end
+   fun jit_assign_local (jit_, v, r0) =
+      let val _ = jit_stxi (jit_, v, FP, r0)
+      in ()
+      end
+   fun jit_reference_local (jit_, r0, v) =
+      let val _ = jit_ldxi (jit_, r0, FP, v)
+      in ()
+      end
+end
+
+fun jit_binary jit_cons jit_car jit_cdr jit_mkl jit_mkr =
+   fn (jit_,r0,v2,v1,v0) =>
+          let open Jit
+              val v0' = jit_local (jit_, 1)
+              val v1' = jit_local (jit_, 1)
+              val _ = jit_assign_local (jit_, v0', v0)
+              val _ = jit_car (jit_, r0, v0)
+              val _ = jit_mkl (jit_, v1, r0)
+              val _ = jit_assign_local (jit_, v1', v1)
+              val _ = jit_reference_local (jit_, v0, v0')
+              val _ = jit_cdr (jit_, r0, v0)
+              val _ = jit_mkr (jit_, v2, r0)
+              val _ = jit_reference_local (jit_, v1, v1')
+              val () = jit_cons (jit_, r0, v1, v2)
+          in ()
+        end
+
+fun jit_car (jit_,r1,r0) =
+   let val _ = Jit.jit_ldxi (jit_, r1, r0, wsz * 0)
+   in ()
+   end
+
+fun jit_cdr (jit_,r1,r0) =
+   let val _ = Jit.jit_ldxi (jit_, r1, r0, wsz * 1)
+   in ()
+   end
+
+fun jit_binopf funp =
+   fn (jit_,r2,r1,r0) =>
+       let open Jit
+          val _ = jit_prepare (jit_)
+          val _ = jit_pushargr (jit_, r1)
+          val _ = jit_pushargr (jit_, r0)
+          val _ = jit_finishi (jit_, funp)
+          val _ = jit_retval (jit_, r2)
+       in ()
+       end
+
+fun jit_unary jit_dst jit_con =
+   fn (jit_,r0,v0) =>
+      let open Jit
+         val _ = jit_dst (jit_, r0, v0)
+         val _ = jit_con (jit_, v0, r0)
+         val _ = jit_movr (jit_, r0, v0)
+      in ()
+      end
+
+fun jit_unopf funp =
+   fn (jit_,r1,r0) =>
+      let open Jit
+         val _ = jit_prepare (jit_)
+         val _ = jit_pushargr (jit_, r0)
+         val _ = jit_finishi (jit_, funp)
+         val _ = jit_retval (jit_, r1)
+      in ()
+      end
+
+fun mkPairScm mkL mkR =
+   jit_binary (jit_binopf scm_consp) jit_car jit_cdr mkL mkR
+
+fun quote l =
+   let fun iter r [] = r
+         | iter r ((QUOTE s)::fs)     = iter (r^s) fs
+         | iter r ((ANTIQUOTE s)::fs) = iter (r^s) fs
+   in iter "" l
+   end
+
+val fPairScm  = quote `(mkPairJit mkPairScm)`;
+val fListScm  = quote `(mkListJit mkConsScm mkNilScm)`;
+val fStrScm   = quote `(mkStrJit  mkStrScm)`;
+val fRealScm  = quote `(mkRealJit mkRealScm)`;
+val fIntScm   = quote `(mkIntJit  mkIntScm)`;
+
+val fPairCaml = quote `(mkPairJit mkPairCaml)`;
+val fListCaml = quote `(mkListJit mkConsCaml mkNilCaml)`;
+val fStrCaml  = quote `(mkStrJit  mkStrCaml)`;
+val fRealCaml = quote `(mkRealJit mkRealCaml)`;
+val fIntCaml  = quote `(mkIntJit  mkIntCaml)`;
+
+val fList' = fn fname => fn s =>
+                 quote ` let val fList' = ^(fname)
+                         in fList'
+                         end^(s)`
+
+val fPair' = fn fname => fn s => fn s' => 
+                 quote ` (let val fPair' = ^(fname)
+                          in fPair'
+                          end^(s)^(s'))`
+
+val fStr'  = fn fname => " "^fname
+val fReal' = fn fname => " "^fname
+val fInt'  = fn fname => " "^fname
+
+fun mkformat fstr =
+    fn v =>
+       let val decl = quote `val ^(v) =^(fstr)`
+           val ok = Meta.exec decl
+       in if not ok
+             then raise Fail ("Internal error compiling: "^fstr)
+             else ()
+       end
+
+val mkScmList = fList' fListScm
+val mkScmPair = fPair' fPairScm
+val mkScmStr  = fStr'  fStrScm
+val mkScmReal = fReal' fRealScm
+val mkScmInt  = fInt'  fIntScm
+
+val mkCamlList = fList' fListCaml
+val mkCamlPair = fPair' fPairCaml
+val mkCamlStr  = fStr'  fStrCaml
+val mkCamlReal = fReal' fRealCaml
+val mkCamlInt  = fInt'  fIntCaml
 
 fun defwrapper l =
    let fun iter acc [] = acc
