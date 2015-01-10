@@ -16,6 +16,8 @@ datatype eflag =
 val regcomp      : string -> cflag list -> regex
 
 val regexec      : regex -> eflag list -> string -> substring vector option
+val getItem      : regex -> eflag list -> substring -> (substring vector * substring) option
+
 val regexecBool  : regex -> eflag list -> string -> bool
 
 val regnexec     : regex -> eflag list -> substring 
@@ -41,6 +43,8 @@ val substitute   : regex -> (string -> string) -> string -> string
 
 val tokens       : regex -> string -> substring list
 val fields       : regex -> string -> substring list
+
+val getFields    : regex -> substring -> (substring list * substring) option
 
 val map          : regex -> (substring vector -> 'a) -> string -> 'a list
 val app          : regex -> (substring vector -> unit) -> string -> unit
@@ -135,6 +139,10 @@ val fold         : regex
    the match repeatedly, such as the group (b+) in "(a(b+))*" when
    matched against "babbabbb", the corresponding substring is the last
    (rightmost) one matched.  
+
+   [getItem regex eflags sus] Is like regexec, except it takes a
+   substring sus as argument, and it returns a substring Vector *
+   substring option suitable for scanning strings, for example.
 
    [eflag] is the type of end flags with the following meaning:
 

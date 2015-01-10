@@ -1,5 +1,27 @@
 (* Socket -- SML Basis Library -- requires Dynlib *)
 
+type file_perm = int;
+
+type unixfd;
+
+datatype open_flag =
+    O_APPEND                       (* `open' for appending *)
+  | O_BINARY                       (* `open' in binary mode *)    
+  | O_CREAT                        (* create the file if nonexistent *)
+  | O_EXCL                         (* fails if the file exists *)
+  | O_RDONLY                       (* `open' read-only *)
+  | O_RDWR                         (* `open' for reading and writing *)
+  | O_TEXT                         (* `open' in text mode *)
+  | O_TRUNC                        (* truncate the file to 0 if it exists *)
+  | O_WRONLY                       (* `open' write-only *)
+;
+
+(* FD operations *)
+val fdopen : string * open_flag list * file_perm ->  unixfd
+val fdclose : unixfd -> int 
+val fsync : unixfd -> int
+val ftruncate : unixfd -> int -> int
+
 type ('addressfam, 'socktype) sock
 type 'addressfam sock_addr
 
@@ -12,6 +34,25 @@ type active                             (* An active, connected, stream  *)
 (* Socket protocol families *)
 type pf_file                            (* The Unix file protocol family *)
 type pf_inet                            (* The Internet protocol family  *)
+
+(* Filesystem permission bits *)
+
+val S_IRWXA : file_perm
+val S_IRALL : file_perm
+val S_IWALL : file_perm
+val S_IXALL : file_perm
+val S_IRWXU : file_perm
+val S_IRUSR : file_perm
+val S_IWUSR : file_perm
+val S_IXUSR : file_perm
+val S_IRWXG : file_perm
+val S_IRGRP : file_perm
+val S_IWGRP : file_perm
+val S_IXGRP : file_perm
+val S_IRWXO : file_perm
+val S_IROTH : file_perm
+val S_IWOTH : file_perm
+val S_IXOTH : file_perm
 
 (* Address constructors *)
 val fileAddr   : string -> pf_file sock_addr
@@ -41,11 +82,18 @@ val shutdown   : ('a, 'b stream) sock * shutdown_mode -> unit
 type sock_desc
 
 val sockDesc   : ('a, 'b) sock -> sock_desc
+val fdDesc     : unixfd -> sock_desc
+
 val sameDesc   : sock_desc * sock_desc -> bool
 val compare    : sock_desc * sock_desc -> order
 val select     : 
     { rds : sock_desc list, wrs : sock_desc list, exs : sock_desc list, 
       timeout : Time.time option } 
+    -> { rds : sock_desc list, wrs : sock_desc list, exs : sock_desc list }
+
+val pselect     : 
+    { rds : sock_desc list, wrs : sock_desc list, exs : sock_desc list, 
+      timeout : Time.time option, signals : Signal.signal list } 
     -> { rds : sock_desc list, wrs : sock_desc list, exs : sock_desc list }
 
 val getinetaddr : pf_inet sock_addr -> string
@@ -56,6 +104,10 @@ type in_flags  = { peek : bool, oob : bool }
 
 type 'a buf = { buf : 'a, ofs : int, size : int option }
 
+val readVec : unixfd * Word8Vector.vector buf -> int
+val readArr : unixfd * Word8Array.array buf -> int
+val writeVec : unixfd * Word8Vector.vector buf -> int
+val writeArr : unixfd * Word8Array.array buf -> int
 
 (* Socket output operations *)
 val sendVec    : ('a, active stream) sock * Word8Vector.vector buf -> int

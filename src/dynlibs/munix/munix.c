@@ -150,3 +150,18 @@ EXTERNML value unix_kill(value pid, value sig) {
   return Val_unit;
 }
 
+#define Sock_val(x) (Field(x,0))
+
+/* Warning: allocates in the heap, may cause a GC */
+/* ML return type: sock_ */
+value unix_fddesc(value fd) {
+  value result = alloc(1, Abstract_tag);
+  Sock_val(result) = fd;
+  return result;
+}
+
+/* ML return type: int */
+value unix_descfd(value desc) {
+   value result = Sock_val(desc);
+   return result;
+}

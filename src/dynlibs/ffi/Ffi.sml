@@ -86,8 +86,7 @@ datatype ffi_type =
 local 
     open Word8Vector
     open Dynlib
-    val libpath = Path.concat(FileSys.getDir (), "libmffi.so")
-    val dlh = Dynlib.dlopen { lib = libpath, flag = Dynlib.RTLD_LAZY, global = false }
+    val dlh = Dynlib.dlopen { lib = "libmffi.so", flag = Dynlib.RTLD_LAZY, global = false }
 
     val dlxh = Dynlib.dlopen {lib = "",
                        flag = Dynlib.RTLD_LAZY,

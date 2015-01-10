@@ -30,8 +30,11 @@ install:
 intinf.o: intinf.c
 	$(CC) $(CFLAGS) -c -o intinf.o intinf.c
 
-libmgmp.so: intinf.o
-	$(DYNLD) -o libmgmp.so intinf.o -L$(GMPLIBDIR) -lgmp -lc
+sha256.o : sha256.c
+	$(CC) -o sha256.o -I ~/build/linux-3.16.3/include -I./ -c sha256.c 
+
+libmgmp.so: intinf.o sha256.o
+	$(DYNLD) -o libmgmp.so intinf.o sha256.o -L$(GMPLIBDIR) -lgmp -lc
 
 test:
 	echo $(CURDIR)

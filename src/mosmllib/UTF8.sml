@@ -1,7 +1,5 @@
 structure UTF8 :> UTF8 = struct
 
-type elem = String.string;
-
 type ('a, 'b) reader = 'b -> ('a * 'b) option;
 
 exception BadUTF8 of string;
@@ -121,10 +119,9 @@ fun transition state =
    in newstate
    end;
 
-val start = Process (transition {stateno = 1, seqno = 0, fcno = 0, chars = "", ucsno = 0wx000000});
-
 fun scanUTF8UCS rvf (getc : (char, 'a) reader) =
-   let fun recur st (css : 'a) =
+   let val start = Process (transition {stateno = 1, seqno = 0, fcno = 0, chars = "", ucsno = 0wx000000});
+       fun recur st (css : 'a) =
              (case st
                 of Process f => 
                        (case getc css

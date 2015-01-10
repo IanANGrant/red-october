@@ -33,6 +33,41 @@ struct
                 val _ = jit_binop (jit_, r3, r1, r2);
             in ()
             end
+         fun binopl jit_binop = 
+         let open Jit
+            val jit_ = jit_new_state ();
+            val slccall = jit_note (jit_, NULLp, 0w0);
+            val () = jit_prolog (jit_);
+            val v = jit_arg (jit_);
+         
+            val () = jit_getarg (jit_, V0, v);
+            val _  = jit_ldxi (jit_, V1, V0, wsz * 1); (* V1 = Field(v,1) *)
+            val _  = jit_ldxi (jit_, R1, V1, 0); (* R1 = Field(V1,0) *)
+            val _  = jit_ldxi (jit_, V2, R1, 0); (* V2 = Field(R1,0) *)
+            val _  = jit_ldxi (jit_, R0, V1, wsz * 1); (* R0 = Field(V1,1) *)
+            val _  = jit_rshi (jit_, R0, R0, 1); (* Long_val(R0) *)
+            val _  = jit_ldxr (jit_, R1, V2, R0); (* R1 = *(Field(V1,0)+Field(V1,1)) *)
+         
+            val _  = jit_ldxi (jit_, R0, V0, wsz * 2); (* R0 = Field(v,2) *)
+            val _  = jit_rshi (jit_, R2, R0, 1); (* Long_val(R0) *)
+         
+            val _ = jit_binop (jit_, R2, R1, R2);
+         
+            val _  = jit_ldxi (jit_, V1, V0, 0); (* V1 = Field(v,0) *)
+            val _  = jit_ldxi (jit_, R1, V1, 0); (* R1 = Field(V1,0) *)
+            val _  = jit_ldxi (jit_, V2, R1, 0); (* V2 = Field(R1,0) *)
+            val _  = jit_ldxi (jit_, R0, V1, wsz * 1); (* R0 = Field(V1,1) *)
+            val _  = jit_rshi (jit_, R0, R0, 1); (* Long_val(R0) *)
+            val _  = jit_stxr (jit_, R0, V2, R2); (* *(Field(V1,0)+Field(V1,1)) = R2 *)
+         
+            val _ = jit_ret(jit_);
+         
+            val slccallptr = jit_emit (jit_);
+         
+            val slccall : word * word * Word.word -> unit = Ffi.app1 slccallptr
+         in
+            slccall
+         end
          fun binop jit_binop = 
          let open Jit
             val jit_ = jit_new_state ();
@@ -202,9 +237,9 @@ struct
          val slcmul = binop Jit.jit_mulr
          val slcdiv = binop (dnz Jit.jit_divr_u)
          val slcmod = binop (dnz Jit.jit_remr_u)
-         val slcrsh = binop Jit.jit_rshr
-         val slcrsh_u = binop Jit.jit_rshr_u
-         val slclsh = binop Jit.jit_lshr
+         val slcrsh = binopl Jit.jit_rshr
+         val slcrsh_u = binopl Jit.jit_rshr_u
+         val slclsh = binopl Jit.jit_lshr
          val slcand = binop Jit.jit_andr
          val slcor = binop Jit.jit_orr
          val slcxor = binop Jit.jit_xorr
@@ -253,16 +288,16 @@ struct
              val ~ = fn w => applyun slcneg w
          
              fun << (w, k) = 
-               	if toInt k >= WORDSIZE orelse toInt k < 0 then fromInt 0
+               	if Word.toInt k >= WORDSIZE orelse Word.toInt k < 0 then fromInt 0
                	else applybin slclsh (w,k)
                
              fun >> (w, k) = 
-               	if toInt k >= WORDSIZE orelse toInt k < 0 then fromInt 0
+               	if Word.toInt k >= WORDSIZE orelse Word.toInt k < 0 then fromInt 0
                	else applybin slcrsh_u (w,k)
                
              fun ~>> (w, k) = 
-               	if toInt k >= WORDSIZE orelse toInt k < 0 then 
-               	    if slceq (op >>(w,fromInt (WORDSIZE-1)),fromInt 0) then	(* msbit = 0 *)
+               	if Word.toInt k >= WORDSIZE orelse Word.toInt k < 0 then 
+               	    if slceq (op >>(w,Word.fromInt (WORDSIZE-1)),fromInt 0) then	(* msbit = 0 *)
                		fromInt 0
                	    else			(* msbit = 1 *)
                		fromInt ~1
@@ -275,7 +310,7 @@ struct
              val op div  : word * word -> word = applybin slcdiv;
              val op mod  : word * word -> word = applybin slcmod;
          
-             val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (WORDSIZE,2)))) - fromInt 1;
+             val MAXPOS = (<< (fromInt 1,Word.fromInt (op Int.- (WORDSIZE,2)))) - fromInt 1;
 
              val op >    : word * word -> bool = slcgt;
              val op >=   : word * word -> bool = slcge;

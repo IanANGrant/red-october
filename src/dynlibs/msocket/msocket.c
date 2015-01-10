@@ -8,6 +8,7 @@
 
 /* General includes */
 
+#include <stdio.h>
 #include <errno.h>
 #include <sys/types.h>
 #ifdef WIN32
@@ -68,7 +69,6 @@ Type ml_s_addr    = ML abstract object containing an INET socket's address
 /* Decomposition of sock_ values: */
 #define Sock_val(x) (Field(x,0))
 
-
 /* Decomposition of addr values: */
 #define Size_addrval(a)   Field(a, 0)
 #define Nspace_addrval(a) Field(a, 1)
@@ -88,6 +88,13 @@ union saddr {
 #endif
   struct sockaddr_in sockaddr_inet;
 };
+
+EXTERNML value msocket_rtsignals(value dummy) {
+  value res = alloc_tuple(2);
+  Field(res, 0) = Val_long(SIGRTMIN);
+  Field(res, 1) = Val_long(SIGRTMAX);
+  return res;
+}
 
 /* ML type: unit -> int * int * int * int * int * int * int * int * int *int */
 EXTERNML value msocket_constants(value dummy) {
@@ -109,8 +116,22 @@ EXTERNML value msocket_constants(value dummy) {
 /* ML return type: sock_ */
 static value newsocket(int sock) {
   value result = alloc(1, Abstract_tag);
-  Sock_val(result) = sock;
+  Sock_val(result) = Val_long(sock);
   return result;
+}
+
+/* Warning: allocates in the heap, may cause a GC */
+/* ML return type: sock_ */
+value msocket_fddesc(value fd) {
+  value result = alloc(1, SOMEtag);
+  Sock_val(result) = fd;
+  return result;
+}
+
+/* ML return type: int */
+value msocket_descfd(value desc) {
+   value result = Sock_val(desc);
+   return result;
 }
 
 typedef unsigned long s_addr_t;
@@ -355,8 +376,8 @@ void failure()
 
 /* ML type: sock_ -> sock_ -> int */
 EXTERNML value msocket_desccmp(value sockval1, value sockval2) {
-  int sock1 = Sock_val(sockval1);
-  int sock2 = Sock_val(sockval2);
+  int sock1 = Long_val(Sock_val(sockval1));
+  int sock2 = Long_val(Sock_val(sockval2));
   if (sock1 < sock2)
     return Val_long(-1);
   else if (sock1 > sock2)
@@ -443,7 +464,7 @@ EXTERNML value msocket_accept(value sock) {
 
   int len = sizeof(addr);
   enter_blocking_section();
-  ret = accept(Sock_val(sock), &addr.sockaddr_gen, &len);
+  ret = accept(Long_val(Sock_val(sock)), &addr.sockaddr_gen, &len);
   leave_blocking_section();
 #ifndef WIN32
   if (ret == -1) 
@@ -469,7 +490,7 @@ EXTERNML value msocket_bind(value socket, value address) {
   union saddr addr;
   make_saddr(&addr, address);
   size  = Int_val(Size_addrval(address));
-  ret = bind(Sock_val(socket), &addr.sockaddr_gen, size);
+  ret = bind(Long_val(Sock_val(socket)), &addr.sockaddr_gen, size);
 #ifndef WIN32
   if (ret == -1)
 #else
@@ -488,7 +509,7 @@ EXTERNML value msocket_connect(value socket, value address) {
   size  = Int_val(Size_addrval(address));
 
   /* should enter_blocking_section() be inserted? */
-  ret = connect(Sock_val(socket), &addr.sockaddr_gen, size);
+  ret = connect(Long_val(Sock_val(socket)), &addr.sockaddr_gen, size);
 #ifndef WIN32
   if (ret == -1) 
 #else
@@ -501,7 +522,7 @@ EXTERNML value msocket_connect(value socket, value address) {
 /* ML type: sock_ -> int -> unit */
 EXTERNML value msocket_listen(value sock, value queuelength) {
   int ret;
-  ret =listen(Sock_val(sock), Int_val(queuelength));
+  ret =listen(Long_val(Sock_val(sock)), Int_val(queuelength));
 #ifndef WIN32
   if (ret == -1) 
 #else
@@ -514,10 +535,10 @@ EXTERNML value msocket_listen(value sock, value queuelength) {
 /* ML type: sock_ -> unit */
 EXTERNML value msocket_close(value sock) {
 #ifndef WIN32
-  if (close(Sock_val(sock)) == -1) 
+  if (close(Long_val(Sock_val(sock))) == -1) 
     failwith("msocket: error closing socket");
 #else
-  if (closesocket(Sock_val(sock)) == SOCKET_ERROR) 
+  if (closesocket(Long_val(Sock_val(sock))) == SOCKET_ERROR) 
     failwith("msocket: error closing socket");
 #endif
   return Val_unit;
@@ -526,7 +547,7 @@ EXTERNML value msocket_close(value sock) {
 /* ML type: sock_ -> int -> unit */
 EXTERNML value msocket_shutdown(value sock, value how) {
   int ret;
-  ret = shutdown(Sock_val(sock), Int_val(how));
+  ret = shutdown(Long_val(Sock_val(sock)), Int_val(how));
 #ifndef WIN32
   if (ret == -1) 
 #else
@@ -547,9 +568,120 @@ EXTERNML value msocket_send(value sock, value buff, value offset, value size,
 #endif
 
   enter_blocking_section();
-  ret = send(Sock_val(sock), &Byte(buff, Long_val(offset)), Int_val(size), 
+  ret = send(Long_val(Sock_val(sock)), &Byte(buff, Long_val(offset)), Int_val(size), 
              Int_val(flags));
   leave_blocking_section();
+#ifndef WIN32
+  if (ret == -1) 
+#else
+    if (ret == SOCKET_ERROR) /* Windows? */
+#endif
+    failure();
+  return Val_int(ret);
+}
+
+EXTERNML value msocket_write(value fdv, value buff, value tup) {
+  int ret;
+  int fd;
+
+  /* fprintf(stderr, "msocket_write: fdv = %p\n", (void *) fdv); */
+
+  fd = Long_val(fdv);
+
+  /* fprintf(stderr, "msocket_write: fd = %d\n", fd); */
+
+#ifndef WIN32
+  /* Ignore SIGPIPE signals; instead read will return -1: */
+  signal(SIGPIPE, SIG_IGN);
+#endif
+ 
+  enter_blocking_section();
+  ret = write(fd, &Byte(buff, Long_val(Field(tup,0))), 
+               Int_val(Field(tup, 1)));
+  leave_blocking_section();
+#ifndef WIN32
+  if (ret == -1) 
+#else
+    if (ret == SOCKET_ERROR) /* Windows? */
+#endif
+    failure();
+  return Val_int(ret);
+}
+
+EXTERNML value msocket_read(value fdv, value buff, value offset, 
+                            value len) {
+  int ret;
+  int fd;
+
+  /* fprintf(stderr, "msocket_read: fdv = %p\n", (void *) fdv); */
+
+  fd = Long_val(fdv);
+
+  /* fprintf(stderr, "msocket_read: fd = %d\n", fd); */
+
+  enter_blocking_section();
+  ret = read(fd, &Byte(buff, Long_val(offset)), Int_val(len));
+  leave_blocking_section();
+#ifndef WIN32
+  if (ret == -1) 
+#else
+  if (ret == SOCKET_ERROR)
+#endif
+    failure();
+  return Val_int(ret);
+}
+
+EXTERNML value msocket_fdclose(value fdv) {
+  int ret;
+  int fd;
+
+  /* fprintf(stderr, "msocket_close: fdv = %p\n", (void *) fdv); */
+
+  fd = Long_val(fdv);
+
+  /* fprintf(stderr, "msocket_close: fd = %d\n", fd); */
+
+  ret = close(fd);
+#ifndef WIN32
+  if (ret == -1) 
+#else
+  if (ret == SOCKET_ERROR)
+#endif
+    failure();
+  return Val_int(ret);
+}
+
+EXTERNML value msocket_fsync(value fdv) {
+  int ret;
+  int fd;
+
+  /* fprintf(stderr, "msocket_fsync: fdv = %p\n", (void *) fdv); */
+
+  fd = Long_val(fdv);
+
+  /* fprintf(stderr, "msocket_fsync: fd = %d\n", fd); */
+
+  ret = fsync(fd);
+#ifndef WIN32
+  if (ret == -1) 
+#else
+  if (ret == SOCKET_ERROR)
+#endif
+    failure();
+  return Val_int(ret);
+}
+
+EXTERNML value msocket_ftruncate(value fdv,value len) {
+  int ret;
+  int fd;
+
+  /* fprintf(stderr, "msocket_fsync: fdv = %p\n", (void *) fdv); */
+
+  fd = Long_val(fdv);
+
+  /* fprintf(stderr, "msocket_fsync: fd = %d\n", fd); */
+
+  ret = ftruncate(fd,Long_val(len));
 #ifndef WIN32
   if (ret == -1) 
 #else
@@ -572,7 +704,7 @@ EXTERNML value msocket_sendto(value sock, value buff, value tup, value flags,
  
   make_saddr(&addr, address);
   enter_blocking_section();
-  ret = sendto(Sock_val(sock), &Byte(buff, Long_val(Field(tup,0))), 
+  ret = sendto(Long_val(Sock_val(sock)), &Byte(buff, Long_val(Field(tup,0))), 
                Int_val(Field(tup, 1)), Int_val(flags), 
                &addr.sockaddr_gen, Int_val(Size_addrval(address)));
   leave_blocking_section();
@@ -591,7 +723,7 @@ EXTERNML value msocket_recv(value sock, value buff, value offset,
   int ret;
 
   enter_blocking_section();
-  ret = recv(Sock_val(sock), &Byte(buff, Long_val(offset)), Int_val(len),
+  ret = recv(Long_val(Sock_val(sock)), &Byte(buff, Long_val(offset)), Int_val(len),
              Int_val(flags));
   leave_blocking_section();
 #ifndef WIN32
@@ -613,7 +745,7 @@ EXTERNML value msocket_recvfrom(value sock, value buff, value offset,
   int len = sizeof(addr);
 
   enter_blocking_section();
-  ret = recvfrom(Sock_val(sock), &Byte(buff, Long_val(offset)), 
+  ret = recvfrom(Long_val(Sock_val(sock)), &Byte(buff, Long_val(offset)), 
                  Int_val(size),
                  Int_val(flags), &addr.sockaddr_gen, &len);
   leave_blocking_section();
@@ -643,10 +775,27 @@ static void vec_to_fdset(value sockv, fd_set *fds) {
 
   FD_ZERO(fds);
   for(i = 0; i < vlen; i++) {
-    FD_SET(Sock_val(Field(sockv, i)), fds);
+    int fd;
+    fd = Long_val(Field(sockv, i));
+    /* fprintf(stderr, "vec_to_fdset: fd = %d\n", fd); */
+    FD_SET(fd, fds);
   } 
 }
 
+/* This makes sigset_t a set of the signals in vector sigv */
+
+static int vec_to_sigset(value sigv, sigset_t *sigs) {
+  int i, vlen = Wosize_val(sigv);
+
+  if (sigemptyset(sigs))
+    return -1;
+
+  for(i = 0; i < vlen; i++) {
+    if (sigaddset(sigs, Long_val(Field(sigv, i))))
+      return -1;
+  } 
+  return 0;
+}
 
 #define NILval Atom(0)
 #define CONStag 1
@@ -670,7 +819,8 @@ static value fdset_to_list(value sockv, fd_set *fds) {
   xs = NILval;
   for (i = vlen-1; i >= 0; i--) {
     sock_ = Field(sockv_, i);
-    fd = Sock_val(sock_);
+    fd = Long_val(sock_);
+    /* fprintf(stderr, "fdset_to_list: fd = %d\n", fd); */
     if (FD_ISSET(fd, fds)) {
       ys = alloc(2, CONStag);
       modify(&Field(ys, 0), sock_);
@@ -689,7 +839,7 @@ static value fdset_to_list(value sockv, fd_set *fds) {
 /* Warning: allocates in the heap, may cause a GC */
 /* ML return type: sock list * sock list * sock list */
 EXTERNML value msocket_select(value rsocks, value wsocks, value esocks, 
-                     int tsec, int tusec) {
+                     value tsec, value tusec) {
   int ret;
   fd_set rfd, wfd, efd;
   struct timeval timeout, *top;
@@ -702,9 +852,9 @@ EXTERNML value msocket_select(value rsocks, value wsocks, value esocks,
   if (Int_val(tsec) < 0) {
     top = NULL;
   }
-  else {    
-    timeout.tv_sec = Int_val(tsec);
-    timeout.tv_usec = Int_val(tusec);
+  else {
+    timeout.tv_sec = Long_val(tsec);
+    timeout.tv_usec = Long_val(tusec);
     top = &timeout;
   }
   ret = select(FD_SETSIZE, &rfd, &wfd, &efd, top);
@@ -733,6 +883,60 @@ EXTERNML value msocket_select(value rsocks, value wsocks, value esocks,
   return res;
 }
 
+/* Warning: allocates in the heap, may cause a GC */
+/* ML return type: sock list * sock list * sock list */
+EXTERNML value msocket_pselect(value rsocks, value wsocks, value esocks, 
+			       value times, value sigv) {
+  int ret;
+  fd_set rfd, wfd, efd;
+  struct timespec timeout, *top;
+  value res;
+  sigset_t sigmask;
+  value tsec, tnsec;
+
+  tsec = Field(times, 0);
+  tnsec = Field(times, 1);
+
+  vec_to_fdset(rsocks, &rfd);
+  vec_to_fdset(wsocks, &wfd);
+  vec_to_fdset(esocks, &efd);
+
+  if (vec_to_sigset (sigv, &sigmask))
+    failure();
+
+  if (Int_val(tsec) < 0) {
+    top = NULL;
+  }
+  else {
+    timeout.tv_sec = Long_val(tsec);
+    timeout.tv_nsec = Long_val(tnsec);
+    top = &timeout;
+  }
+  ret = pselect(FD_SETSIZE, &rfd, &wfd, &efd, top, &sigmask);
+
+#ifndef WIN32
+  if (ret == -1) 
+#else
+  if (ret == SOCKET_ERROR)
+#endif
+    failure();
+
+  {
+    Push_roots(ls, 6);
+    ls[3] = rsocks;
+    ls[4] = rsocks;
+    ls[5] = rsocks;
+    ls[0] = fdset_to_list(ls[3], &rfd);
+    ls[1] = fdset_to_list(ls[4], &wfd);
+    ls[2] = fdset_to_list(ls[5], &efd);
+    res = alloc_tuple(3);
+    modify(&Field(res, 0), ls[0]);
+    modify(&Field(res, 1), ls[1]);
+    modify(&Field(res, 2), ls[2]);
+    Pop_roots();
+  }
+  return res;
+}
 
 #ifdef WIN32
 BOOL WINAPI DllMain(
@@ -766,3 +970,4 @@ BOOL WINAPI DllMain(
   return TRUE;  // Successful DLL_PROCESS_ATTACH.
 }
 #endif
+

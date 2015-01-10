@@ -1,5 +1,10 @@
-datatype Tree = NonTerm of string * Tree list
+(* datatype Tree = NonTerm of string * Tree list
               | Term of string;
+*)
+
+open AbsSyn
+
+type Tree = (string,string) AbsSyn.abssyn;
 
 (* A functor for handling abstract syntax.  Walks the tree, applying f
    before the subtree is traversed, and g afterwards. *)
@@ -68,7 +73,7 @@ fun printTreeDirect m t =
 datatype debugState =
     Off
   | On of int
-  | Cond of int * (Tree -> bool);
+  | Cond of int * ((string,string) abssyn -> bool);
 
 val debug_switches : (string * debugState) list list ref = ref [[]];
 

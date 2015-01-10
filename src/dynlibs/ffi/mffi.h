@@ -1,6 +1,3 @@
-/* intinf.c -- partial interface to the GNU FFI library.
-   ian.a.n.grant@googlemail.com */
-
 #include <string.h>
 #include <stdlib.h>
 

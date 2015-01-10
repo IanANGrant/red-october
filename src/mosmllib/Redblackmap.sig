@@ -1,13 +1,25 @@
 (* Redblackmap -- applicative maps as Red-black trees *)
 signature Redblackmap =
 sig
+
 type ('key, 'a) dict
 
+type ('key, 'a) dictRepr
+
 exception NotFound
+
+val toRepr : ('key, 'a) dict -> ('key, 'a) dictRepr
+val fromRepr : ('key * 'key -> order) -> ('key, 'a) dictRepr -> ('key, 'a) dict
 
 val mkDict    : ('key * 'key -> order) -> ('key, 'a) dict
 val insert    : ('key, 'a) dict * 'key * 'a -> ('key, 'a) dict
 val find      : ('key, 'a) dict * 'key -> 'a
+val bounds    : ('key, 'a) dict * 'key -> ('key * 'a) option * ('key * 'a) option * ('key * 'a) option
+val gle       : ('key, 'a) dict * 'key -> ('key * 'a) option
+val glt       : ('key, 'a) dict * 'key -> ('key * 'a) option
+val lge       : ('key, 'a) dict * 'key -> ('key * 'a) option
+val lgt       : ('key, 'a) dict * 'key -> ('key * 'a) option
+val partition : ('key, 'a) dict * 'key -> ('key * 'a) list * ('key * 'a) option * ('key * 'a) list
 val peek      : ('key, 'a) dict * 'key -> 'a option
 val remove    : ('key, 'a) dict * 'key -> ('key, 'a) dict * 'a
 val numItems  : ('key, 'a) dict -> int
@@ -32,6 +44,28 @@ end
    [insert(m, i, v)] extends (or modifies) map m to map i to v.
 
    [find (m, k)] returns v if m maps k to v; otherwise raises NotFound.
+
+   [gle (m, k)] Returns the greatest key-value pair less than or equal
+   to k; NONE otherwise.
+
+   [glt (m, k)] Returns the greatest key-value pair less than k; NONE
+   otherwise.
+
+   [lge (m, k)] Returns the least key-value pair greater than or equal
+   to k; NONE otherwise.
+
+   [lgt (m, k)] Returns the least key-value pair greater than k; NONE
+   otherwise.
+
+   [bounds (m, k)] Returns a triple consisting of the greatest
+   key-value pair less than k, k and least key-value pair greater than
+   k; when any of these do not exist, NONE is returned.
+
+   [partition (m, k)] returns a triple (bs,SOME (k,v),as) if m maps k
+   to v or (bs,NONE,as) otherwise; where bs (as) are the key-value
+   pairs which are predecessors (successors) of k. The bs are (lower
+   bounds) in descending order, the as are (upper bounds) in ascending
+   order.
    
    [peek(m, k)] returns SOME v if m maps k to v; otherwise returns NONE.
 

@@ -10,11 +10,15 @@ extern long jit_ffi_debug;
 
 typedef void (*svec_final_fun) (void *);
 
+typedef void (*svec_final2_fun) (void *,value);
+
 /* Field 0 is the finalized tag. */
 #define Svec_val(x) (void **)(&Field(x, 1))
 #define SvecLength_val(x) (Long_val(Field(x, 2)))
 #define SvecFinalize_val(x) (svec_final_fun) (Field(x, 3))
-#define SvecFieldsCount 3
+#define SvecFinalize2_val(x) (svec_final2_fun) (Field(x, 3))
+#define SvecLength2_val(x) (Long_val(Field(x, 4)))
+#define SvecFieldsCount 4
 
 #define SvecSize (SvecFieldsCount + 1)
 #define SvecHeapSpace (SvecSize + sizeof(void *))
@@ -36,6 +40,23 @@ void svec_finalize(value obj)
           fprintf(stderr,"svec_finalise: calling %p to finalise %p.\n",
                           (void *) ffunp,*Svec_val(obj));
       (*ffunp) (*Svec_val(obj));
+      Field(obj,3) = (value)NULL;
+      *(Svec_val(obj)) = NULL;
+   }
+   return;
+}
+
+void svec_finalize2(value obj)
+{
+   svec_final2_fun ffunp = SvecFinalize2_val(obj);
+
+   /* See the comment on svec_finalize, above. */
+
+   if (ffunp && !(Is_in_heap(*Svec_val(obj)))) {
+      if (jit_ffi_debug)
+          fprintf(stderr,"svec_finalize2: calling %p to finalize %p(length=%d).\n",
+		  (void *) ffunp,*Svec_val(obj),(size_t) Field(obj, 4));
+      (*ffunp) (*Svec_val(obj), Field(obj, 4));
       Field(obj,3) = (value)NULL;
       *(Svec_val(obj)) = NULL;
    }
@@ -81,6 +102,33 @@ value svec_wrap_cptr(value cptr, value finalize, value lengthv)
   initialize((value *) Svec_val(sv),cptr);
   initialize(&Field(sv,2),lengthv);
   initialize(&Field(sv,3), finalize);
+  return sv;
+}
+
+/* Similar, but calls the finalize fn with the pointer and the length,
+   as required by, e.g. munmap */
+value svec_wrap_cptr2(value cptr, value finalize, value lengthv)
+{ 
+  value sv, buffv;
+  size_t len;
+
+  len = Long_val(lengthv) - sizeof(header_t) - sizeof(value);
+
+  if (jit_ffi_debug)
+      fprintf(stderr,"svec_wrap_cptr2: calling alloc_final: finalize=%p  buffer=%p(length=%d[%d]).\n",
+	      (void *) finalize,(void *)cptr,Long_val(lengthv),len);
+  sv = alloc_final(SvecSize + 1, &svec_finalize2 , SvecHeapSpace, MAX_FFI_ALLOC);
+  if (jit_ffi_debug)
+      fprintf(stderr,"svec_wrap_cptr2: calling mosml_ffi_alloc_wrap: buffer=%p(length=%d).\n",
+	      (void *)cptr,len);
+  buffv = (value) mosml_ffi_alloc_wrap((void *)cptr,len);
+  if (jit_ffi_debug)
+      fprintf(stderr,"svec_wrap_cptr2: initializing: finalize=%p  buffv=%p(length=%d[%d]).\n",
+	      (void *) finalize,(void *)buffv,len,string_length(buffv));
+  initialize((value *) Svec_val(sv), buffv);
+  initialize(&Field(sv,2), Val_long(len));
+  initialize(&Field(sv,3), finalize);
+  initialize(&Field(sv,4), Long_val(lengthv));
   return sv;
 }
 
@@ -144,7 +192,7 @@ value svec_setcptrvalue(value vec)
           *(unsigned int *)(String_val(r[0])), *(unsigned int *) res);
 
   Pop_roots();
-  return res;
+  return (value) (*(unsigned int *)res);
 }
 
 value svec_getvecword (value vec)

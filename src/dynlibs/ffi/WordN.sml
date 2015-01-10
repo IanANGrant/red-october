@@ -4,7 +4,7 @@
 
 (* This unit relies on two's complement representation *)
 
-functor WordN(structure Prim : Word) :> Word 
+functor WordN(structure Prim : WordPrim) :> GenericWord 
     where type word = Prim.word = 
 struct
     type word = Prim.word
@@ -51,7 +51,7 @@ struct
 	  else Char.chr(toInt (i + fromInt 55));
       fun conv radix i = 
 	  let fun h n res = 
-		  if Prim.compare (n, fromInt 0) = EQUAL then res
+		  if Prim.eq (n, fromInt 0) then res
 		  else h (n div radix) (prhex (n mod radix) :: res)
 	      fun tostr n = h (n div radix) [prhex (n mod radix)]
 	  in String.implode (tostr i)
@@ -109,7 +109,7 @@ struct
       fun toString w   = conv (fromInt 16) w
       fun fromString s = scanString (scan HEX) s
     end (* local for string functions *)
-    val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (wordSize,2)))) - fromInt 1
+    val MAXPOS = (<< (fromInt 1,Word.fromInt (op Int.- (wordSize,2)))) - fromInt 1
     val op >    : word * word -> bool = Prim.>;
     val op >=   : word * word -> bool = Prim.>=;
     val op <    : word * word -> bool = Prim.<;

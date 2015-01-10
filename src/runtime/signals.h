@@ -23,4 +23,5 @@ void execute_signal (void);
 EXTERN void enter_blocking_section (void);
 EXTERN void leave_blocking_section (void);
 extern CODE raise_break_exn;
+extern CODE raise_rtintr_exn;
 #endif /* _signals_ */

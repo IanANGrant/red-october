@@ -1,6 +1,6 @@
 (* Obj.sml *)
 
-prim_type obj;
+prim_EQtype obj;
 
 prim_val repr          : 'a -> obj   = 1 "identity";
 prim_val magic_obj     : obj -> 'a   = 1 "identity";

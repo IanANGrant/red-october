@@ -46,7 +46,7 @@ val r'' = Prolog.prolog rs g''
 
 val g''' = Prolog.goal `brother_of(X,alice)`
 val r''' = Prolog.prolog rs g'''
- 
+
 val rs' = Prolog.rules `
    append([],L,L).
    append([H|T],L,[H|A]):-append(T,L,A).
@@ -54,9 +54,12 @@ val rs' = Prolog.rules `
 
 val g'''' = Prolog.goal `append([1,2],[3],[1,2,3])`
 val r'''' = Prolog.prolog rs' g''''
-   
+
 val g''''' = Prolog.goal `append([1,2],[3],[1,2])`
 val r''''' = Prolog.prolog rs' g'''''
+
+val g'''''' = Prolog.goal `append([1,2],[5],X)`
+val r'''''' = Prolog.prolog rs' g''''''
 
 val rs'' = Prolog.rules `
    edge(g,h).

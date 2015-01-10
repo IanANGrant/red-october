@@ -1,6 +1,6 @@
 (* Word -- SML Basis Library *)
 
-signature Word = sig
+signature GenericWord = sig
 eqtype word
 type largeword
 
@@ -12,9 +12,9 @@ val xorb       : word * word -> word
 val notb       : word -> word
 val ~          : word -> word
 
-val <<         : word * word -> word
-val >>         : word * word -> word
-val ~>>        : word * word -> word
+val <<         : word * Word.word -> word
+val >>         : word * Word.word -> word
+val ~>>        : word * Word.word -> word
 
 val +          : word * word -> word
 val -          : word * word -> word

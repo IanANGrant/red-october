@@ -58,12 +58,16 @@ typedef unsigned char opcode_t;
 #if defined(MOSML_BIG_ENDIAN) && !defined(ALIGNMENT)
 static opcode_t byte_raise_break_exn[] =
        { GETGLOBAL, 0, 0, 0, EXN_INTERRUPT, RAISE };
+static opcode_t byte_raise_rtintr_exn[] =
+   { GETGLOBAL, 0, 0, 0, EXN_RTMIN, RAISE };
 static opcode_t byte_callback1_code[] = { ACC1, APPLY1, POP, 0, 1, STOP };
 static opcode_t byte_callback2_code[] = { ACC2, APPLY2, POP, 0, 1, STOP };
 static opcode_t byte_callback3_code[] = { ACC3, APPLY3, POP, 0, 1, STOP };
 #else
 static opcode_t byte_raise_break_exn[] =
        { GETGLOBAL, EXN_INTERRUPT, 0, 0, 0, RAISE };
+static opcode_t byte_raise_rtintr_exn[] =
+       { GETGLOBAL, EXN_RTMIN, 0, 0, 0, RAISE };
 static opcode_t byte_callback1_code[] = { ACC1, APPLY1, POP, 1, 0, STOP };
 static opcode_t byte_callback2_code[] = { ACC2, APPLY2, POP, 1, 0, STOP };
 static opcode_t byte_callback3_code[] = { ACC3, APPLY3, POP, 1, 0, STOP };
@@ -170,6 +174,8 @@ EXTERN value interprete(int mode, bytecode_t bprog, int code_size, CODE* rprog)
   case 0:			// initialization
     raise_break_exn = 
       expandcode(byte_raise_break_exn, RAISE_CODE_LEN, jumptable);
+    raise_rtintr_exn = 
+      expandcode(byte_raise_rtintr_exn, RAISE_CODE_LEN, jumptable);
     callback1_code = 
       expandcode(byte_callback1_code, CALLBACK_CODE_LEN, jumptable);
     callback2_code = 
@@ -207,6 +213,7 @@ EXTERN value interprete(int mode, bytecode_t bprog, int code_size, CODE* rprog)
   switch (mode) {
   case 0:			// initialization
     raise_break_exn = byte_raise_break_exn;
+    raise_rtintr_exn = byte_raise_rtintr_exn;
     callback1_code = byte_callback1_code;
     callback2_code = byte_callback2_code;
     callback3_code = byte_callback3_code;

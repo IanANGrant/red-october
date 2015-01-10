@@ -15,6 +15,7 @@ Volatile int signal_number;
 /* This is set by interprete in interp.c on initialization: */
 
 CODE raise_break_exn;
+CODE raise_rtintr_exn;
 
 void execute_signal(void)
 {

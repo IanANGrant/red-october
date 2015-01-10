@@ -8,8 +8,12 @@
 structure Socket :> Socket =
 struct
 
-    prim_type sock_   (* an abstract value containing a socket descriptor   *)
+    prim_type sock_  (* an abstract value containing a socket descriptor   *)
     prim_type addr    (* union saddr = sockaddr + sockaddr_un + sockaddr_in *)
+    
+    type file_perm = int;
+
+    type unixfd = sock_ ref;
 
     datatype ('addressfam, 'socktype) sock = SOCK of sock_
     datatype 'addressfam sock_addr = ADDR of addr
@@ -23,6 +27,17 @@ struct
     (* witness types for the addressfam parameter *)
     type pf_file = unit
     type pf_inet = unit
+
+datatype open_flag =
+    O_APPEND                       (* `open' for appending *)
+  | O_BINARY                       (* `open' in binary mode *)    
+  | O_CREAT                        (* create the file if nonexistent *)
+  | O_EXCL                         (* fails if the file exists *)
+  | O_RDONLY                       (* `open' read-only *)
+  | O_RDWR                         (* `open' for reading and writing *)
+  | O_TEXT                         (* `open' in text mode *)
+  | O_TRUNC                        (* truncate the file to 0 if it exists *)
+  | O_WRONLY                       (* `open' write-only *)
 
     local 
 	open Dynlib
@@ -68,9 +83,19 @@ struct
 	val recvfrom_ : sock_ -> buff -> int -> int -> int -> int * addr
                         = app5 "recvfrom"
 
+	val fddesc_ : int -> unixfd
+                        = app1 "fddesc"
+
+        val descfd_ : unixfd -> int
+                        = app1 "descfd"
+
 	val select_   : sock_ vector -> sock_ vector -> sock_ vector -> 
                         int -> int -> sock_ list * sock_ list * sock_ list
                         = app5 "select"
+
+	val pselect_   : sock_ vector -> sock_ vector -> sock_ vector -> 
+                        int * int -> Signal.signal vector -> sock_ list * sock_ list * sock_ list
+                        = app5 "pselect"
 			
 	val desccmp_  : sock_ -> sock_ -> int = app2 "desccmp";
 
@@ -95,7 +120,81 @@ struct
 
 	fun extract vec len = 
 	    Word8VectorSlice.vector(Word8VectorSlice.slice(vec, 0, SOME len))
+
+prim_val sys_open :
+  string -> open_flag list -> file_perm -> int = 3 "sys_open"
+        (* Open a file. The second argument is the opening mode.
+           The third argument is the permissions to use if the file
+           must be created. The result is a file descriptor opened on the
+           file. *)
+prim_val sys_close :
+  int -> unit = 1 "sys_close"
+        (* Close a file descriptor. *)
+
+	val read_    : sock_ -> buff -> int -> int -> int
+	                = app4 "read"
+
+	val write_   : sock_ -> buff -> int * int -> int
+	                = app3 "write"
+
+	val fdclose_ : sock_ -> int
+	                = app1 "fdclose"
+
+	val fsync_   : sock_ -> int
+	                = app1 "fsync"
+
+	val ftruncate_   : sock_ -> int -> int
+	                = app2 "ftruncate"
+
+prim_val s_irusr : file_perm = 0 "s_irusr";
+prim_val s_iwusr : file_perm = 0 "s_iwusr";
+prim_val s_ixusr : file_perm = 0 "s_ixusr";
+
+prim_val s_irgrp : file_perm = 0 "s_irgrp";
+prim_val s_iwgrp : file_perm = 0 "s_iwgrp";
+prim_val s_ixgrp : file_perm = 0 "s_ixgrp";
+
+prim_val s_iroth : file_perm = 0 "s_iroth";
+prim_val s_iwoth : file_perm = 0 "s_iwoth";
+prim_val s_ixoth : file_perm = 0 "s_ixoth";
+
+prim_val s_irall : file_perm = 0 "s_irall";
+prim_val s_iwall : file_perm = 0 "s_iwall";
+prim_val s_ixall : file_perm = 0 "s_ixall";
+
+prim_val s_isuid : file_perm = 0 "s_isusr";
+prim_val s_isgid : file_perm = 0 "s_isgid";
+
     in
+       val S_IRWXA = s_irall + s_iwall + s_ixall;
+       val S_IRALL = s_irall;
+       val S_IWALL = s_iwall;
+       val S_IXALL = s_ixall;
+       val S_IRWXU = s_irusr + s_iwusr + s_ixusr;
+       val S_IRUSR = s_irusr;
+       val S_IWUSR = s_iwusr;
+       val S_IXUSR = s_ixusr;
+       val S_IRWXG = s_irgrp + s_iwgrp + s_ixgrp;
+       val S_IRGRP = s_irgrp;
+       val S_IWGRP = s_iwgrp;
+       val S_IXGRP = s_ixgrp;
+       val S_IRWXO = s_iroth + s_iwoth + s_ixoth;
+       val S_IROTH = s_iroth;
+       val S_IWOTH = s_iwoth;
+       val S_IXOTH = s_ixoth;
+
+        val fdopen : string * open_flag list * file_perm -> unixfd = 
+                       fn (fnm,flags, perms) => 
+                          let val fd = sys_open fnm flags perms
+                              (* val _ = TextIO.print ("fdopen: fd = "^(Int.toString fd)^"\n") *)
+                          in fddesc_ fd end
+
+        val fdclose : unixfd -> int = fn (ref fd) => fdclose_ fd
+
+        val fsync : unixfd -> int = fn (ref fd) => fsync_ fd
+
+        val ftruncate : unixfd -> int -> int = fn (ref fd) => ftruncate_ fd
+
 	fun getinetaddr (ADDR a : pf_inet sock_addr) = getinetaddr_ a
 
 	fun fileAddr s = ADDR(newfileaddr_ s)
@@ -247,6 +346,24 @@ struct
 		    recvfrom_ sock (a2v (#buf abuf)) ofs sz (getiflags iflags)
 	    in (size, ADDR addr) end
 
+        (* FD read/write *)
+
+       	fun readVec (ref fd, vbuf) =
+	    let val (ofs, sz) = chkvbuf vbuf 
+	    in read_ fd (#buf vbuf) ofs sz end
+
+	fun readArr (ref fd, abuf) =
+	    let val (ofs, sz) = chkabuf abuf
+	    in read_ fd (a2v (#buf abuf)) ofs sz end
+
+       	fun writeVec (ref fd, vbuf) =
+	    let val (ofs, sz) = chkvbuf vbuf 
+	    in write_ fd (#buf vbuf) (ofs, sz) end
+
+	fun writeArr (ref fd, abuf) =
+	    let val (ofs, sz) = chkabuf abuf
+	    in write_ fd (a2v (#buf abuf)) (ofs, sz) end
+
 	(* We can let sock_desc be a synonym for sock_, and compare
 	   sock_descs by looking at the value (in Unix, int) inside
 	   the sock_ *)
@@ -254,6 +371,9 @@ struct
 	type sock_desc = sock_ 
 
 	fun sockDesc (SOCK sock_) = sock_
+
+        fun fdDesc (ref fd) = fd 
+
 	fun sameDesc (sock1_, sock2_) = (desccmp_ sock1_ sock2_ = 0)
 
 	fun compare (sock1_, sock2_) =
@@ -281,6 +401,22 @@ struct
 		val wvec = Vector.fromList wrs
 		val evec = Vector.fromList exs
 		val (rds', wrs', exs') = select_ rvec wvec evec tsec tusec
+	    in { rds = rds', wrs = wrs', exs = exs' } end
+
+	fun pselect { rds, wrs, exs, timeout, signals : Signal.signal list } =
+	    let val (tsec, tnsec) = 
+		    case timeout of
+			NONE   => (~1,0)
+		      | SOME t => 
+			    let val r    = fromtime t 
+				val sec  = trunc(r/1000000000.0)
+				val nsec = trunc(r - 1000000000.0 * real sec)
+			    in (sec, nsec) end
+		val rvec = Vector.fromList rds
+		val wvec = Vector.fromList wrs
+		val evec = Vector.fromList exs
+		val sigvec = Vector.fromList signals
+		val (rds', wrs', exs') = pselect_ rvec wvec evec (tsec,tnsec) sigvec
 	    in { rds = rds', wrs = wrs', exs = exs' } end
     end
 end

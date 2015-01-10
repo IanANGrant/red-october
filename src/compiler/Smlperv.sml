@@ -270,7 +270,8 @@ val predefExceptions = [
   ("Match",            ("exn_match",     0, sc_exn)),
   ("Option",           ("exn_option",    0, sc_exn)),
   ("Span",             ("exn_span",      0, sc_exn)),
-  ("Language",         ("exn_language",  1, trivial_scheme(type_arrow type_of_language_exn type_exn)))
+  ("Language",         ("exn_language",  1, trivial_scheme(type_arrow type_of_language_exn type_exn))),
+  ("Alarm",            ("exn_rtmin",  0, sc_exn))
 ];
 
 val () =

@@ -47,7 +47,7 @@ char * error_message(void)
 
 #endif /* HAS_STRERROR */
 
-char* globalexn[] = { 
+char* globalexn[SYS__LAST_EXN - SYS__FIRST_EXN + 1] = { 
        "Out_of_memory",
        "Invalid_argument",
        "Graphic_failure",
@@ -66,7 +66,9 @@ char* globalexn[] = {
        "Io",
        "Option",
        "Span",
-       "Language"};
+       "Language",
+       "RealTime1",
+       "RealTime2"};
 
 void sys_error(char * arg)
 {
@@ -249,6 +251,7 @@ void sys_init(char ** argv)
   modify(&Field(global_data, EXN_INTERRUPT), mkexn0val(SYS__EXN_INTERRUPT));
   modify(&Field(global_data, EXN_DIV),       mkexn0val(SYS__EXN_DIV));
   modify(&Field(global_data, EXN_OVERFLOW),  mkexn0val(SYS__EXN_OVERFLOW));
+  modify(&Field(global_data, EXN_RTMIN),     mkexn0val(SYS__EXN_RTMIN));
 }
 
 /* Handling of user interrupts and floating-point errors */
@@ -256,6 +259,7 @@ void sys_init(char ** argv)
 #ifdef WIN32
 static int catch_break = 0;
 static int sigint_pending = 0;
+static int sigrtint_pending = 0;
 
 void poll_break()
 {
@@ -316,6 +320,32 @@ value sys_catch_break(value onoff)    /* ML */
     mysignal(SIGINT, intr_handler);
   else
     mysignal(SIGINT, SIG_DFL);
+  return Atom(0);
+}
+
+void rtintr_handler(int sig)
+{
+#ifndef BSD_SIGNALS
+  mysignal (SIGALRM, rtintr_handler);
+#endif
+#ifndef WIN32
+  signal_handler = raise_rtintr_exn;
+  signal_number = 0;
+  execute_signal();
+#else
+  sigrtint_pending = 1;
+#endif
+}
+
+value sys_catch_rtintr(value onoff)
+{
+#ifdef WIN32
+  catch_rtintr = Tag_val(onoff);
+#endif
+  if (Tag_val(onoff))
+    mysignal(SIGRTMIN, rtintr_handler);
+  else
+    mysignal(SIGRTMIN, SIG_DFL);
   return Atom(0);
 }
 

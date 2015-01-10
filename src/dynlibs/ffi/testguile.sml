@@ -653,10 +653,25 @@ val scm_bytevector_u64_native_ref = jit_scm_two_args scm_bytevector_u64_native_r
 val scm_bytevector_s64_native_set_x = jit_scm_three_args scm_bytevector_s64_native_set_xp;
 val scm_bytevector_s64_native_ref = jit_scm_two_args scm_bytevector_s64_native_refp;
 
-fun scm_ulong_bytevector n = scm_make_bytevector (scm_from_ulong n,scm_from_ulong 0w0);
-fun scm_long_bytevector n = scm_make_bytevector (scm_from_long n,scm_from_ulong 0w0);
+fun scm_mk_bytevector n = scm_make_bytevector (scm_from_ulong n,scm_from_ulong 0w0);
 
-val bv = scm_long_bytevector (Jit.WORDSIZE div 8);
+fun scm_long_bytevector scm =
+   let val bv = scm_mk_bytevector (Word.fromInt(Jit.WORDSIZE div 8))
+   in if Jit.WORDSIZE = 4 
+      then scm_bytevector_s32_native_set_x (bv, scm_from_ulong 0w0, scm)
+      else scm_bytevector_s64_native_set_x (bv, scm_from_ulong 0w0, scm);
+      bv
+   end
+
+fun scm_ulong_bytevector scm =
+   let val bv = scm_mk_bytevector (Word.fromInt(Jit.WORDSIZE div 8))
+   in if Jit.WORDSIZE = 4 
+      then scm_bytevector_u32_native_set_x (bv, scm_from_ulong 0w0, scm)
+      else scm_bytevector_u64_native_set_x (bv, scm_from_ulong 0w0, scm);
+      bv
+   end
+
+val bv = scm_mk_bytevector (Word.fromInt(Jit.WORDSIZE div 8));
 val res' = scm_bytevector_s32_native_set_x (bv, scm_from_ulong 0w0, scm_from_long 0x2a);
 val res'' = scm_bytevector_s32_native_ref (bv, scm_from_ulong 0w0);
 val res''' = scm_to_ulong res'';
@@ -815,7 +830,7 @@ local open Jit
    val () = jit_getarg (jit_, V0, v)
    val _ = jit_ldxi (jit_, V1, V0, wsz * 0) (* V1 = Field(v,0)   *)
    val _ = jit_rshi (jit_, V1, V1, 1)       (* V1 = Long_val(V1) *)
-   val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)  *)
+   val _ = jit_ldxi (jit_, V2, V0, wsz * 1) (* V2 = Field(v,1)   *)
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V1)
    val _ = jit_pushargr (jit_, V2)
@@ -831,11 +846,9 @@ val argv0ptr = Ffi.svec_getbuffercptr Jit.argv0svec;
 val NULLptr = Ffi.svec_setcptrvalue Ffi.NULLvec;
 
 (*
-
 val _ = scm_shell (1,(argv0ptr,NULLptr));
 
 (* Never reached *)
-
 *)
 
 val infra = [("pointer", "jit_address", [("_jit", "state"), ("node", "noderef")],
@@ -2665,20 +2678,17 @@ struct
    fun search comp (vec : (string * 'a) Vector.vector) =
       fn s =>
          let fun iter l h =
-                 if h = l then let val p = Vector.sub(vec,h)
-                               in if comp (s, #1 p) = EQUAL
-                                     then SOME (#2 p)
-                                     else NONE
-                               end
-                          else let val m = l + (h - l) div 2
-                                   val p = Vector.sub(vec,m)
-                                   val c = comp (s,#1 p)
-                               in if c = EQUAL
-                                     then SOME (#2 p)
-                                     else if c = LESS 
-                                             then iter l m
-                                             else iter m h
-                               end
+                let val m = l + (h - l) div 2
+                    val p = Vector.sub(vec,m)
+                    val c = comp (s,#1 p)
+                in if c = EQUAL
+                   then SOME (#2 p)
+                   else if h = l
+                           then NONE
+                           else if c = LESS 
+                                   then iter l m
+                                   else iter m h
+                end
          in iter 0 (Vector.length vec - 1)
          end
    val indexFromString = search String.compare index
@@ -2690,7 +2700,7 @@ fun mkregmap l =
                                     scm_from_ulong (Ffi.jit_get_constant s)]) l)
 
 val lookup_code = Option.valOf o jit_code_t.indexFromString
-val scm_lookup_code = scm_ulong_bytevector o lookup_code
+val scm_lookup_code = scm_from_ulong o lookup_code
 val scm_code = scm_from_ulong o lookup_code
 
 val defs = scm_qlToString `
@@ -2782,7 +2792,7 @@ val defs = scm_qlToString `
               (lambda (jit- c u v w)
                 "Return the next jit node."
                 (jit-wrap-node (jit-new-node-www-proc (jit-unwrap-state jit-) c u v w)))))
-          (define jit-addr
+         (define jit-addr
              (let ((jit-code-addr ^(scm_code "jit_code_addr")))
                   (lambda (jit- r1 r2 r3)
                        "Generate addr instruction(s)."
@@ -2792,7 +2802,7 @@ val defs = scm_qlToString `
                            (jit-gpr-num r1)
                            (jit-gpr-num r2)
                            (jit-gpr-num r3)))))
-          (define jit-addi
+         (define jit-addi
              (let ((jit-code-addi ^(scm_code "jit_code_addi")))
                   (lambda (jit- r1 r2 n)
                        "Generate addi instruction(s)."
@@ -2921,37 +2931,37 @@ in
           val _ = spr := sp
       in ()
       end
-   fun jit_local (jit_, n) =
+   fun jit_lvar (jit_, n) =
       let val sp = !spr
           val sp' = sp + (n * wsz)
       in if sp' >= (!max)
             then raise Fail "Dude! You blew your stack!"
             else sp before spr := sp'
       end
-   fun jit_assign_local (jit_, v, r0) =
+   fun jit_lass (jit_, v, r0) =
       let val _ = jit_stxi (jit_, v, FP, r0)
       in ()
       end
-   fun jit_reference_local (jit_, r0, v) =
+   fun jit_lref (jit_, r0, v) =
       let val _ = jit_ldxi (jit_, r0, FP, v)
       in ()
       end
 end
 
-fun jit_binary jit_cons jit_car jit_cdr jit_mkl jit_mkr =
+fun jit_binary jit_op jit_car jit_cdr jit_mkl jit_mkr =
    fn (jit_,r0,v1,v0) =>
           let open Jit
-              val v0' = jit_local (jit_, 1)
-              val v1' = jit_local (jit_, 1)
-              val _ = jit_assign_local (jit_, v0', v0)
+              val v0' = jit_lvar (jit_, 1)
+              val v1' = jit_lvar (jit_, 1)
+              val _ = jit_lass (jit_, v0', v0)
               val _ = jit_car (jit_, r0, v0)
               val _ = jit_mkl (jit_, v1, r0)
-              val _ = jit_assign_local (jit_, v1', v1)
-              val _ = jit_reference_local (jit_, v0, v0')
+              val _ = jit_lass (jit_, v1', v1)
+              val _ = jit_lref (jit_, v0, v0')
               val _ = jit_cdr (jit_, r0, v0)
               val _ = jit_mkr (jit_, v0, r0)
-              val _ = jit_reference_local (jit_, v1, v1')
-              val () = jit_cons (jit_, r0, v1, v0)
+              val _ = jit_lref (jit_, v1, v1')
+              val () = jit_op (jit_, r0, v1, v0)
           in ()
         end
 
@@ -3020,16 +3030,16 @@ val fIntCaml  = quote `(mkIntJit  mkIntCaml)`;
 val fList' = fn fname => fn s =>
                  quote ` let val fList' = ^(fname)
                          in fList'
-                         end^(s)`
+                         end^(s)`;
 
 val fPair' = fn fname => fn s => fn s' => 
                  quote ` (let val fPair' = ^(fname)
                           in fPair'
-                          end^(s)^(s'))`
+                          end^(s)^(s'))`;
 
 val fStr'  = fn fname => " "^fname
 val fReal' = fn fname => " "^fname
-val fInt'  = fn fname => " "^fname
+val fInt'  = fn fname => " "^fname;
 
 fun mkformat fstr =
     fn v =>
@@ -3038,7 +3048,7 @@ fun mkformat fstr =
        in if not ok
              then raise Fail ("Internal error compiling: "^fstr)
              else ()
-       end
+       end;
 
 val mkScmList = fList' fListScm
 val mkScmPair = fPair' fPairScm
@@ -3052,66 +3062,125 @@ val mkCamlStr  = fStr'  fStrCaml
 val mkCamlReal = fReal' fRealCaml
 val mkCamlInt  = fInt'  fIntCaml
 
-datatype tagType =
-   INT of cptr
- | REAL of cptr
- | WORD of cptr
- | STR of cptr
- | GPR of cptr
- | PTR of cptr
- | CODE of string
- | LST of tagType list
- | FUN of tagType -> tagType
- | PR of tagType * tagType
- | TR of tagType * tagType * tagType
+datatype scm_atom =
+   scm_INT of cptr
+ | scm_STR of cptr
+ | scm_GPR of cptr
+ | scm_REAL of cptr
+ | scm_WORD of cptr
+ | scm_PTR of cptr
+ | scm_CODE of cptr
 
-datatype typeExp = 
-   tINT
- | tSTR
- | tGPR
- | tREAL
- | tWORD
- | tPTR
- | tCODE
- | tLST of typeExp
- | tFUN of typeExp * typeExp
- | tPR of typeExp * typeExp  
- | tTR of typeExp * typeExp * typeExp  
+datatype scm_tag =
+   scm_tINT
+ | scm_tSTR
+ | scm_tGPR
+ | scm_tREAL
+ | scm_tWORD
+ | scm_tPTR
+ | scm_tCODE
 
-val Int = (fn n => INT n,
-           fn (INT n) => n
+datatype caml_atom =
+   caml_INT of int
+ | caml_STR of string
+ | caml_GPR of int
+ | caml_REAL of real
+ | caml_WORD of word
+ | caml_PTR of cptr
+ | caml_CODE of string
+
+datatype caml_tag =
+   caml_tINT
+ | caml_tSTR
+ | caml_tGPR
+ | caml_tREAL
+ | caml_tWORD
+ | caml_tPTR
+ | caml_tCODE
+
+datatype 'a tagType =
+   ATOM of 'a
+ | LST of 'a tagType list
+ | FUN of 'a tagType -> 'a tagType
+ | PR of 'a tagType * 'a tagType
+ | TR of 'a tagType * 'a tagType * 'a tagType
+
+datatype 'a typeExp = 
+   tATOM of 'a
+ | tLST of 'a typeExp
+ | tFUN of 'a typeExp * 'a typeExp
+ | tPR of 'a typeExp * 'a typeExp  
+ | tTR of 'a typeExp * 'a typeExp * 'a typeExp  
+
+val scm_Int = (fn n => scm_INT n,
+           fn (scm_INT n) => n
             | _ => raise Fail "Int: internal error.",
-           tINT)
+           scm_tINT)
 
-val Real = (fn x => REAL x,
-           fn (REAL x) => x
+val scm_Real = (fn x => scm_REAL x,
+           fn (scm_REAL x) => x
             | _ => raise Fail "Real: internal error.",
-           tREAL)
+           scm_tREAL)
 
-val Word = (fn x => WORD x,
-           fn (WORD x) => x
+val scm_Word = (fn x => scm_WORD x,
+           fn (scm_WORD x) => x
             | _ => raise Fail "Word: internal error.",
-           tWORD)
+           scm_tWORD)
 
-val Str = (fn s => STR s,
-           fn (STR s) => s
+val scm_Str = (fn s => scm_STR s,
+           fn (scm_STR s) => s
             | _ => raise Fail "Str: internal error.",
-           tSTR)
+           scm_tSTR)
 
-val Gpr = (fn r => GPR r,
-           fn (GPR r) => r
+val scm_Gpr = (fn r => scm_GPR r,
+           fn (scm_GPR r) => r
             | _ => raise Fail "Gpr: internal error.",
-           tGPR)
+           scm_tGPR)
 
-val Ptr = (fn r => PTR r,
-           fn (PTR r) => r
+val scm_Ptr = (fn r => scm_PTR r,
+           fn (scm_PTR r) => r
             | _ => raise Fail "Ptr: internal error.",
-           tPTR)
+           scm_tPTR)
 
-val Code = (fn r => CODE r,
-           fn (CODE r) => r
+val scm_Code = (fn r => scm_CODE r,
+           fn (scm_CODE r) => r
             | _ => raise Fail "Code: internal error.",
-           tCODE)
+           scm_tCODE)
+
+val caml_Int = (fn n => caml_INT n,
+           fn (caml_INT n) => n
+            | _ => raise Fail "Int: internal error.",
+           caml_tINT)
+
+val caml_Real = (fn x => caml_REAL x,
+           fn (caml_REAL x) => x
+            | _ => raise Fail "Real: internal error.",
+           caml_tREAL)
+
+val caml_Word = (fn x => caml_WORD x,
+           fn (caml_WORD x) => x
+            | _ => raise Fail "Word: internal error.",
+           caml_tWORD)
+
+val caml_Str = (fn s => caml_STR s,
+           fn (caml_STR s) => s
+            | _ => raise Fail "Str: internal error.",
+           caml_tSTR)
+
+val caml_Gpr = (fn r => caml_GPR r,
+           fn (caml_GPR r) => r
+            | _ => raise Fail "Gpr: internal error.",
+           caml_tGPR)
+
+val caml_Ptr = (fn r => caml_PTR r,
+           fn (caml_PTR r) => r
+            | _ => raise Fail "Ptr: internal error.",
+           caml_tPTR)
+
+val caml_Code = (fn r => caml_CODE r,
+           fn (caml_CODE r) => r
+            | _ => raise Fail "Code: internal error.",
+           caml_tCODE)
 
 fun List (T as (emb_T, proj_T, tE_T)) =
       (fn l => LST (List.map emb_T l),
@@ -3132,25 +3201,25 @@ fun Triple (T as (emb_T, proj_T, tE_T),
       (fn (v,v',v'') => TR (emb_T v,emb_T' v',emb_T'' v''),
        fn (TR (e,e',e'')) => (proj_T e,proj_T' e',proj_T'' e'')
         | _ => raise Fail "Pair: internal error.",
-       tTR (tE_T,tE_T',tE_T''))
+       tTR (tE_T,tE_T',tE_T''));
 
-infixr 5 -->
+infixr 5 -->;
 
 fun (T as (emb_T, proj_T, tE_T)) --> 
     (T' as (emb_T', proj_T', tE_T')) =
       (fn f => FUN (fn t => emb_T' (f (proj_T t))),
        fn (FUN f) => (fn x => (proj_T' (f (emb_T x))))
         | _ => raise Fail "-->: internal error.",
-       tFUN (tE_T,tE_T'))
+       tFUN (tE_T,tE_T'));
 
-exception nonSubtype of typeExp * typeExp
+exception nonSubtype
 
 fun lookup_coerce [] tE1 tE2 =
-      raise nonSubtype (tE1,tE2)
-  | lookup_coerce ((t,t',t2t')::Others) tE1 tE2 =
+      raise nonSubtype
+  | lookup_coerce ((tATOM t, tATOM t',t2t')::Others) tE1 tE2 =
       if t = tE1 andalso t' = tE2 
          then t2t'
-         else lookup_coerce Others tE1 tE2
+         else lookup_coerce Others tE1 tE2;
 
 fun univ_coerce c1 (tFUN(tE1_T1,tE2_T1))
                    (tFUN(tE1_T2,tE2_T2)) (FUN v) =
@@ -3170,31 +3239,44 @@ fun univ_coerce c1 (tFUN(tE1_T1,tE2_T1))
   | univ_coerce c1 x y v =
       if x = y 
          then v
-         else (lookup_coerce c1 x y) v  
+         else (lookup_coerce c1 x y) v;
 
 fun coerce c1 (T1 as (emb_T1, proj_T1, tE_T1))
               (T2 as (emb_T2, proj_T2, tE_T2)) v =
-      proj_T2 (univ_coerce c1 tE_T1 tE_T2 (emb_T1 v))
+      proj_T2 (univ_coerce c1 tE_T1 tE_T2 (emb_T1 v));
 
-val C' = [(tPTR,
-           tWORD,
-           fn (PTR x) => WORD (scm_pointer_to_bytevector
-                                 (x,scm_from_long 4,
-                                  scm_undefined,
-                                  scm_undefined))
+val scm_C =
+         [(tATOM scm_tPTR,
+           tATOM scm_tWORD,
+           fn (ATOM (scm_PTR x)) => ATOM (scm_WORD (scm_pointer_to_bytevector
+                                           (x,scm_from_long 4,
+                                            scm_undefined,
+                                            scm_undefined)))
             | _ => raise Fail "coerce: PTR->WORD: Internal error"),
-          (tINT,
-           tWORD,
-           fn (INT x) => WORD (scm_bytevector_u32_native_set_x
-                                  (x,
-                                   scm_from_ulong 0w0,
-                                   scm_bytevector_s32_native_ref
-                                      (x, scm_from_ulong 0w0)))
+          (tATOM scm_tINT,
+           tATOM scm_tWORD,
+           fn (ATOM (scm_INT x)) =>
+               ATOM (scm_WORD(scm_long_bytevector x))
             | _ => raise Fail "coerce: INT->WORD: Internal error"),
-          (tCODE,
-           tWORD,
-           fn (CODE x) => WORD (scm_lookup_code x)
-            | _ => raise Fail "coerce: CODE->WORD: Internal error")]
+          (tATOM scm_tCODE,
+           tATOM scm_tWORD,
+           fn (ATOM (scm_CODE x)) => ATOM(scm_WORD (scm_lookup_code (sml_string x)))
+            | _ => raise Fail "coerce: CODE->WORD: Internal error")];
+
+val caml_C =
+         [(tATOM caml_tPTR,
+           tATOM caml_tWORD,
+           fn (ATOM (caml_PTR x)) => ATOM (caml_WORD (Ffi.svec_getcptrword x))
+            | _ => raise Fail "coerce: PTR->WORD: Internal error"),
+          (tATOM caml_tINT,
+           tATOM caml_tWORD,
+           fn (ATOM (caml_INT x)) =>
+               ATOM (caml_WORD(caml_long_bytevector x))
+            | _ => raise Fail "coerce: INT->WORD: Internal error"),
+          (tATOM caml_tCODE,
+           tATOM caml_tWORD,
+           fn (ATOM (caml_CODE x)) => ATOM(caml_WORD (lookup_code (sml_string x)))
+            | _ => raise Fail "coerce: CODE->WORD: Internal error")];
 
 fun defwrapper l =
    let fun iter acc [] = acc
@@ -3207,6 +3289,6 @@ fun defwrapper l =
       end
    in
       List.rev (iter [] l)
-   end
+   end;
 
 val mknodes' = defwrapper mknodes;

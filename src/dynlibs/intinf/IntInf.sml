@@ -319,6 +319,15 @@ fun fmt radix li =
       | HEX => largeint_get_str li 16
     end;
 
+fun import {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
+   fn (slc, nwords : Int.int, sgn : Int.int)  => 
+      let val z = largeint_make ()
+          val _ = largeint_import z (nwords, order, size, endian, nails) slc
+          val _ = if sgn = ~1 then largeint_neg z z else ()
+      in 
+         z
+      end
+
 (* From the GMP info page on mpz_export, to calculate the space
    required for a given large integer:
 
@@ -329,29 +338,23 @@ fun fmt radix li =
   Since our msb is equal to mpz_sizeinbase (z,2) - 1, we 
   have the following: *)
 
-fun mkbuf size nails z =
-   let open Int
-       val numb = (8 * size) - nails
-       val count = ((msb z) + numb) div numb
-       val length = count * size
-   in Word8ArraySlice.full(Word8Array.array (length,0w0))
-   end
-
-fun import {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
-   fn (slc, nwords : Int.int, sgn : Int.int)  => 
-      let val z = largeint_make ()
-          val _ = largeint_import z (nwords, order, size, endian, nails) slc
-          val _ = if sgn = ~1 then largeint_neg z z else ()
-      in 
-         z
-      end
-
-fun export {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
-   fn z => 
+fun buffer_export (slcfn : Int.int -> Word8ArraySlice.slice)
+      {order : Int.int, size : Int.int, endian : Int.int, nails : Int.int} =
+   let fun mkbuf size nails z =
+       let open Int
+           val numb = (8 * size) - nails
+           val count = ((msb z) + numb) div numb
+           val length = count * size
+       in slcfn length
+       end
+   in fn z => 
       let val slice = mkbuf size nails z
           val sgn = sign z
       in (slice, largeint_export slice (order, size, endian, nails) z, sgn)
       end
+   end
+
+val export = buffer_export (fn n => Word8ArraySlice.full(Word8Array.array (n,0w0)))
 
 (* When one does not have access to the FACTS, then one has to make-do
    with mere _information_ ... But if we get this right, then GMP will

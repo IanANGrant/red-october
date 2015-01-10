@@ -74,7 +74,7 @@ VectorSlice.ui: Vector.ui
 Word8ArraySlice.ui: Word8Array.ui Word8.ui Word8Vector.ui \
     Word8VectorSlice.ui 
 Polyhash.uo: Polyhash.ui Array.ui 
-Socket.ui: Word8Array.ui Word8Vector.ui Time.ui 
+Socket.ui: Signal.ui Word8Array.ui Word8Vector.ui Time.ui 
 Location.ui: BasicIO.ui Lexing.ui 
 Bool.ui: StringCvt.ui 
 VectorSlice.uo: VectorSlice.ui Vector.ui 
@@ -85,10 +85,11 @@ Date.ui: StringCvt.ui Time.ui
 Splayset.uo: Splayset.ui List.ui Splaytree.ui 
 Signal.ui: Word.ui 
 UTF8.ui: Word.ui String.ui Char.ui 
-Dynlib.uo: Dynlib.ui 
+Dynlib.uo: Dynlib.ui List.ui 
 Mosmlcgi.uo: Mosmlcgi.ui String.ui StringCvt.ui List.ui Option.ui \
     Process.ui Substring.ui Splaymap.ui TextIO.ui Int.ui Char.ui 
-Regex.uo: Regex.ui Word.ui Dynlib.ui List.ui Vector.ui Substring.ui 
+Regex.uo: Regex.ui Word.ui String.ui Dynlib.ui List.ui Vector.ui \
+    Substring.ui 
 CharArraySlice.uo: CharArraySlice.ui CharVector.ui CharArray.ui \
     Word8ArraySlice.ui CharVectorSlice.ui 
 Misc.uo: Misc.ui String.ui List.ui Option.ui Vector.ui Array.ui TextIO.ui \
@@ -114,7 +115,7 @@ Mosmlcookie.uo: Mosmlcookie.ui String.ui List.ui Date.ui Option.ui \
 Arraysort.uo: Arraysort.ui Array.ui 
 Word8.uo: Word8.ui Word.ui String.ui StringCvt.ui Char.ui 
 Unix.uo: Unix.ui BinIO.ui Signal.ui Word.ui Dynlib.ui Option.ui Vector.ui \
-    OS.ui TextIO.ui Obj.uo 
+    Socket.ui OS.ui TextIO.ui Obj.uo 
 Misc.ui: Array.ui 
 Word8VectorSlice.ui: Word8.ui Word8Vector.ui 
 String.ui: Char.ui 
@@ -146,7 +147,7 @@ Postgres.uo: Postgres.ui String.ui Real.ui Dynlib.ui StringCvt.ui Msp.ui \
     Bool.ui 
 Listsort.uo: Listsort.ui List.ui 
 Gdimage.uo: Gdimage.ui Dynlib.ui Vector.ui 
-Socket.uo: Socket.ui Word.ui Dynlib.ui Word8Array.ui Vector.ui \
+Socket.uo: Socket.ui Signal.ui Word.ui Dynlib.ui Word8Array.ui Vector.ui \
     Word8Vector.ui Time.ui Word8VectorSlice.ui 
 Splaytree.uo: Splaytree.ui 
 Byte.ui: String.ui Word8Array.ui Word8.ui Word8ArraySlice.ui Substring.ui \
@@ -165,7 +166,7 @@ Susp.uo: Susp.ui
 Mosmlcookie.ui: Date.ui 
 Buffered.uo: Buffered.ui CharArray.ui TextIO.ui Obj.uo 
 CharVector.uo: CharVector.ui String.ui Word8Vector.ui Char.ui 
-Unix.ui: BinIO.ui Signal.ui OS.ui TextIO.ui 
+Unix.ui: BinIO.ui Signal.ui Socket.ui OS.ui TextIO.ui 
 Arraysort.ui: Array.ui 
 CharVectorSlice.ui: CharVector.ui Substring.ui Char.ui 
 Random.uo: Random.ui 

@@ -30,6 +30,28 @@ struct
          in
             prmcall
          end
+      fun binopl jit_binop =
+         let open Jit
+            val jit_ = jit_new_state ()
+            val prmcall = jit_note (jit_, NULLp, 0w0);
+            val () = jit_prolog (jit_)
+            val v = jit_arg (jit_)
+            val () = jit_getarg (jit_, R0, v)
+            val _ = Enc.jit_ldargp (jit_, R2, V0, R0, R1, V1, 1)
+            val _ = jit_ldxr (jit_, V1, R2, V0)
+            val _ = Enc.jit_ldargp (jit_, R2, V0, R0, R1, V2, 2)
+            val _ = jit_ldxr (jit_, V2, R2, V0)
+            val _ = Enc.jit_long_val (jit_, V2)
+            val _ = jit_binop (jit_, V2, V1, V2)
+            val () = jit_getarg (jit_, R0, v)
+            val _ = Enc.jit_ldargp (jit_, R2, V0, R0, R1, V1, 0)
+            val _ = jit_stxr (jit_, V0, R2, V2)
+            val _ = jit_ret(jit_)
+            val prmcallptr = jit_emit (jit_)
+            val prmcall : word * word * Word.word -> unit = Ffi.app1 prmcallptr
+         in
+            prmcall
+         end
       fun relop jit_relop = 
          let open Jit
             val jit_ = jit_new_state ()
@@ -112,6 +134,7 @@ struct
            res
          end
       val bprim    = applybin o binop
+      val bpriml    = applybin o binopl
       val uprim    = applyun o unop
       val rprim    = relop
    in
@@ -134,9 +157,9 @@ struct
       val op *   = bprim Ops.jit_mulr
       val op div = bprim (Enc.jit_binop_dnz Ops.jit_divr_u)
       val op mod = bprim (Enc.jit_binop_dnz Ops.jit_remr_u)
-      val op ~>> = bprim Ops.jit_rshr
-      val op >>  = bprim Ops.jit_rshr_u
-      val op <<  = bprim Ops.jit_lshr
+      val op ~>> = bpriml Ops.jit_rshr
+      val op >>  = bpriml Ops.jit_rshr_u
+      val op <<  = bpriml Ops.jit_lshr
       val andb   = bprim Ops.jit_andr
       val orb    = bprim Ops.jit_orr
       val xorb   = bprim Ops.jit_xorr
@@ -147,6 +170,6 @@ struct
       val op <=  = rprim Ops.jit_ler_u
       val op >   = rprim Ops.jit_gtr_u
       val op >=  = rprim Ops.jit_ger_u
-      val MAXPOS = (<< (fromInt 1,fromInt (op Int.- (wordSize,2)))) - fromInt 1
+      val MAXPOS = (<< (fromInt 1,Word.fromInt (op Int.- (wordSize,2)))) - fromInt 1
    end
 end

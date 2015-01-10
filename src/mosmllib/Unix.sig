@@ -8,11 +8,15 @@ val execute         : string * string list -> ('a, 'b) proc
 
 val streamsOf       : (TextIO.instream, TextIO.outstream) proc 
                        -> TextIO.instream * TextIO.outstream
+val unixFDsOf       : (Socket.unixfd, Socket.unixfd) proc 
+                       -> Socket.unixfd * Socket.unixfd
 val textInstreamOf  : (TextIO.instream, 'a) proc -> TextIO.instream
 val textOutstreamOf : ('a, TextIO.outstream) proc -> TextIO.outstream
 val binInstreamOf   : (BinIO.instream, 'a) proc -> BinIO.instream
 val binOutstreamOf  : ('a, BinIO.outstream) proc -> BinIO.outstream 
 val kill            : ('a, 'b) proc * signal -> unit
+val pid             : ('a, 'b) proc -> int
+val killpid         : signal -> int -> unit
 val reap            : ('a, 'b) proc -> OS.Process.status 
 end
 (* 
@@ -59,6 +63,11 @@ end
    streams associated with process pr.  The standard output of pr is
    the source for the input stream ins, and the standard input of pr
    is the sink for the output stream outs.
+
+   [unixFDsOf pr] returns a pair (infd, outfd) of input and output
+   file descitors associated with process pr.  The standard output of
+   pr is the source for the input infd, and the standard input of pr
+   is the sink for the output outfd.
 
    [textInstreamOf pr] returns the text input stream associated with
    process pr.  That is, the standard output of pr.

@@ -588,36 +588,16 @@ and Comment = parse
       { Comment lexbuf }
 
 and UTF8Char = parse
-   [`\^@`-`\127`] { let val c = getLexemeChar lexbuf 0
-                    in store_string_char c
-                    end }
- | [`\194`-`\223`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                     store_string_char(getLexemeChar lexbuf 1) }
- | `\224` [`\160`-`\191`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                            store_string_char(getLexemeChar lexbuf 1);
-                                            store_string_char(getLexemeChar lexbuf 2) }
- | [`\225`-`\236`] [`\128`-`\191`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                                     store_string_char(getLexemeChar lexbuf 1);
-                                                     store_string_char(getLexemeChar lexbuf 2) }
- | `\237` [`\128`-`\159`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                            store_string_char(getLexemeChar lexbuf 1);
-                                            store_string_char(getLexemeChar lexbuf 2) }
- | [`\238``\239`] [`\128`-`\191`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                                    store_string_char(getLexemeChar lexbuf 1);
-                                                    store_string_char(getLexemeChar lexbuf 2) }
- | `\240` [`\144`-`\191`] [`\128`-`\191`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                                            store_string_char(getLexemeChar lexbuf 1);
-                                                            store_string_char(getLexemeChar lexbuf 2);
-                                                            store_string_char(getLexemeChar lexbuf 3) }
- | [`\241`-`\243`] [`\128`-`\191`] [`\128`-`\191`] [`\128`-`\191`]
-                                                          { store_string_char(getLexemeChar lexbuf 0);
-                                                            store_string_char(getLexemeChar lexbuf 1);
-                                                            store_string_char(getLexemeChar lexbuf 2);
-                                                            store_string_char(getLexemeChar lexbuf 3) }
- | `\244` [`\128`-`\143`] [`\128`-`\191`] [`\128`-`\191`] { store_string_char(getLexemeChar lexbuf 0);
-                                                            store_string_char(getLexemeChar lexbuf 1);
-                                                            store_string_char(getLexemeChar lexbuf 2);
-                                                            store_string_char(getLexemeChar lexbuf 3) }
+    [`\^@`-`\127`] { store_string_char(getLexemeChar lexbuf 0) }
+  | (   [`\194`-`\223`] [`\128`-`\191`]
+      | `\224` [`\160`-`\191`] [`\128`-`\191`]
+      | [`\225`-`\236`] [`\128`-`\191`] [`\128`-`\191`]
+      | `\237` [`\128`-`\159`] [`\128`-`\191`]
+      | [`\238``\239`] [`\128`-`\191`] [`\128`-`\191`]
+      | `\240` [`\144`-`\191`] [`\128`-`\191`] [`\128`-`\191`] 
+      | [`\241`-`\243`] [`\128`-`\191`] [`\128`-`\191`] [`\128`-`\191`]
+      | `\244` [`\128`-`\143`] [`\128`-`\191`] [`\128`-`\191`]
+    ) { store_string (getLexeme lexbuf) }
   | _
       { lexError "ill-formed UTF8 character code" lexbuf }
 

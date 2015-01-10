@@ -348,14 +348,14 @@ val op >> = fn (x,y) => move x y
 infix 5 >>
 
 fun realpoint (origin : real) (f : real vector) =
-  new f (fn (v,v') => 
+  new f (fn (v,v') => (* + *)
            let val (n,n',n'') = (Vector.length v,Vector.length v',Vector.length f)
            in if n <> n' orelse n <> n''
                  then raise Size
                  else Vector.tabulate
                         (n, fn i => Vector.sub (v,i) + (Vector.sub (v',i)))
            end)
-        (fn (v,v') => 
+        (fn (v,v') => (* - *)
            let val (n,n',n'') =
                      (Vector.length v,
                       Vector.length v',
@@ -365,12 +365,12 @@ fun realpoint (origin : real) (f : real vector) =
                  else Vector.tabulate
                         (n, fn i => Vector.sub (v,i) - (Vector.sub (v',i)))
            end)
-        (fn (v,s) =>
+        (fn (v,s) => (* x *)
            let val (n,n') = (Vector.length v,Vector.length f)
            in if n <> n' then raise Fail "Internal error"
                          else Vector.tabulate (n, fn i => Vector.sub (v,i) * s)
            end)
-        (fn (v,v') => Vector.foldri (fn (i,s,r) => r + (Vector.sub (v',i) * s)) origin v)
+        (fn (v,v') => Vector.foldri (fn (i,s,r) => r + (Vector.sub (v',i) * s)) origin v) (* dot *)
 
 fun real1point (f : real) =
    realpoint 0.0  #[f]

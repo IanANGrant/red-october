@@ -53,6 +53,19 @@ fun regnexec regex eflags sus =
     (regexec_sus_ regex (eflagsval eflags) sus)
     handle Fail msg => error "regnexec" msg
 
+fun getItem regex eflags sus = 
+    (case (regexec_sus_ regex (eflagsval eflags) sus)
+     of SOME v => let val match = Vector.sub (v,0)
+                      val (s,i,l) = Substring.base match
+                  in if l > 0
+                        then SOME (v,(Substring.substring
+                                       (s,l+i,(String.size s) - l-i)))
+                        else NONE
+                  end
+      | NONE => NONE)
+    handle Fail _ => NONE
+
+
 val regexec_bool_ : regex -> word -> substring -> bool 
     = app3 (dlsym dlh "mregex_regexec_bool")
 
@@ -175,12 +188,13 @@ fun substitute1 regex tr s = replace1 regex [Tr (tr, 0)] s
 fun substitute regex tr s = 
     replace_aux regex "substitute" [Tr (tr, 0)] s
 
-fun split regex fcn add s = 
+fun split regex fcn add sus = 
     let open Substring
-	val eflags = Word.orb(REG_NOTBOL, REG_NOTEOL)
+	val s = (string sus)
+        val eflags = Word.orb(REG_NOTBOL, REG_NOTEOL)
 	fun h sus revres = 
 	    case regexec_sus_ regex eflags sus of
-		NONE      => List.rev (add sus revres)
+		NONE      => SOME (List.rev (add sus revres),(right s sus))
 	      | SOME suss => 
 		    let val match   = Vector.sub(suss, 0)
 			val field1  = leftsus sus match
@@ -188,21 +202,30 @@ fun split regex fcn add s =
 		    in 
 			(* Check that we make progress *)
 			if isEmpty field1 andalso isEmpty match then 
-			    error fcn "no progress"
+			    NONE
 			else 
 			    h (right s match) revres1
 		    end
-    in h (all s) [] end
+    in h sus [] end
 
 fun addfield sus res = 
     sus :: res
 
-fun fields regex s = split regex "fields" addfield s
+fun fields regex s = 
+   case split regex "fields" addfield (Substring.all s)
+     of NONE => error "fields" "no progress"
+      | SOME (r,_) => r
+
+fun getFields regex s =
+    split regex "getFields" addfield s
 
 fun addtoken sus res = 
     if Substring.isEmpty sus then res else sus :: res
 
-fun tokens regex s = split regex "tokens" addtoken s
+fun tokens regex s = 
+   case split regex "tokens" addtoken (Substring.all s)
+     of NONE => error "tokens" "no progress"
+      | SOME (r,_) => r
 
 fun fold regex (fa, fb) e s = 
     let open Substring

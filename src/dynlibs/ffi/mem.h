@@ -1,4 +1,5 @@
 extern char* mosml_ffi_alloc (size_t size);
+extern char* mosml_ffi_alloc_wrap (void *buff, size_t size);
 extern void  mosml_ffi_free (char *p);
 
 extern void* my_alloc (size_t size);

@@ -74,6 +74,10 @@ val toString   : int -> string
 val import : {endian : Int.int, nails : Int.int, order : Int.int, size : Int.int} -> 
               Word8ArraySlice.slice * Int.int * Int.int -> int
 
+val buffer_export : (Int.int -> Word8ArraySlice.slice) ->
+             {endian : Int.int, nails : Int.int, order : Int.int, size : Int.int} -> 
+              int -> Word8ArraySlice.slice * Int.int * Int.int
+
 val export : {endian : Int.int, nails : Int.int, order : Int.int, size : Int.int} -> 
               int -> Word8ArraySlice.slice * Int.int * Int.int
 

@@ -100,6 +100,48 @@ char *mosml_ffi_alloc (size_t size)
   return (char *) result;
 }
 
+char *mosml_ffi_alloc_wrap (void *buff, size_t size)
+{
+  char *hp;
+  mlsize_t wosize = ((mlsize_t) size - sizeof(header_t)) / sizeof (value);
+  mlsize_t offset_index;
+  value result;
+  int temp;
+  mlsize_t temp2;
+  mlsize_t temp3;
+
+  if (jit_ffi_debug)
+    printf("mosml_ffi_alloc_wrap: allocating %lu [%lu] bytes at %p ...\n", Bhsize_wosize(wosize), (mlsize_t) size, buff);
+
+  hp = buff;
+
+  if (jit_ffi_debug)
+     printf("mosml_ffi_alloc_wrap: allocated %lu bytes at %p.\n", Bhsize_wosize(wosize), hp);
+
+  Hd_hp (hp) = Make_header (wosize, String_tag, Black);
+  result = Val_hp(hp);
+  Field (result, wosize - 1) = 0;
+  offset_index = Bsize_wsize (wosize) - 1;
+  temp = (char) (offset_index - (mlsize_t) Bhsize_wosize(wosize));
+  Byte (result, offset_index) = temp;
+  temp2 = Bosize_val(result) - 1;
+  temp3 = temp2 - Byte(result,temp2);
+
+  if (temp3 != (mlsize_t) (mlsize_t) Bhsize_wosize(wosize))
+    printf("\n\n*** mosml_ffi_alloc_wrap: HEAP CORRUPTION??? ***\n\n");
+
+  if (jit_ffi_debug)
+    printf("mosml_ffi_alloc_wrap: returning %p [offset_index = %lu,"
+          " diff = %hhd, temp2=%lu, String.size=%lu]...\n",
+           (char *) result, offset_index, temp, temp2, temp3);
+
+  if (Byte (result, temp3) != 0)
+    printf("\n\n*** mosml_ffi_alloc_wrap: HEAP CORRUPT: %p [Bhsize(hp)=%lu, String.size = %lu] ***\n\n\n",
+           hp, Bhsize_hp(hp),temp3);
+
+  return (char *) result;
+}
+
 #ifdef FFI_MEM_WITH_REALLOC
 char *mosml_ffi_realloc (char *oldptr, size_t old_size, size_t new_size)
 {

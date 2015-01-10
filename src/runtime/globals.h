@@ -3,6 +3,7 @@
 #ifndef _globals_
 #define _globals_
 
+#include <signal.h>
 
 #include "mlvalues.h"
 
@@ -51,14 +52,17 @@ extern value global_data;
 #define SYS__EXN_OPTION     35   /* "sys","exn_option" */
 #define SYS__EXN_SPAN       36   /* "sys","exn_span" */
 #define SYS__EXN_LANGUAGE   37   /* "sys","exn_language" */
+#define SYS__EXN_RTMIN      38   /* "sys","exn_rtmin" */
+#define SYS__EXN_RTMAX      39   /* "sys","exn_rtmax" */
+
+#define SYS__FIRST_EXN 19
+#define SYS__LAST_EXN SYS__EXN_RTMAX
 
 /* Frequently used exception values (NOT exn indexes); alloc by sys_init */
 
-#define EXN_INTERRUPT       38   /* "sys","val_exn_interrupt" */
-#define EXN_DIV             39   /* "sys","val_exn_div" */
-#define EXN_OVERFLOW        40   /* "sys","val_exn_overflow" */
-
-#define SYS__FIRST_EXN 19
-#define SYS__LAST_EXN 37
+#define EXN_INTERRUPT       (SYS__LAST_EXN + 1)   /* "sys","val_exn_interrupt" */
+#define EXN_DIV             (SYS__LAST_EXN + 2)   /* "sys","val_exn_div" */
+#define EXN_OVERFLOW        (SYS__LAST_EXN + 3)   /* "sys","val_exn_overflow" */
+#define EXN_RTMIN           (SYS__LAST_EXN + 4)   /* "sys","val_exn_rtmin" */
 
 #endif /* _globals_ */
