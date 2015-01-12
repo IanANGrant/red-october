@@ -356,10 +356,10 @@ SigAction.uo SigAction.ui : MappedStruct.ui ValRepr.ui SigSet.uo SigSet.ui SigAc
 
 SigHandler.uo SigHandler.ui : MappedStruct.ui ValRepr.ui SigSet.uo SigSet.ui SigAction.ui \
                               MappedNativeWordRegister.ui MappedNativeAddressRegister.ui \
-                              ITimer.ui SigHandler.sml
+                              SysErr.ui ITimer.ui SigHandler.sml
 	 $(MOSMLC) -imptypes -toplevel MappedStruct.ui ValRepr.ui SigSet.ui SigAction.ui \
                                        MappedNativeWordRegister.ui MappedNativeAddressRegister.ui \
-                                       ITimer.ui SigHandler.sml
+                                       ITimer.ui SysErr.ui SigHandler.sml
 
 PSelect.uo PSelect.ui : MappedStruct.ui SigSet.ui FDSet.ui ITimer.ui SysErr.ui PSelect.sml
 	 $(MOSMLC) -imptypes MappedStruct.ui FDSet.ui SigSet.ui ITimer.ui SysErr.ui PSelect.sml

@@ -7,6 +7,7 @@ val _ = load "SigAction";
 val _ = load "SigHandler";
 val _ = load "PSelect";
 val _ = load "MemDebug";
+val _ = load "SysErr";
 
 val _ = MemDebug.debug_set false;
 
@@ -197,7 +198,7 @@ fun print_misc_sig (hndlrs,signo) =
     print ("\nsi_ptr:"^
              (Word.toString
                 (Option.valOf
-                   (SigHandler.si_ptr(hndlrs,signo))))^"\n"));
+                   (SigHandler.si_int(hndlrs,signo))))^"\n"));
 
 fun print_rt_sig (hndlrs,signo) =
    (print ("\nsig_signal:"^
@@ -266,18 +267,18 @@ fun starttimer (s,n) when =
                                  (rt_hndlrs,n))}));
     ignore (SigSet.sigprocmask
               (SigSet.SIG_UNBLOCK,
-               SigSet.sigset [s])))
+               SOME (SigSet.sigset [s]))))
 
 val _ = ignoreAllRTSignals ();
 
 val oldss = SigSet.sigprocmask
               (SigSet.SIG_UNBLOCK,
-               SigSet.sigset (misc_sigs));
+               SOME (SigSet.sigset (misc_sigs)));
 
 val blockAllRTSigs =
    fn () => SigSet.sigprocmask
               (SigSet.SIG_BLOCK,
-               SigSet.sigset (rt_sigs));
+               SOME (SigSet.sigset (rt_sigs)));
 
 val _ = blockAllRTSigs ();
 
@@ -353,7 +354,7 @@ fun loop 0 = print ("Done.\n")
                   print_misc_sig(misc_hndlrs,int_idx);
                   raise Interrupt)
             else (if SigHandler.isset_sig (misc_hndlrs,usr1_idx)
-                    then let val arg = Option.valOf (SigHandler.si_ptr(misc_hndlrs,usr1_idx))
+                    then let val arg = Option.valOf (SigHandler.si_int(misc_hndlrs,usr1_idx))
                          in SigHandler.reset_sig(misc_hndlrs,usr1_idx);
                             raise UsrSignal (1,arg)
                          end
@@ -395,7 +396,7 @@ val _ =
                  print ("\nconsole interrupt\n"))
    end
 
-val _ = SigSet.sigprocmask(SigSet.SIG_SETMASK,oldss);
+val _ = SigSet.sigprocmask(SigSet.SIG_SETMASK,SOME oldss);
 
 val _ = Vector.appi
           (fn (idx,itimer) =>
@@ -428,6 +429,11 @@ val _ =
 
 val _ = print ("Waiting (forever) for yet another console interrupt. Press Ctl-C to continue ...\n")
 
-val () = SigSet.sigsuspend (SigSet.sigset []);
+val sigmask = SigSet.sigprocmask
+              (SigSet.SIG_UNBLOCK,
+               SOME (SigSet.sigset [Signal.int]));
 
+val () = SigSet.sigsuspend (sigmask) handle Interrupt => ();
+
+(* leaks memory like crazy!! *)
 val _ = MemDebug.report_alloc("testing");
