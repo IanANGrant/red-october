@@ -16,7 +16,8 @@
     anything "clever" like that.
  *)
 
-(* This is no longer used. It was the prototype. It's here for the sake of posterity. *)
+(* The following structure is no longer used. It was the
+   prototype. It's here for the sake of posterity. *)
 
 structure RedBlackTable =
 struct
@@ -89,10 +90,7 @@ end
  (* This badly needs a rewrite: split out the two pre-allocated block
     arrays as a separate unit. I haven't done this because I want a
     more general slab-allocator with a closure stack that works on
-    MappedWord8Array.array as well. Maybe also guardians (like
-    finalized things, but where the finalization is an ML function
-    callback) I think this would need a separate GC phase. But maybe
-    there's a way to work it into the weak phase? *)
+    MappedWord8Array.array as well.*)
 
 structure ArrayTable =
 struct
@@ -437,7 +435,7 @@ struct
       This scheme "works" but the order it determines is random. We
       could implement a version which puts the expected order on any
       structure, but it would be a bit slower. All we need to do is to
-      keep a record of which Ref's we are uder (i.e. ones we are
+      keep a record of which Ref's we are under (i.e. ones we are
       currently deciding) and then we would "go under" a ref only if
       it wasn't in the list, or if the other side hadn't gone under
       its corresponding Ref, if it has one. Whenever we arrive at one

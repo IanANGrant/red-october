@@ -14,23 +14,6 @@ val WordScanner = Scanners.atomicScanner match_word (fn w => SOME w)
 val IntScanner = Scanners.atomicScanner match_int (fn i => SOME i)
 val RealScanner = Scanners.atomicScanner match_real (fn r => SOME r)
 
-(*--------------------------------------------------------------------------------
-
-   Some Real Greek Lego from 300BC Alexandria, courtesy of Diophantus.
-
-+ val getOpt         : 'a option * 'a -> 'a 
-+ val isSome         : 'a option -> bool 
-+ val valOf          : 'a option -> 'a 
-+ val filter         : ('a -> bool) -> 'a -> 'a option 
-+ val map            : ('a -> 'b) -> 'a option -> 'b option
-+ val app            : ('a -> unit) -> 'a option -> unit
-+ val join           : 'a option option -> 'a option
-+ val compose        : ('a -> 'b) * ('c -> 'a option) -> ('c -> 'b option)
-+ val mapPartial     : ('a -> 'b option) -> ('a option -> 'b option)
-+ val composePartial : ('a -> 'b option) * ('c -> 'a option) -> ('c -> 'b option)
-
-----------------------------------------------------------------------------------*)
-
 val anchor = "^"
 val optws = "[ \\t]*"
 
@@ -248,16 +231,6 @@ local
    fun sfPairBraKet p = sfPair "〈"  "|" "〉" p
    fun sfPairLR p = sfPair "[Left:" ", Right:" "]" p
    fun sfPairAlt p = sfPair "[" "|" "]" p
-in (* Here are some examples. The eta-conversions are needed to keep
-      the mad dog of value polymorphism at bay until the consumer is
-      applied This allows us to iteratively compose the scanners and
-      formatters. *)
-   val sfIPv4Addr =
-          let val prep = (fn _ => true)
-              val postp = (fn l => List.length l = 4)
-              val (pr,sc) = sfList "." prep postp
-          in (fn p => pr pfInt p, fn c => sc Int8Scanner c)
-          end
    val sfSeqPlain =
        fn args =>
           let val f1 = (fn x => SOME x)
@@ -323,6 +296,16 @@ in (* Here are some examples. The eta-conversions are needed to keep
          sfSeqComp convb iconvb (a, sfSeqDelimVal d' (sfSeqTen d' (b,c,d,e,f,g,h,i,j,k)))
    fun sfSeqTwelve d' (a,b,c,d,e,f,g,h,i,j,k,l) =
          sfSeqComp convc iconvc (a, sfSeqDelimVal d' (sfSeqEleven d' (b,c,d,e,f,g,h,i,j,k,l)))
+in (* Here are some examples. The eta-conversions are needed to keep
+      the mad dog of value polymorphism at bay until the consumer is
+      applied This allows us to iteratively compose the scanners and
+      formatters. *)
+   val sfIPv4Addr =
+          let val prep = (fn _ => true)
+              val postp = (fn l => List.length l = 4)
+              val (pr,sc) = sfList "." prep postp
+          in (fn p => pr pfInt p, fn c => sc Int8Scanner c)
+          end
    val sfAlt0 = sfAlt (sfStr "[A-Z]*") sfReal
    val sfOpt0 = sfOpt sfReal
    val sfIP = sfIPv4Addr
