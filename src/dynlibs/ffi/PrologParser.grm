@@ -13,6 +13,7 @@ open GrammarSyntax
 %token BAR
 %token COMMA
 %token DOT
+%token NEGATION
 %token EOF
 
 %start File
@@ -46,8 +47,10 @@ Rule :
 ;
 
 Terms :
-   Term             {mkNonTerm("terms",[$1])}
- | Term COMMA Terms {mkNonTerm("terms",[$1,$3])}
+   Term                      {mkNonTerm("terms",[$1])}
+ | Term COMMA Terms          {mkNonTerm("terms",[$1,$3])}
+ | NEGATION Term             {mkNonTerm("terms",[mkNonTerm("negated",[$2])])}
+ | NEGATION Term COMMA Terms {mkNonTerm("terms",[mkNonTerm("negated",[$2]),$4])}
 ;
 
 Term :

@@ -16,81 +16,11 @@
     anything "clever" like that.
  *)
 
-(* The following structure is no longer used. It was the
-   prototype. It's here for the sake of posterity. *)
-
-structure RedBlackTable =
-struct
-   local
-      fun newdicts () =
-            (Redblackmap.mkDict (Int.compare),
-             Redblackmap.mkDict (Int.compare))
-      val (dictref,dictobj) : (int, Obj.obj ref) Redblackmap.dict ref *
-                              (int, Obj.obj) Redblackmap.dict ref =
-                let val (d1,d2) = (newdicts())
-                in (ref d1,ref d2) end
-      val nextrefidx = ref 0
-      val nextobjidx = ref 0
-      fun clearrefs () = (dictref := (Redblackmap.mkDict (Int.compare));
-                          nextrefidx := 0)
-      fun clearobjs () = (dictobj := (Redblackmap.mkDict (Int.compare));
-                          nextobjidx := 0)
-      val oref : 'a -> Obj.obj ref = fn x => ref (Obj.repr x)
-      fun initobjs (n:int) = clearobjs ()
-      fun initrefs (n:int) = clearrefs ()
-      fun getnextrefid () =
-         !nextrefidx before nextrefidx := (!nextrefidx) + 1
-      fun getnextobjid () =
-         !nextobjidx before nextobjidx := (!nextobjidx) + 1
-      fun addref x =
-         let val or = oref x
-             val newid = getnextrefid ()
-         in dictref := (Redblackmap.insert (!dictref,newid,or));
-            newid         
-         end
-      fun addobj obj =
-         let val newid = getnextobjid ()
-         in dictobj := (Redblackmap.insert (!dictobj,newid,obj));
-            newid         
-         end
-      fun addobjidx (n,obj) =
-         dictobj := (Redblackmap.insert (!dictobj,n,obj))
-      fun objcount () = Redblackmap.numItems (!dictobj)
-      fun refcount () = Redblackmap.numItems (!dictref)
-      exception Found of int
-   in
-      val clearrefs = clearrefs
-      val clearobjs = clearobjs
-      val initrefs = initrefs
-      val initobjs = initobjs
-      val objcount = objcount
-      val refcount = refcount
-      fun getRefSymbol x =
-         let val or = Obj.repr x
-             fun foldfn (idx,ref obj,NONE) =
-                    if obj = or
-                       then raise Found idx
-                       else NONE
-               | foldfn (_,_,r as (SOME _)) = r
-         in Redblackmap.foldl foldfn NONE (!dictref) handle Found n => SOME n
-         end
-      fun addRefSymbol x =
-         case getRefSymbol x
-           of SOME n => n
-            | NONE => addref x
-      fun addObjSymbol (n,x) = addobjidx (n,x)
-      fun getObjSymbol n =
-         Redblackmap.find (!dictobj,n)
-      fun getValSymbol n =
-         Obj.magic (Redblackmap.find (!dictobj,n))
-      fun addValSymbol x = addobj (Obj.repr x)
-   end
-end
-
- (* This badly needs a rewrite: split out the two pre-allocated block
+ (* This badly needs a rewrite: it needs to be usable by re-entrant
+    functions, and I need to split out the two pre-allocated block
     arrays as a separate unit. I haven't done this because I want a
     more general slab-allocator with a closure stack that works on
-    MappedWord8Array.array as well.*)
+    MappedWord8Array.array as well. *)
 
 structure ArrayTable =
 struct
@@ -251,89 +181,6 @@ struct
        Decl of int * rep                       (* Decl(idx,rep) *)
      | Ref of int                              (* Ref(idx) *)
    val debugging = ref false
-   local open ArrayTable
-      fun dprint s =
-         if !debugging then print s else ()
-      local
-         fun addWord w =
-            case getRefSymbol w
-              of NONE => Decl (addRefSymbol w,Word w)
-               | SOME n => Ref n
-         fun addBytes x =
-            let val obj = Obj.repr x
-            in case getRefSymbol x
-                 of NONE => Decl (addRefSymbol x,
-                                  ByteVector(Obj.obj_tag obj,
-                                             ValRepr.objWord8Vector obj))
-                  | SOME n => Ref n
-            end
-         fun addTuple x =
-            case getRefSymbol x
-              of NONE =>
-                   let val idx = addRefSymbol x
-                       val obj = Obj.repr x
-                       val tag = Obj.obj_tag obj
-                       val len = Obj.obj_size obj
-                       val tabfn = addObj o (Obj.obj_field obj)
-                       val vec = Vector.tabulate (len,tabfn)
-                   in Decl (idx, Tuple(tag, vec))
-                   end
-               | SOME n => Ref n
-         and addObj (obj : Obj.obj) =
-            if (ValRepr.obj_addr obj) mod 0w2 = 0w1
-               then addWord (Obj.magic obj)
-               else if (Obj.obj_tag obj) < ValRepr.no_scan_tag
-                       then addTuple (Obj.magic obj)
-                       else addBytes (Obj.magic obj)
-         fun objAbsRepr x =
-            let val _ = initrefs (1024)
-            in addObj (Obj.repr x)
-            end
-      in val objAbsRepr = objAbsRepr
-         fun objAbsReprCnt x =
-            let val repr = objAbsRepr x
-                val cnt = refcount()
-            in (cnt,repr)
-            end
-      end
-      local
-         fun mkWord (idx,w) =
-            let val obj = Obj.repr w
-                val _ = addObjSymbol (idx,obj)
-            in obj
-            end
-         fun mkByteVector (idx,p) =
-            let val obj = ValRepr.word8VectorObj p
-                val _ = addObjSymbol (idx,obj)
-            in obj
-            end
-         fun mkTuple (idx,(tag,vec)) =
-            let val obj = Obj.obj_block tag (Vector.length vec)
-                val _ = addObjSymbol (idx,obj)
-                fun appifn (i,x) = Obj.set_obj_field obj i (mkSym x)
-            in Vector.appi appifn vec;
-               obj
-            end
-         and mkSym (Decl (n,Word w)) = mkWord (n,w)
-           | mkSym (Decl (n,ByteVector p)) = mkByteVector (n,p)
-           | mkSym (Decl (n,Tuple p)) = mkTuple (n,p)
-           | mkSym (Ref n) = getObjSymbol n
-         fun absReprObj rep =
-            let val _ = initobjs (1024)
-            in Obj.magic (mkSym rep)
-            end
-         fun absReprObjCnt (cnt,rep) =
-            let val _ = initobjs (cnt)
-            in Obj.magic (mkSym rep)
-            end
-      in val absReprObj = absReprObj
-         val absReprObjCnt = absReprObjCnt
-      end
-   in val objAbsRepr = objAbsRepr
-      val absReprObj = absReprObj
-      val objAbsReprCnt = objAbsReprCnt
-      val absReprObjCnt = absReprObjCnt
-   end
    local open ArrayTable
       local
          fun addWord w =

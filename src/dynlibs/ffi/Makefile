@@ -38,23 +38,24 @@ all: libmffi.so libcinfo.so Ffi.uo Jit.uo liblgtng.so Lightning32.uo	\
     StaticStruct.uo MappedStruct.uo MappedNativeRegister.uo		\
     MappedNativeWordRegister.uo MappedNativeAddressRegister.uo		\
     MappedRegister.uo ObjRepr.uo RealRepr.uo WordRepr.uo RingBuffer.uo	\
-    GenericWord.ui SplitFifo.uo FifoBuffer.uo ITimer.uo SigSet.uo	\
-    SigAction.uo SigHandler.uo FDSet.uo Fcntl.uo Shm.uo MMap.uo		\
-    PSelect.uo MappedFifo.uo ShmMap.uo MemDebug.uo MappedWord8Array.uo	\
-    MappedWord8ArraySlice.uo Event.ui testcmd testcmd_loader		\
-    RedBlackMap.uo PolyRedBlackMap.uo ValRepr.uo Values.uo		\
-    StaticWord8ArraySlice.uo DuplexChannel.uo CParser.uo CPPLexer.uo	\
-    GrammarParser.uo GrammarLexer.uo SparseArrays.uo Evil.uo		\
-    Scanners.uo Printers.uo ArrayPatch.uo IPv4Packet.uo IPv4Consts.uo	\
-    TCPConsts.uo GrammarSyntax.uo CSyntax.uo RewriteLexer.uo		\
-    RewriteParser.uo RewriteMain.uo Rewrite.uo CPPInfoParser.uo		\
-    CPPInfoLexer.uo Location2.uo Hasht.uo WordPrim.uo MachineWord.uo	\
-    WordN.uo AbstractMachineWord.uo ArraySliceWordEnc.uo		\
-    VectorSliceWordEnc.uo WordEncSig.ui PrimEncSig.ui PrimEnc.uo	\
-    VectorWordEnc.uo Globals.uo TestWord.uo WordFormat.uo		\
-    CompTestWord.uo SpeedTest.uo WordOpsSig.ui WordOps.uo		\
-    GenericWord.ui Rot13.uo BitSet.uo PrologParser.uo PrologLexer.uo	\
-    PrologSyntax.uo Prolog.uo testlightning
+    GenericWord.ui SplitFifo.uo SigQFifo.uo FifoBuffer.uo ITimer.uo	\
+    SigSet.uo SigAction.uo SigHandler.uo FDSet.uo Fcntl.uo Shm.uo	\
+    MMap.uo PSelect.uo MappedFifo.uo ShmMap.uo MemDebug.uo		\
+    MappedWord8Array.uo MappedWord8ArraySlice.uo Event.ui testcmd	\
+    testcmd_loader DoubleMappedWord8Array.uo DoubleMappedWord8Array.ui	\
+    MappedSocket.uo MappedSocket.ui RedBlackMap.uo PolyRedBlackMap.uo	\
+    ValRepr.uo Values.uo StaticWord8ArraySlice.uo DuplexChannel.uo	\
+    CParser.uo CPPLexer.uo GrammarParser.uo GrammarLexer.uo		\
+    SparseArrays.uo Evil.uo Scanners.uo Printers.uo ArrayPatch.uo	\
+    IPv4Packet.uo IPv4Consts.uo TCPConsts.uo GrammarSyntax.uo		\
+    CSyntax.uo RewriteLexer.uo RewriteParser.uo RewriteMain.uo		\
+    Rewrite.uo CPPInfoParser.uo CPPInfoLexer.uo Location2.uo Hasht.uo	\
+    WordPrim.uo MachineWord.uo WordN.uo AbstractMachineWord.uo		\
+    ArraySliceWordEnc.uo VectorSliceWordEnc.uo WordEncSig.ui		\
+    PrimEncSig.ui PrimEnc.uo VectorWordEnc.uo Globals.uo TestWord.uo	\
+    WordFormat.uo CompTestWord.uo SpeedTest.uo WordOpsSig.ui		\
+    WordOps.uo GenericWord.ui Rot13.uo BitSet.uo PrologParser.uo	\
+    PrologLexer.uo PrologSyntax.uo Prolog.uo testlightning
 
 MLMODULES = Lightning32.ui Lightning32.uo Lightning64.ui		\
             Lightning64.uo StaticWord8Array.uo StaticWord8Array.ui	\
@@ -197,6 +198,13 @@ MappedWord8ArraySlice.ui :  MappedWord8Array.ui MappedWord8ArraySlice.sig
 MappedWord8ArraySlice.uo : MappedWord8Array.ui MappedWord8ArraySlice.ui MappedWord8ArraySlice.sml 
 	$(MOSMLC) -imptypes  MappedWord8ArraySlice.sml 
 
+MappedSocket.ui : MappedSocket.sig MappedWord8Array.ui
+	$(MOSMLC) -imptypes  MappedSocket.sig
+
+MappedSocket.uo : MappedSocket.sml MappedWord8Array.ui MappedSocket.ui
+	$(MOSMLC) -imptypes  MappedSocket.sml 
+
+
 StaticBuffer.ui : StaticBuffer.sig
 	$(MOSMLC) -imptypes StaticBuffer.sig
 
@@ -276,6 +284,11 @@ SplitFifo.ui SplitFifo.uo : SplitFifo.sml ValRepr.ui GenericWord.ui GenericArray
 	$(MOSMLC) -imptypes -toplevel MappedNativeRegister.ui GenericArraySlice.ui \
                     GenericArray.ui ValRepr.ui GenericWord.ui SplitFifo.sml
 
+SigQFifo.ui SigQFifo.uo : SigQFifo.sml ValRepr.ui GenericWord.ui GenericArraySlice.ui \
+                    MemDebug.ui GenericArray.ui MMap.ui MappedNativeRegister.ui
+	$(MOSMLC) -imptypes -toplevel MappedNativeRegister.ui GenericArraySlice.ui \
+                    MemDebug.ui GenericArray.ui ValRepr.ui GenericWord.ui MMap.ui SigQFifo.sml
+
 FifoBuffer.ui FifoBuffer.uo : FifoBuffer.sml GenericWord.ui GenericArraySlice.ui \
                               GenericArray.ui MappedRegister.uo
 	$(MOSMLC) -imptypes -toplevel MappedRegister.ui GenericArraySlice.ui GenericArray.ui \
@@ -318,11 +331,11 @@ SigSet.uo SigSet.ui : MappedStruct.ui SysErr.ui ValRepr.ui ITimer.ui SigSet.sml
 FDSet.uo FDSet.ui : MappedStruct.ui FDSet.sml SysErr.ui
 	 $(MOSMLC) -imptypes -toplevel MappedStruct.ui SysErr.ui FDSet.sml
 
-Shm.uo Shm.ui : Shm.sml FDSet.ui MappedStruct.ui SysErr.ui
-	 $(MOSMLC) -imptypes -toplevel FDSet.ui MappedStruct.ui SysErr.ui Shm.sml
+Shm.uo Shm.ui : Shm.sml FDSet.ui MappedStruct.ui SysErr.ui SigAction.ui
+	 $(MOSMLC) -imptypes -toplevel FDSet.ui MappedStruct.ui SysErr.ui SigAction.ui Shm.sml
 
-MMap.uo MMap.ui : SysErr.ui StaticStruct.ui ValRepr.ui MappedWord8Array.ui FDSet.ui Fcntl.ui MMap.sml
-	 $(MOSMLC) -imptypes -toplevel SysErr.ui StaticStruct.ui ValRepr.ui MappedWord8Array.ui \
+MMap.uo MMap.ui : SysErr.ui ValRepr.ui MappedWord8Array.ui FDSet.ui Fcntl.ui MMap.sml
+	 $(MOSMLC) -imptypes -toplevel SysErr.ui ValRepr.ui MappedWord8Array.ui \
                       FDSet.ui Fcntl.ui MMap.sml
 
 MemDebug.uo MemDebug.ui : ValRepr.ui MemDebug.sml
@@ -331,8 +344,15 @@ MemDebug.uo MemDebug.ui : ValRepr.ui MemDebug.sml
 MappedFifo.ui MappedFifo.uo : SplitFifo.ui SysErr.ui ValRepr.ui MappedFifo.sml 
 	$(MOSMLC) -imptypes SplitFifo.ui SysErr.ui ValRepr.ui MappedFifo.sml 
 
-ShmMap.uo ShmMap.ui : ShmMap.sml SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui
-	 $(MOSMLC) -imptypes SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui ShmMap.sml
+ShmMap.uo ShmMap.ui : ShmMap.sml SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui DoubleMappedWord8Array.uo
+	 $(MOSMLC) -imptypes SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui DoubleMappedWord8Array.ui ShmMap.sml
+
+DoubleMappedWord8Array.ui : DoubleMappedWord8Array.sig MMap.ui
+	 $(MOSMLC) MMap.ui DoubleMappedWord8Array.sig
+
+DoubleMappedWord8Array.uo : DoubleMappedWord8Array.ui DoubleMappedWord8Array.sml \
+                                                       Shm.ui MMap.ui ValRepr.ui
+	 $(MOSMLC)  ValRepr.ui Shm.ui MMap.ui DoubleMappedWord8Array.sml
 
 Event.ui Event.uo : Event.sml 
 	$(MOSMLC) -imptypes Event.sml 

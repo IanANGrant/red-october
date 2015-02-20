@@ -87,8 +87,6 @@ struct
             in ()
             end
       end
-
-
     (* Field(v,0) is the finalize wrapper fn ptr (this fn)
        Field(v,1) is the object pointer reference
                        (possibly pointing to a locn _within_ the allocated block)

@@ -56,7 +56,6 @@ struct
       | MS_SYNC
       | MS_INVALIDATE
    local
-      open StaticStruct
       open Dynlib
 
       val dlh = Dynlib.dlopen {lib = "libcinfo.so",

@@ -27,18 +27,19 @@ with
 end
 
 (* We can use pattern matching in the implementation, and we don't
-   need any recusrion: all the recursion is in the co-datatype. Also,
+   need any recursion: all the recursion is in the co-datatype. Also,
    all the polymorphism is in the implementation, and there's none in
    the co-datatype. *)
 
 fun newC (c1,c2) =
-   new (fn ((x',y'),c) => (x'+ (rea c),y'+ (ima c)))
+   new (fn ((x,y),c) => (x + (rea c),y + (ima c)))
        (fn (x,_) => x)
        (fn (_,y) => y) 
        (fn (x,y) => Math.sqrt (x*x+y*y))
        (fn (x,y) => Math.atan2 (x,y))
        (c1,c2)
-and newP (c1,c2) =
+
+fun newP (c1,c2) =
    new (fn ((x,y),c) =>
           let val (x,y) = ((x * (Math.cos y)) + (rea c),
                            (x * (Math.sin y)) + (ima c))

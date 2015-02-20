@@ -23,6 +23,7 @@ fun constant lexbuf =
 rule Token = parse
     [` ` `\t` `\n`]+                            { Token lexbuf }
   | ":-"                                        { HEAD } 
+  | "¬"                                         { NEGATION } 
   | `(`                                         { LPAR } 
   | `)`                                         { RPAR } 
   | `[`                                         { LBRACK } 

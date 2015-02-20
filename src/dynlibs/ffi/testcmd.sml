@@ -15,9 +15,6 @@ structure Channel =
      type rx_msg = Msg.rx_msg
      structure Fifo = MappedFifo.Fifo)
 
-
-datatype endpt = End0 | End1
-
 fun openChannel 
         (endpt, array,
          txregoffs,rxregoffs,
@@ -31,7 +28,7 @@ fun openChannel
        val rxbufslc = slice (array,rxbufoffs,SOME (bufsize(rxbufsize)))
        val tx_buf = MappedFifo.create(txbufslc,txregslc)
        val rx_buf = MappedFifo.create(rxbufslc,rxregslc)
-   in Channel.open_chan (case endpt of End0 => (tx_buf,rx_buf) | End1 => (rx_buf,tx_buf))
+   in Channel.open_chan endpt (tx_buf,rx_buf)
    end
 
 local open SigAction
@@ -82,12 +79,10 @@ end
 
 fun startProcess (shmname,npages,reqaddress) =
    let val pagesbytes = MMap.PAGE_SIZE * (Word.fromInt npages)
-       val (array,array') = mapShm (shmname,npages,reqaddress)
+       val array = mapShm (shmname,npages,reqaddress)
        val address = ValRepr.wordFromCptr(MappedWord8Array.get_cptr array)
-       val address' = ValRepr.wordFromCptr(MappedWord8Array.get_cptr array')
        val addroffs = address - reqaddress
-       val addroffs' = address' - reqaddress - pagesbytes
-       val chan = openChannel (End1,array,0,8,128,256,7,7)
+       val chan = openChannel (Channel.End1,array,0,8,128,256,7,7)
                     handle SysErr.SysErr (s,err)
                         => raise Fail ("SysErr: "^s^"SysErr.toString err")
        val _ = print "channel is open\n"
@@ -105,18 +100,19 @@ fun startProcess (shmname,npages,reqaddress) =
        val _ = setSigaction misc_hndlrs (Signal.usr1,usr1_idx)
        val _ = setSigaction misc_hndlrs (Signal.usr2,usr2_idx)
        val ppid = SigAction.getppid ()
-       val _ = SigAction.sigqueue (ppid, Signal.usr1, ValRepr.longFromWord (address'))
+       val reg = SigHandler.si_int_reg (misc_hndlrs,usr2_idx)
+       val _ = SigAction.sigqueue (ppid, Signal.usr1, ValRepr.longFromWord (address))
    in while
-         case SigHandler.sigtimedwait (SigSet.sigset misc_sigs) (TimeSpec.fromMilliseconds 500)
+         case SigHandler.sigtimedwait (SigSet.sigset misc_sigs) (TimeSpec.fromMilliseconds 3000)
            of NONE => false
-            | SOME (signo,si) => not (signo = Signal.usr2)
+            | SOME (signo,si) => not (signo = Signal.usr2 andalso #int si = 42)
       do ();
       restore_sigacts();
       ignore (SigSet.sigprocmask
                (SigSet.SIG_SETMASK,
                   SOME(oldss)));
       Process.success
-   end
+end
 
 fun main () =
    case CommandLine.arguments ()

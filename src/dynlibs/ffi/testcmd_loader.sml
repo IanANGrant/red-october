@@ -3,11 +3,14 @@ val dprint = print (* fn _ => ();*)
 val SysErrString = fn (s,e) => (s^": "^(SysErr.toString e)^"")
 
 fun mapShm (shmname,npages,address) =
-   ShmMap.shm_create (shmname,
-       [Fcntl.O_RDWR,Fcntl.O_CREAT,Fcntl.O_TRUNC],
-       [Fcntl.S_IRWXU],
-       [MMap.MAP_SHARED],
-       [MMap.PROT_WRITE,MMap.PROT_READ,MMap.PROT_EXEC], npages)
+   let val array = ShmMap.shm_create
+                     (shmname,
+                      [Fcntl.O_RDWR],
+                      [Fcntl.S_IRWXU],
+                      [MMap.MAP_SHARED],
+                      [MMap.PROT_WRITE,MMap.PROT_READ,MMap.PROT_EXEC], npages, address)
+   in array
+   end     
 
 structure Msg = Event
 
@@ -16,8 +19,6 @@ structure Channel =
     (type tx_msg = Msg.tx_msg
      type rx_msg = Msg.rx_msg
      structure Fifo = MappedFifo.Fifo)
-
-datatype endpt = End0 | End1
 
 fun openChannel 
         (endpt, array,
@@ -32,7 +33,7 @@ fun openChannel
        val rxbufslc = slice (array,rxbufoffs,SOME (bufsize(rxbufsize)))
        val tx_buf = MappedFifo.create(txbufslc,txregslc)
        val rx_buf = MappedFifo.create(rxbufslc,rxregslc)
-   in Channel.open_chan (case endpt of End0 => (tx_buf,rx_buf) | End1 => (rx_buf,tx_buf))
+   in Channel.open_chan endpt (tx_buf,rx_buf)
    end
 
 local open SigAction
@@ -143,10 +144,11 @@ datatype loop_flag =
  | STOP
 
 fun startProcess (shmname,npages) =
-   let val array = mapShm (shmname,npages,ValRepr.cptrFromWord 0w0)
+   let val array = mapShm (shmname,npages,0w0)
                        handle SysErr.SysErr p =>
                                    raise Fail ("testcmd_loader: mapShm: SysErr: "^(SysErrString p))
-       val chan = openChannel (End0,array,0,8,128,256,7,7)
+       val _ = dprint ("array size = "^(Int.toString(MappedWord8Array.length array))^"\n")
+       val chan = openChannel (Channel.End0,array,0,8,128,256,7,7)
        val _ = dprint ("channel is open\nStarting child process ...\n")
        val (txfifo,rxfifo) = Channel.get_buffs chan
        val hndlrs = SigHandler.sigaction 2

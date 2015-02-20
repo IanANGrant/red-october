@@ -1,10 +1,11 @@
 signature DuplexChannel =
 sig
+   datatype endpt = End0 | End1
    type chan
    type state
    type tx_msg
    type rx_msg
-   val open_chan : chan -> state
+   val open_chan : endpt -> chan -> state
    val close_chan : state -> unit
    val send : tx_msg * state -> unit
    val receive : state -> rx_msg
@@ -22,6 +23,7 @@ functor SplitFifoChannel
           and type rx_msg = rx_msg
           and type chan = Fifo.fifo * Fifo.fifo =
 struct
+   datatype endpt = End0 | End1
    type chan = Fifo.fifo * Fifo.fifo
    type tx_msg = tx_msg
    type rx_msg = rx_msg
@@ -34,8 +36,13 @@ struct
            (type state = Fifo.fifo
             val readByte = Fifo.readByte
             val writeByte = Fifo.writeByte)
-      fun open_chan (tx_buf : Fifo.fifo,rx_buf : Fifo.fifo) =
-         {is_open = ref true, tx_buf = tx_buf, rx_buf = rx_buf} : state
+      fun open_chan endpt (tx_buf : Fifo.fifo,rx_buf : Fifo.fifo) =
+         let val (tx_buf,rx_buf) =
+                case endpt
+                  of End0 => (tx_buf,rx_buf)
+                   | End1 => (rx_buf,tx_buf)
+         in {is_open = ref true, tx_buf = tx_buf, rx_buf = rx_buf} : state
+         end
       fun get_buffs ({is_open = ref isopn, tx_buf = tx_buf, rx_buf = rx_buf} : state) =
          if isopn then (tx_buf : Fifo.fifo,rx_buf : Fifo.fifo) else raise Fail "Channel is not open."
       fun close_chan (state:state) =
@@ -49,7 +56,7 @@ struct
             then ObjRepr.decode (#rx_buf state)
             else raise Fail "DuplexChannel: receive: channel is closed"
    in
-      val open_chan : chan -> state
+      val open_chan : endpt -> chan -> state
         = open_chan
       val get_buffs : state -> chan 
         = get_buffs

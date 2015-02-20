@@ -23,6 +23,8 @@ sig
    val value : valrep -> 'a
    val tag : 'a -> tag
    val sub : 'a * int -> valrep
+   val tabulate : tag -> int * (int -> Word8.word) -> valrep
+   val appi : (int * Word8.word -> unit) -> 'a -> unit
    val update : 'a * int * 'b -> unit
    val new : tag * int -> valrep
    val dumpb : 'a -> unit

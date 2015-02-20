@@ -37,10 +37,8 @@ struct
       val abstract_tag = no_scan_tag + 1 (* Should come from headers/C compiler *)
       val double_tag = no_scan_tag + 3
       val final_tag = no_scan_tag + 4
-
 (* >= no_scan_tag means it is a sequence of bytes,
     < no_scan_tag means it's an n-tuple *)
-
       fun objWord8Vector obj =
          let val len = Obj.obj_size obj
              val bpw = (Word.wordSize + 7) div 8
@@ -68,7 +66,7 @@ struct
              objWord8Vector (Obj.repr (Vector.tabulate (1,fn _ => w)))
       fun cptrWord8Vector (cp : Dynlib.cptr) =
              objWord8Vector (Obj.repr (Vector.tabulate (1,fn _ => cp)))
-      fun word8VectorObj (tag,vec) = 
+      fun word8VectorObj (tag,vec) =
          let val len = Word8Vector.length vec
              val bpw = (Word.wordSize + 7) div 8
              val nwords = len div bpw

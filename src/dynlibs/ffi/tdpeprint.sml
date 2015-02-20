@@ -147,7 +147,7 @@ fun sParen_ (sl,sv,sr) =
           prep prep (fn (x,_) => x) prep
    end
 
-fun sPair_ (sl,sm,sr) =
+fun sPair_ (sl,sm,sr) conv =
   let val prep = fn x => SOME x
   in Scanners.seqScanner
           (Scanners.seqScanner
@@ -155,7 +155,7 @@ fun sPair_ (sl,sm,sr) =
              sm
              prep prep (fn (x,_) => x) prep)
           sr
-          prep prep (fn (x,y) => (x,y)) prep
+          prep prep conv prep
    end
 
 (* The local binding keeps these functions let-polymorphic,
@@ -174,27 +174,18 @@ local
                    then SOME (List.rev l)
                    else NONE
          in (fn pe =>
-             fn c =>
-                pList_ dec (pfLit delim) pe c,
-          fn se => 
-             fn c =>
-                sList_ vnil fcons (preproc prep) (postproc postp) (litDelim delim) se c)
+                fn c =>
+                   pList_ dec (pfLit delim) pe c,
+             fn se => 
+                fn c =>
+                   sList_ vnil fcons (preproc prep) (postproc postp) (litDelim delim) se c)
       end
-   fun sfPair_ decon recon l m r =
-      let fun dec p = (fn f => fn (x,y) => (f x y)) p
-      in fn ((pl,sl),(pr,sr)) =>
-          (fn c => (pPair_ dec (pfLit l) (pfLit m) (pfLit r) (pl,pr) c) o (fn (a,b) => (decon a,b)),
-           fn c => sParen_ (litDelim l, 
-                               Option.compose
-                                  (fn (a,z) => (recon a,z),
-                                          (sPair_ (sl,litDelim m,sr))), litDelim r) c)
-      end
-   fun sfPair l m r =
-      let fun dec p = (fn f => fn (x,y) => f x y) p
+   fun sfPair l m r conv iconv =
+      let fun dec p = (fn f => (fn (x,y) => f x y) o iconv) p
       in fn ((pl,sl),(pr,sr)) =>
           (fn c =>
                 pPair_ dec (pfLit l) (pfLit m) (pfLit r) (pl,pr) c,
-           fn c => sParen_ (litDelim l, sPair_ (sl,litDelim m,sr), litDelim r) c)
+           fn c => sParen_ (litDelim l, sPair_ (sl,litDelim m,sr) conv, litDelim r) c)
       end
    fun sfSeq f1 f2 preproc postproc =
         fn ((pl,sl),(pr,sr)) =>
@@ -225,12 +216,13 @@ local
               val (pr,sc) = sfList delim prep postp
           in (fn p => pr print p, fn c => sc scan c)
           end
-   fun sfPairPlain p = sfPair "(" "," ")" p
+   fun I x = x
+   fun sfPairPlain conv iconv p = sfPair "(" "," ")" conv iconv p
    fun sfListPlain p = sfList_ "," p
-   fun sfPairSq p = sfPair "[" "," "]" p
-   fun sfPairBraKet p = sfPair "〈"  "|" "〉" p
-   fun sfPairLR p = sfPair "[Left:" ", Right:" "]" p
-   fun sfPairAlt p = sfPair "[" "|" "]" p
+   fun sfPairSq p = sfPair "[" "," "]" I I p
+   fun sfPairBraKet p = sfPair "〈"  "|" "〉" I I p
+   fun sfPairLR p = sfPair "[Left:" ", Right:" "]" I I p
+   fun sfPairAlt p = sfPair "[" "|" "]" I I p
    val sfSeqPlain =
        fn args =>
           let val f1 = (fn x => SOME x)
@@ -275,27 +267,35 @@ local
               val preproc = (fn x => ((),x))
           in sfSeq f1 f2 preproc postproc (sfLit d, args)
           end
-   fun sfSeqTwo d (a,b) = sfSeqPlain (a, sfSeqDelimVal d b)
-   fun sfSeqThree d (a,b,c) =
-         sfSeqComp conv3 iconv3 (a, sfSeqDelimVal d (sfSeqTwo d (b,c)))
-   fun sfSeqFour d' (a,b,c,d) =
-         sfSeqComp conv4 iconv4 (a, sfSeqDelimVal d' (sfSeqThree d' (b,c,d))) 
-   fun sfSeqFive d' (a,b,c,d,e) =
-         sfSeqComp conv5 iconv5 (a, sfSeqDelimVal d' (sfSeqFour d' (b,c,d,e)))
-   fun sfSeqSix d' (a,b,c,d,e,f) =
-         sfSeqComp conv6 iconv6 (a, sfSeqDelimVal d' (sfSeqFive d' (b,c,d,e,f)))
-   fun sfSeqSeven d' (a,b,c,d,e,f,g) =
-         sfSeqComp conv7 iconv7 (a, sfSeqDelimVal d' (sfSeqSix d' (b,c,d,e,f,g)))
-   fun sfSeqEight d' (a,b,c,d,e,f,g,h) =
-         sfSeqComp conv8 iconv8 (a, sfSeqDelimVal d' (sfSeqSeven d' (b,c,d,e,f,g,h)))
-   fun sfSeqNine d' (a,b,c,d,e,f,g,h,i) =
-         sfSeqComp conv9 iconv9 (a, sfSeqDelimVal d' (sfSeqEight d' (b,c,d,e,f,g,h,i)))
-   fun sfSeqTen d' (a,b,c,d,e,f,g,h,i,j) =
-         sfSeqComp conva iconva (a, sfSeqDelimVal d' (sfSeqNine d' (b,c,d,e,f,g,h,i,j)))
-   fun sfSeqEleven d' (a,b,c,d,e,f,g,h,i,j,k) =
-         sfSeqComp convb iconvb (a, sfSeqDelimVal d' (sfSeqTen d' (b,c,d,e,f,g,h,i,j,k)))
-   fun sfSeqTwelve d' (a,b,c,d,e,f,g,h,i,j,k,l) =
-         sfSeqComp convc iconvc (a, sfSeqDelimVal d' (sfSeqEleven d' (b,c,d,e,f,g,h,i,j,k,l)))
+   fun sfParenVal l r =
+       fn args =>
+          let val f1 = (fn x => SOME x)
+              val f2 = (fn y => SOME y)
+              val postproc = fn (v,_) => SOME v
+              val preproc = (fn x => (x,()))
+          in sfSeq f1 f2 preproc postproc (sfSeqDelimVal l args,sfLit r)
+          end
+   fun sfSeq2 d (a,b) = sfSeqPlain (a, sfSeqDelimVal d b)
+   fun sfSeq3 d (a,b,c) =
+         sfSeqComp conv3 iconv3 (a, sfSeqDelimVal d (sfSeq2 d (b,c)))
+   fun sfSeq4 d' (a,b,c,d) =
+         sfSeqComp conv4 iconv4 (a, sfSeqDelimVal d' (sfSeq3 d' (b,c,d))) 
+   fun sfSeq5 d' (a,b,c,d,e) =
+         sfSeqComp conv5 iconv5 (a, sfSeqDelimVal d' (sfSeq4 d' (b,c,d,e)))
+   fun sfSeq6 d' (a,b,c,d,e,f) =
+         sfSeqComp conv6 iconv6 (a, sfSeqDelimVal d' (sfSeq5 d' (b,c,d,e,f)))
+   fun sfSeq7 d' (a,b,c,d,e,f,g) =
+         sfSeqComp conv7 iconv7 (a, sfSeqDelimVal d' (sfSeq6 d' (b,c,d,e,f,g)))
+   fun sfSeq8 d' (a,b,c,d,e,f,g,h) =
+         sfSeqComp conv8 iconv8 (a, sfSeqDelimVal d' (sfSeq7 d' (b,c,d,e,f,g,h)))
+   fun sfSeq9 d' (a,b,c,d,e,f,g,h,i) =
+         sfSeqComp conv9 iconv9 (a, sfSeqDelimVal d' (sfSeq8 d' (b,c,d,e,f,g,h,i)))
+   fun sfSeq10 d' (a,b,c,d,e,f,g,h,i,j) =
+         sfSeqComp conva iconva (a, sfSeqDelimVal d' (sfSeq9 d' (b,c,d,e,f,g,h,i,j)))
+   fun sfSeq11 d' (a,b,c,d,e,f,g,h,i,j,k) =
+         sfSeqComp convb iconvb (a, sfSeqDelimVal d' (sfSeq10 d' (b,c,d,e,f,g,h,i,j,k)))
+   fun sfSeq12 d' (a,b,c,d,e,f,g,h,i,j,k,l) =
+         sfSeqComp convc iconvc (a, sfSeqDelimVal d' (sfSeq11 d' (b,c,d,e,f,g,h,i,j,k,l)))
 in (* Here are some examples. The eta-conversions are needed to keep
       the mad dog of value polymorphism at bay until the consumer is
       applied This allows us to iteratively compose the scanners and
@@ -313,16 +313,18 @@ in (* Here are some examples. The eta-conversions are needed to keep
    val sfLst1 = sfListPlain sfReal
    val sfLst2 = sfListPlain sfInt
    val sfLst3 = sfListPlain (sfStr "[A-Z]*")
-   val sfSeq0 = sfSeqTwo "," (sfReal, sfInt)
-   val sfSeq1 = sfSeqThree "," (sfWord, sfReal, sfInt)
-   val sfSeq2 = sfSeqFour "," (sfStr (optws^"[A-Z]*"),sfWord, sfReal, sfInt)
-   val sfSeq3 = sfSeqFive "," (sfInt,sfStr (optws^"[A-Z]*"),sfWord, sfReal, sfInt)
-   val sfSeq4 = sfSeqTwelve "," (sfInt, sfStr (optws^"[A-Z]*"), sfWord, sfReal, sfInt,
+   val sfSeqZero = sfParenVal "{" "}" (sfSeq2 "," (sfReal, sfInt))
+   val sfSeqOne = sfSeq3 "," (sfWord, sfReal, sfInt)
+   val sfSeqTwo = sfSeq4 "," (sfStr (optws^"[A-Z]*"),sfWord, sfReal, sfInt)
+   val sfSeqThree = sfSeq5 "," (sfInt,sfStr (optws^"[A-Z]*"),sfWord, sfReal, sfInt)
+   val sfSeqFour = sfSeq12 "," (sfInt, sfStr (optws^"[A-Z]*"), sfWord, sfReal, sfInt,
                                  sfInt, sfStr (optws^"[A-Z]*"), sfWord, sfReal, sfInt,
                                  sfReal, sfInt)
    val sfPr0 = sfPairSq (sfReal,sfInt)
    val sfPr1 = sfPairBraKet (sfPr0,sfWord)
-   val sfPr1' = sfPairPlain (sfReal,sfWord)
+   val swap = (fn (x,y) => (y,x))
+   val sfPr1' = sfPairPlain swap swap (sfReal,sfWord)
+   val sfPr2 = sfPairPlain swap swap (sfPr1',sfPr1)
 end
 
 (* A simple consumer and an empty state for it. *)
@@ -359,12 +361,14 @@ val (popt0,scanopt0)  = mkPrScOpt sfOpt0
 val (palt0,scanalt0)  = mkPrSc sfAlt0
 val (pppr0,scanpr0)   = mkPrSc sfPr0
 val (pppr1,scanpr1)   = mkPrSc sfPr1
+val (pppr1',scanpr1')   = mkPrSc sfPr1'
+val (pppr2,scanpr2)   = mkPrSc sfPr2
 val (ppIPl0,scanIPl0) = mkPrSc sfLst0
 val (ppIP0,scanIP0)   = mkPrSc sfIP
-val (pps0,scans0)     = mkPrSc sfSeq0
-val (pps1,scans1)     = mkPrSc sfSeq1
-val (pps3,scans3)     = mkPrSc sfSeq3
-val (pps4,scans4)     = mkPrSc sfSeq4
+val (pps0,scans0)     = mkPrSc sfSeqZero
+val (pps1,scans1)     = mkPrSc sfSeqOne
+val (pps3,scans3)     = mkPrSc sfSeqThree
+val (pps4,scans4)     = mkPrSc sfSeqFour
 val (ppl1,scanl1)     = mkPrSc sfLst1
 val (ppl2,scanl2)     = mkPrSc sfLst2
 val (ppl3,scanl3)     = mkPrSc sfLst3
@@ -384,7 +388,7 @@ val rs = [palt0 (LInj "AB",              pout),
           ppl1 (scanl1 "42.0,43.0,42.0", pout),
           ppl2 (scanl2 "42,43,42",       pout),
           ppl3 (scanl3 "BA,AB,C",        pout),
-          pps0 (scans0 "42.0,130",       pout),
+          pps0 (scans0 "{42.0,130}",     pout),
           pps3 (scans3 "42,ABC,2a,42.0,130", pout),
           pps4 (scans4 "42, ABC, 2a, 42.0 , 130,\
                       \ 42,ABC,2a,42.0,130,\

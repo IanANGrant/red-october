@@ -23,7 +23,9 @@
    end
 
 fun dumpb_offs cptr offs len =
+   let in
     dumpb (ValRepr.cptr_offs cptr offs) len
+   end
 
 fun dumpw_offs cptr offs len =
     dumpw (ValRepr.cptr_offs cptr offs) len

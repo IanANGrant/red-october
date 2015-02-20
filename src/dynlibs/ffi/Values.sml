@@ -1,8 +1,14 @@
 (* Values.sml - a wrapper for the Obj unit with names that are
    hopefully easier to remember, and with a little more error
    checking. Except for typing errors in the value call, this thing
-   shouldn't segfault. It would be nice to have type introspection
-   too, and then we could check even the magic calls. *)
+   shouldn't segfault.
+
+   "It would be nice to have type introspection too, and then we could
+   check even the magic calls." Thinking about it a little, I realised
+   that we could use t.d.p.e. and coercions to check the value
+   argument.
+
+ *)
 
 structure Values :> Values =
 struct
@@ -76,6 +82,19 @@ struct
              val () = Vector.appi (fn (i,f) => (Obj.set_obj_field vecrepr i f)) oflds
          in vec
          end
+      fun word8VectorObj (tag,vec) =
+         let val len = Word8Vector.length vec
+             val nwords = len div wordBytes
+             val obj = Obj.obj_block tag nwords
+             val vecrepr = Obj.repr vec
+             fun loop 0 = ()
+               | loop n = let val n' = n - 1
+                    in Obj.set_obj_field obj n' (Obj.obj_field vecrepr n');
+                       loop n'
+                    end
+         in loop nwords;
+            obj
+         end
       val littleendian = (* We check the little end, so this should work on 64 bit too *)
          let val ev = objWord8Vector (Obj.repr (Vector.tabulate (1,fn _ => 0wx4321)))
          in Word8Vector.sub(ev,0) = 0wx21 * 0w2 + 0w1 (* Long_val conversion *)
@@ -104,6 +123,13 @@ struct
                           then raise Repr
                           else Obj.obj_block t i
                        end
+      val tabulate : tag -> int * (int -> Word8.word) -> valrep =
+         fn tag => fn (p as (_,_)) =>
+           let val t = toInt tag
+           in if t < 0
+                 then raise Repr
+                 else word8VectorObj (t,Word8Vector.tabulate p)
+           end
       val tag : 'a -> tag = 
             fn x =>
                if Word.andb(toWord (Obj.repr x),0wx1) = 0wx1
@@ -119,6 +145,13 @@ struct
                                              then Atom (Obj.obj_tag (Obj.repr x))
                                              else Tuple (Obj.obj_tag (Obj.repr x))
                                      else Address
+      val appi : (int * Word8.word -> unit) -> 'a -> unit =
+         fn f => fn x =>
+           if toInt (tag x) < 0
+              then raise Repr
+              else let val v = objWord8Vector (Obj.repr x)
+                   in Word8Vector.appi f v
+                   end
       val length : 'a -> int =
           fn x => if Word.andb(toWord (Obj.repr x),0wx1) = 0wx1
                      then 0

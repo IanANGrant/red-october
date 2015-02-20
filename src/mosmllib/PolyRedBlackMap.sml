@@ -6,8 +6,20 @@
 structure PolyRedBlackMap :> PolyRedBlackMap  =
 struct
 
+  (* These should be functor parameters *)
+
   val to_repr : 'a -> ObjRepr.sym = ObjRepr.valAbsRepr
   val from_repr : ObjRepr.sym -> 'a = ObjRepr.absReprVal
+  val compare = ObjRepr.compare_abs
+
+   (* datatype colour =
+         RED
+       | BLACK
+      datatype ('a,'b) tree =
+         LEAF
+       | BRANCH of colour * ObjRepr.sym * 'b * ('a, 'b) tree * ('a, 'b) tree
+
+   *)
 
   datatype ('a, 'b) tree = 
            LEAF
@@ -18,15 +30,14 @@ struct
 
   exception NotFound
 
-  val compare = ObjRepr.compare_abs
-
   fun mkDict () = (LEAF, 0)
 
   fun numItems (_, n) = n
 
   fun find ((tree, n), key') =
       let val key = to_repr key'
-          fun loopShared k x left right =
+          fun loopShared k x left right = (* If colour were a value rather than the
+                                             rectype constructor this would be one fn *)
               case compare(key, k) of
                   EQUAL   => x
                 | LESS    => loop left
@@ -34,7 +45,7 @@ struct
           and loop LEAF                       = raise NotFound
             | loop (RED(k, x, left, right))   = loopShared k x left right
             | loop (BLACK(k, x, left, right)) = loopShared k x left right
-      in  loop tree end
+      in loop tree end
 
   fun bounds ((tree, n), key') =
       let val key = to_repr key'
@@ -45,7 +56,7 @@ struct
                                     in loop right r end
                        | LESS    => loop left (b,m,SOME (from_repr k, x))
                        | GREATER => loop right (SOME (from_repr k, x),m,a)
-              in case tree 
+              in case tree  (* ... and so would this *)
                    of  LEAF                      => (b,m,a)
                     | (RED(k, x, left, right))   => branch k x left right
                     | (BLACK(k, x, left, right)) => branch k x left right
@@ -193,14 +204,14 @@ struct
 	   RED(z, zd, b, c) => RED(z, zd, BLACK(x,xd,a,b), BLACK(y,yd,c,d))
          | bc           => balleft x xd a (BLACK(y, yd, bc, d)))
    
-  fun remove ((tree, n), key') =
+  fun remove ((tree, n), key') = (* Convert to cps-style to get tail-recursive version? *)
       let val key = to_repr key'
           fun delShared k x a b =
               case compare(key, k) of
                   EQUAL   => (x, append a b)
                 | LESS    => 
                   let val (res, a') = del a
-                  in  (res, case a of
+                  in  (res, case a of (* Pass this (fn b' => case ... ) in as the continuation thunk? *)
                                 BLACK _ => balleft k x a' b
                               | _       => RED(k, x, a', b)) end
                 | GREATER => 
@@ -208,7 +219,8 @@ struct
                   in  (res, case b of
                                 BLACK _ => balright k x a b'
                               | _       => RED(k, x, a, b')) end  
-          and del LEAF                = raise NotFound
+          and del LEAF                = raise NotFound (* With the colour field this would 
+                                                          be one tail-rec loop *)
             | del (RED(k, x, a, b))   = delShared k x a b
             | del (BLACK(k, x, a, b)) = delShared k x a b
 
@@ -216,6 +228,10 @@ struct
                                 (res, RED arg) => (res, BLACK arg)
                               | x              => x
       in  ((tree, n-1), res) end
+
+   (* Motivation is to defunctionalize it a la Reynolds,
+      and then run it as a set of co-processes to get a
+      distributed database. See DefInt.sml for details. *)
 
   fun map f (tree, n) = 
       let fun loop LEAF = LEAF

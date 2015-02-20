@@ -94,3 +94,46 @@ in
       in Yes (List.filter (fn (v,_) => occurs_in v goal) insts)
       end handle Fail _ => No
 end
+
+(* DATALOG
+
+   Change Answer format to a list of terms.
+
+   Change search strategy to allow all or first n answers. 
+
+   Implement Earley deduction search strategy with reduction rule.
+
+   Add negation:
+
+      1. Add check for inconsistent programs? (I'm not sure what it is though!)
+      2. Pre-compile subsumption check when adding new derived terms
+      3. Change evaluation strategy to only evaluate negated terms when
+         the fixedpoint has been reached for positive terms.
+
+   Add built-in predicates:
+
+      1. Add constant_term predicate for checking a term for uninstantiated logical variables
+      2. Add syntax for built-ins
+      3. Add evaluation_check predicate for terms:
+
+             check that all free logical variables which are arguments
+             to built-in predicates/functions are either safe
+             (i.e. they appear in the arguments to one or more
+             ordinary predicates) or are linked by a chain of equality
+             predicates to some safe variable. This must take into
+             account lazy evaluation on andalso and orelse and ? :
+      4. Add semantics for evaluating built-ins
+      5. Change evaluation strategy to 
+
+             (a) only evaluate non-equality built-ins when they are constant terms.  
+             (b) evaluate equality built-ins when either side is a constant term.
+
+   Add relational algebra and data description language (DDL) to allow
+   the extensional databases to be specified with a goal.
+
+   The syntax and semantics of built-ins should be typed, and
+   "pluggable", so that different domain languages can be used for
+   different types of program, or even in differents parts of one
+   program, see below for more on types/modules.
+
+*)

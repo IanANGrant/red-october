@@ -1,7 +1,6 @@
 structure MappedFifo =
 struct
    local
-      val NULL = ValRepr.cptrFromWord 0w0;
       fun mkRegisterVector n slc =
          let open MappedNativeRegister
              open MappedWord8ArraySlice

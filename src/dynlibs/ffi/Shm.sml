@@ -2,6 +2,7 @@ signature Shm =
 sig
     val shm_open : string * Fcntl.flags list * Fcntl.mode list -> Socket.unixfd
     val shm_unlink : string -> unit
+    val mk_tmpshm : string * Fcntl.flags list * Fcntl.mode list -> string * Socket.unixfd
 end
 
 structure Shm :> Shm =
@@ -94,6 +95,20 @@ struct
           in if rv = 0
                 then ()
                 else SysErr.raiseSysErr "shm_unlink"
+          end
+      fun mk_tmpshm (s,flags,fmode) =
+          let val flags' = Fcntl.O_CREAT::Fcntl.O_EXCL::flags
+              val pidstr = Int.toString (Word.toInt (SigAction.getpid ()))
+              fun iter n =
+                 let val ns = Int.toString n
+                     val name = "/tmpshm_"^s^"_"^pidstr^"_"^ns
+                     val fdopt = SOME (shm_open (name,flags',fmode))
+                                    handle SysErr.SysErr _ => NONE
+                 in case fdopt
+                      of SOME fd => (name, fd)
+                       | NONE => iter (n + 1)
+                 end
+          in iter 1
           end
    end
 end
