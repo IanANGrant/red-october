@@ -71,9 +71,10 @@ end
 local
    val nofds = FDSet.fromList[]
 in
-   fun waitOnSigs (reg,value,hndlrs,sigidx,ss,tout) =
+   fun waitOnSigs (reg,value,hndlrs,sigs,sigidx,ss,tout) =
       let fun iter () =
-             if MappedNativeWordRegister.! reg >= value
+         let val _ = blockSignals sigs
+         in if MappedNativeWordRegister.! reg >= value
                 then ()
                 else
                   (ignore 
@@ -90,6 +91,7 @@ in
                               else (SigHandler.reset_sig (hndlrs,sigidx);
                                     iter ())
                       else iter ())
+         end
 
       in iter ()
       end
@@ -105,16 +107,15 @@ fun mkHandlers (sig1,sig2,pid1,pid2) =
        val mask = blockSignals sigs
        val _ = setSigaction hndlrs (sig1,sig1_idx)
        val _ = setSigaction hndlrs (sig2,sig2_idx)
-       val _ = blockSignals sigs
        val reg1 = SigHandler.si_int_reg (hndlrs,sig1_idx)
        val reg2 = SigHandler.si_int_reg (hndlrs,sig2_idx)
        fun block_on_read n =
           let val value = Word.fromInt n
-          in waitOnSigs (reg1,value,hndlrs,sig1_idx,mask,TimeSpec.fromMilliseconds 1000)
+          in waitOnSigs (reg1,value,hndlrs,sigs,sig1_idx,mask,TimeSpec.fromMilliseconds 1000)
           end
        fun block_on_write n =
           let val value = Word.fromInt n
-          in waitOnSigs (reg2,value,hndlrs,sig2_idx,mask,TimeSpec.fromMilliseconds 1000)
+          in waitOnSigs (reg2,value,hndlrs,sigs,sig2_idx,mask,TimeSpec.fromMilliseconds 1000)
           end
        fun signal_read n =
           let val value = Word.fromInt n

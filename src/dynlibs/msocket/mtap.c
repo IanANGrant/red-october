@@ -130,6 +130,8 @@ static void pstrcpy(char *dst, size_t len, const char *src)
 #define TEMPORARILY 0
 #define PERMANENTLY 1
 
+extern int setresuid(uid_t ruid, uid_t euid, uid_t suid);
+
 static void drop_privs(int permanently, uid_t uid, uid_t euid)
 {
    if (verbose >= 1) {
@@ -198,7 +200,7 @@ static int check_script_perms(const char *path) {
       fprintf(stderr, "the script %s is not owned by root or by the efective uid (%d).\n", path,euid);
         return -1;
     }
-    if (S_IWOTH & sb.st_mode != 0) {
+    if ((S_IWOTH & sb.st_mode) != 0) {
         fprintf(stderr, "the scipt %s is world-writable.\n", path);
         return -1;
     }
@@ -899,9 +901,10 @@ static void *mapbuf(void *addr,
 
 static int minbits(int n) {
    int i;
-   for (i = 0x0; i < n; i++)
+   for (i = 0x0; i < (8 * sizeof(int)); i++)
      if ((1 << i) >= n)
         return i;
+   return i;
 }
 
 int main (int argc, char *argv[]) {
