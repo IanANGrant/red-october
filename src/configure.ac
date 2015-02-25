@@ -85,6 +85,10 @@ fi
 AC_MSG_RESULT([$host_os])
 AC_SUBST(linux)
 
+if test "x$CC" = "x" ; then
+  CC=clang
+fi
+
 # Checks for programs.
 AM_PROG_AR
 AC_PROG_SED

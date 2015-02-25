@@ -44,7 +44,7 @@ EXTERN char * stat_resize (char *, asize_t);     /* Size in bytes. */
 #define Modify(fp, val) {						      \
   value _old_ = *(fp);							      \
   *(fp) = (val);							      \
-  if (Is_in_heap (fp)){							      \
+  if (Is_in_heap ((addr) fp)){						\
     if (gc_phase == Phase_mark) darken (_old_);				      \
     if (Is_block (val) && Is_young (val)				      \
 	&& ! (Is_block (_old_) && Is_young (_old_))){			      \

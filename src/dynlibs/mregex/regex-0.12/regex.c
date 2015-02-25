@@ -1623,12 +1623,12 @@ regex_compile (pattern, size, syntax, bufp)
             case ')':
               if (syntax & RE_NO_BK_PARENS) goto normal_backslash;
 
-              if (COMPILE_STACK_EMPTY)
+              if (COMPILE_STACK_EMPTY) {
                 if (syntax & RE_UNMATCHED_RIGHT_PAREN_ORD)
                   goto normal_backslash;
                 else
                   return REG_ERPAREN;
-
+              }
             handle_close:
               if (fixup_alt_jump)
                 { /* Push a dummy failure point at the end of the
@@ -1643,11 +1643,12 @@ regex_compile (pattern, size, syntax, bufp)
                 }
 
               /* See similar code for backslashed left paren above.  */
-              if (COMPILE_STACK_EMPTY)
+              if (COMPILE_STACK_EMPTY) {
                 if (syntax & RE_UNMATCHED_RIGHT_PAREN_ORD)
                   goto normal_char;
                 else
                   return REG_ERPAREN;
+              }
 
               /* Since we just checked for an empty stack above, this
                  ``can't happen''.  */
@@ -2831,7 +2832,7 @@ re_set_registers (bufp, regs, num_regs, starts, ends)
     {
       bufp->regs_allocated = REGS_UNALLOCATED;
       regs->num_regs = 0;
-      regs->start = regs->end = (regoff_t) 0;
+      regs->start = regs->end = (regoff_t *) NULL;
     }
 }
 

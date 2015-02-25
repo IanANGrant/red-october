@@ -132,10 +132,10 @@ static int constantslens = (int) (sizeof(constants)) / (sizeof(struct intstrpair
 /* The following are some of the CPP C macros lightning defines, we need to make them
    available as functions callable from ML. */
 #if defined(jit_class)
-int jit_class_(int reg) {jit_class(reg);};
+int jit_class_(int reg) {return jit_class(reg);};
 #endif
 #if defined(jit_regno)
-int jit_regno_(int reg) {jit_regno(reg);};
+int jit_regno_(int reg) {return jit_regno(reg);};
 #endif
 #if defined(jit_sse2_p)
 int jit_sse_2_p(void) { return (jit_sse2_p());};

@@ -2,7 +2,8 @@
 
 include ../../Makefile.inc
 
-OPTS=-fno-defer-pop
+#OPTS=-fno-defer-pop
+OPTS=
 CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR)
 BASELIBS=-lm -ldl
 

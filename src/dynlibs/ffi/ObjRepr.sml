@@ -222,7 +222,7 @@ struct
 
       (* In these cases it's very obvious that the arguments we are
          giving the encoding functions are of the form of the
-         arguments that the foldr functional applies it's caller's
+         arguments that the foldr functional applies its caller's
          function to. *)
 
              fun loop (repr as (Decl(idx,Word w),acc)) =

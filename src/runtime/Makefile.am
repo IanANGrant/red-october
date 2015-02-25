@@ -45,7 +45,7 @@ libcamlrunm_@VERSION@_la_SOURCES = $(LIBSOURCES)
 
 camlrunmd_SOURCES = $(camlrunm_SOURCES) $(LIBSOURCES) debugger.c
 
-camlrunm_CFLAGS = $(CW32_CFLAGS) -fno-defer-pop -fomit-frame-pointer -DTHREADED -Dunix
+camlrunm_CFLAGS = $(CW32_CFLAGS) -fomit-frame-pointer -DTHREADED -Dunix
 camlrunm_LDADD = $(liblaname)
 camlrunm_LDFLAGS = $(CAMLRTLDFLAGS) -rdynamic -Wl,-rpath,$(libdir)/mosml
 

@@ -4,7 +4,8 @@
 
 include ../../Makefile.inc
 
-OPTS=-fno-defer-pop
+#OPTS=-fno-defer-pop
+OPTS=
 ROOTDIR:=../..
 CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(CAMLRT)
 

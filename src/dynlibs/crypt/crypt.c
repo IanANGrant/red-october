@@ -5,6 +5,7 @@
 #ifdef WIN32
 #include <crypt.h>		/* For crypt       */
 #else
+#define _XOPEN_SOURCE
 #include <unistd.h>		/* For crypt       */
 #endif
 

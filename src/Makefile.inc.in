@@ -33,7 +33,7 @@ BASELIBS=-lm
 
 # This works with most systems, including MacOS X with XCode installed:
 
-CC=gcc
+CC=clang
 # CC=gcc -mmacosx-version-min=10.7 # for building OS X package
 # CC=/usr/sepp/bin/gcc		# Solaris at KVL
 
@@ -75,8 +75,8 @@ UNAME_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 ifeq ($(UNAME_S),Linux)
 	CPP=cpp -P -traditional -Dunix -Umsdos
 	STRIP=strip -S
-	LD=gcc -rdynamic $(ADDLDFLAGS)
-	DYNLD=gcc -shared $(ADDLDFLAGS)
+	LD=$(CC) -rdynamic $(ADDLDFLAGS)
+	DYNLD=$(CC) -shared $(ADDLDFLAGS)
 endif
 ifeq ($(UNAME_S),Darwin) 	# For MacOS X, use the same as Linux except DYNDL
 	CPP=cpp -P -traditional -Dunix -Umsdos

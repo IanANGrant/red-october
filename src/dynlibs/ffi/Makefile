@@ -15,7 +15,8 @@ ADDINCDIRS=-I$(FFIINCDIR) -I$(LIGHTNINGINCDIR)
 
 include ../../Makefile.inc
 
-OPTS=-fno-defer-pop
+OPTS=
+# OPT=-fno-defer-pop
 CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR) $(ADDINCDIRS) -I.
 
 MOSMLTOOLS=camlrunm $(TOOLDIR)
@@ -127,6 +128,9 @@ fcntl.o: fcntl.c
 mmap.o: mmap.c
 	$(CC) $(CFLAGS) -c mmap.c -o mmap.o
 
+longjmp.o: longjmp.c
+	$(CC) $(CFLAGS) -c longjmp.c -o longjmp.o
+
 memdebug.o: memdebug.c
 	$(CC) $(CFLAGS) -c memdebug.c -o memdebug.o
 
@@ -160,10 +164,10 @@ xed-enc-32 : xed-enc-32.o $(XEDOBJS)
 	$(CC) -o $@ $^ $(XEDEX)/lib/libxed.a
 
 libcinfo.so: fdset.o sigevent.o rtsignals.o sigset.o fcntl.o mmap.o memdebug.o mem.o \
-             siginfo.o sigaction.o syserr.o xed-enc-32.o heap.o
+             siginfo.o sigaction.o syserr.o xed-enc-32.o heap.o longjmp.o
 	$(DYNLD) $(ADDLDLFAGS) -Wl,-rpath,$(FFILIBDIR) `pkg-config --libs glib-2.0` \
          -lrt -o libcinfo.so fdset.o sigaction.o siginfo.o sigevent.o rtsignals.o \
-                 sigset.o fcntl.o mem.o mmap.o memdebug.o syserr.o xed-enc-32.o heap.o
+                 sigset.o fcntl.o mem.o mmap.o memdebug.o syserr.o xed-enc-32.o heap.o longjmp.o
 
 liblgtng.so: lgtng.o
 	$(DYNLD) $(ADDLDLFAGS) -o liblgtng.so -llightning lgtng.o 

@@ -29,6 +29,7 @@
 #include "fail.h"
 #include "memory.h"
 #include "str.h"
+#include "sys.h"
 #include "runtime.h"
 #include "alloc.h"
 #include "major_gc.h"
@@ -1606,7 +1607,7 @@ char* exnmessage_aux(value exn)
 #elif defined(WIN32)
       _snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
 #else
-      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), (void *) argval);
 #endif
       return buf;
   } else if (Is_in_heap(argval) == 0) {
@@ -1615,7 +1616,7 @@ char* exnmessage_aux(value exn)
 #elif defined(WIN32)
       _snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
 #else
-      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), argval);
+      snprintf(buf, BUFSIZE, "%s: <cptr %p>", String_val(strval), (void *) argval);
 #endif
       return buf;
   } else if (Is_block(argval)) {

@@ -1,5 +1,6 @@
 #include <stdio.h>
 
+#include "major_gc.h"
 #include "mffi.h"
 #include "mem.h"
 
@@ -115,7 +116,7 @@ value svec_wrap_cptr2(value cptr, value finalize, value lengthv)
   len = Long_val(lengthv) - sizeof(header_t) - sizeof(value);
 
   if (jit_ffi_debug)
-      fprintf(stderr,"svec_wrap_cptr2: calling alloc_final: finalize=%p  buffer=%p(length=%d[%d]).\n",
+      fprintf(stderr,"svec_wrap_cptr2: calling alloc_final: finalize=%p  buffer=%p(length=%ld[%d]).\n",
 	      (void *) finalize,(void *)cptr,Long_val(lengthv),len);
   sv = alloc_final(SvecSize + 1, &svec_finalize2 , SvecHeapSpace, MAX_FFI_ALLOC);
   if (jit_ffi_debug)
@@ -123,7 +124,7 @@ value svec_wrap_cptr2(value cptr, value finalize, value lengthv)
 	      (void *)cptr,len);
   buffv = (value) mosml_ffi_alloc_wrap((void *)cptr,len);
   if (jit_ffi_debug)
-      fprintf(stderr,"svec_wrap_cptr2: initializing: finalize=%p  buffv=%p(length=%d[%d]).\n",
+      fprintf(stderr,"svec_wrap_cptr2: initializing: finalize=%p  buffv=%p(length=%d[%ld]).\n",
 	      (void *) finalize,(void *)buffv,len,string_length(buffv));
   initialize((value *) Svec_val(sv), buffv);
   initialize(&Field(sv,2), Val_long(len));

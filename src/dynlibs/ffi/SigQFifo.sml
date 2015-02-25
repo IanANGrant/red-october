@@ -131,7 +131,7 @@ struct
             fn (r,s) =>
               let val len = ArraySliceStruct.length s
                   val _ = if len > avail r
-                             then block_on_read len
+                             then block_on_read (writeCount r + len - avail r)
                              else ()
                   val readr = #read r
                   val read' = !readr
@@ -149,7 +149,7 @@ struct
                                type {di : int, dst : array, src : slice} -> unit  *)
               let val len = ArraySliceStruct.length s
                   val _ = if len > free r
-                             then block_on_write len
+                             then block_on_write (readCount r + len - free r)
                              else ()
                   val writer = #write r
                   val write' = !writer
@@ -165,7 +165,7 @@ struct
           val skipRead =
             fn (r,len) =>
                       let val _ = if len > avail r
-                                     then block_on_read len
+                                     then block_on_read (writeCount r + len - avail r)
                                      else ()
                           val readr = #read r
                           val read' = !readr
@@ -174,7 +174,7 @@ struct
                       end
           fun skipWrite (r,len) =
                       let val _ = if len > free r
-                                     then block_on_write len
+                                     then block_on_write (readCount r + len - free r)
                                      else ()
                           val writer = #write r
                           val write' = !writer
@@ -184,7 +184,7 @@ struct
           val readVec = (* Use ArraySliceStruct.vector *)
             fn (r,len) =>
               let val _ = if len > avail r
-                             then block_on_read len
+                             then block_on_read (writeCount r + len - avail r)
                              else ()
                   val readr = #read r
                   val read' = !readr
@@ -200,7 +200,7 @@ struct
           fun writeVec (r,v) = (* Use ArrayStruct.copyVec *)
               let val len = length v
                   val _ = if len > free r
-                             then block_on_write len
+                             then block_on_write (readCount r + len - free r)
                              else ()
                   val writer = #write r
                   val write' = !writer
@@ -215,7 +215,7 @@ struct
               end
           fun readByte r =
              let val _ = if avail r = 0
-                            then block_on_read 1
+                            then block_on_read (writeCount r + 1)
                             else ()
                  val readr = #read r
                  val read' = !readr
@@ -229,7 +229,7 @@ struct
              end
           fun writeByte (r,b) =
              let val _ = if free r = 0
-                            then block_on_write 1
+                            then block_on_write (readCount r + 1)
                             else ()
                  val writer = #write r
                  val write' = !writer

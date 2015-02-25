@@ -41,7 +41,7 @@ LOADLIBES =
 srcdir = .
 VPATH = .
 
-CC = gcc
+CC = clang
 DEFS =  -DSTDC_HEADERS=1 -DHAVE_STRING_H=1 -DHAVE_ALLOCA_H=1
 
 SHELL = /bin/sh

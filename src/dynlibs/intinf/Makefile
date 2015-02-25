@@ -12,7 +12,8 @@ GMPLIBDIR=$(GMPDIR)/lib
 
 include ../../Makefile.inc
 
-OPTS=-fno-defer-pop
+#OPTS=-fno-defer-pop
+OPTS=
 ROOTDIR:=../..
 CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(CAMLRT) -I${GMPINCDIR}
 #CFLAGS=-Dunix -O2 $(OPTS) $(ADDDYNLIBCFLAGS) -I$(INCDIR) -I ${GMPDIR}

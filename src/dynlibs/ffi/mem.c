@@ -90,7 +90,7 @@ char *mosml_ffi_alloc (size_t size)
 
   if (jit_ffi_debug)
     printf("mosml_ffi_alloc: returning %p [offset_index = %lu,"
-          " diff = %hhd, temp2=%lu, String.size=%lu]...\n",
+          " diff = %d, temp2=%lu, String.size=%lu]...\n",
            (char *) result, offset_index, temp, temp2, temp3);
 
   if (Byte (result, temp3) != 0)
@@ -132,7 +132,7 @@ char *mosml_ffi_alloc_wrap (void *buff, size_t size)
 
   if (jit_ffi_debug)
     printf("mosml_ffi_alloc_wrap: returning %p [offset_index = %lu,"
-          " diff = %hhd, temp2=%lu, String.size=%lu]...\n",
+          " diff = %d, temp2=%lu, String.size=%lu]...\n",
            (char *) result, offset_index, temp, temp2, temp3);
 
   if (Byte (result, temp3) != 0)

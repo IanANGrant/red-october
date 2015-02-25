@@ -2,13 +2,14 @@
    sestoft@dina.kvl.dk 1998-10-29, 1998-11-04 */
 
 #include <stdlib.h>
+#include <string.h>
 
 /* Access to the camlrunm/Moscow ML runtime data representation: */
 
-#include <mlvalues.h>
-#include <memory.h>
-#include <fail.h>
-#include <alloc.h>
+#include "mosml/mlvalues.h"
+#include "mosml/memory.h"
+#include "mosml/fail.h"
+#include "mosml/alloc.h"
 
 /* The following is a hack to avoid a stupid define-conflict (C #&%$@!) */
 
@@ -216,6 +217,7 @@ EXTERNML value pq_resultstatus(value pgresval)
   default: 
     failwith("mpq:pg_resultstatus: internal error");
   }
+  return Val_unit;
 }
 
 /* ML type : pgresult_ -> int */

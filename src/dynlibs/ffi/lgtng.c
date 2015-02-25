@@ -39,6 +39,7 @@ typedef struct intstrpair_ intstrpair_t;
               failwith("Invalid argument")
 
 #define Statep_val(x) ((lgt_state_t)(Field(x,1)))
+#define Lcode_val(x) ((lgt_code_t)(Long_val(x)))
 
 #if defined(__i386__) || defined(__x86_64__)
 #define lightning_arch "x86"
@@ -272,6 +273,10 @@ static value lgt_new_state(lgt_state_t sp) {
 
 static lgt_state_t lgt_state_val(value v) {
   return Statep_val(v);
+}
+
+static lgt_code_t lgt_code_val(value v) {
+  return Lcode_val(v);
 }
 
 static lgt_gpr_t lgt_gpr_val(value v) {

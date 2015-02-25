@@ -130,6 +130,8 @@ EXTERNML value unix_execute(value cmd, value args, value envopt) {
     // Never gets here
     return Val_unit;
   }
+  // Never gets here either, we hope.
+  return Val_unit;
 }
 
 /* ML type: int -> int */
