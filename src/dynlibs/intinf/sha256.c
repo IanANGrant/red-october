@@ -105,8 +105,7 @@ static inline __u8 ror8(__u8 word, unsigned int shift)
 
 #include <asm/byteorder.h>
 
-u32 state[8];
-unsigned int count;
+typedef struct sha256_state ctxt_t;
 
 static inline u32 Ch(u32 x, u32 y, u32 z)
 {
@@ -117,8 +116,6 @@ static inline u32 Maj(u32 x, u32 y, u32 z)
 {
 	return (x & y) | (z & (x | y));
 }
-
-// #define ror32(w,c) ((((u32) w) >> c)) 
 
 #define e0(x)       (ror32(x, 2) ^ ror32(x,13) ^ ror32(x,22))
 #define e1(x)       (ror32(x, 6) ^ ror32(x,11) ^ ror32(x,25))
@@ -135,8 +132,9 @@ static inline void BLEND_OP(int I, u32 *W)
 	W[I] = s1(W[I-2]) + W[I-7] + s0(W[I-15]) + W[I-16];
 }
 
-static void sha256_transform(const u8 *input)
+static void sha256_transform(ctxt_t *ctxt, const u8 *input)
 {
+        u32 *state = ctxt->state;
 	u32 a, b, c, d, e, f, g, h, t1, t2;
 	u32 W[64];
 	int i;
@@ -298,8 +296,10 @@ static void sha256_transform(const u8 *input)
 	memset(W, 0, 64 * sizeof(u32));
 }
 
-int sha224_init(void)
+int sha224_init(ctxt_t *ctxt)
 {
+  u32 *state = ctxt->state;
+
 	state[0] = SHA224_H0;
 	state[1] = SHA224_H1;
 	state[2] = SHA224_H2;
@@ -308,13 +308,15 @@ int sha224_init(void)
 	state[5] = SHA224_H5;
 	state[6] = SHA224_H6;
 	state[7] = SHA224_H7;
-	count = 0;
+	ctxt->count = 0;
 
 	return 0;
 }
 
-int sha256_init(void)
+int sha256_init(ctxt_t *ctxt)
 {
+  u32 *state = ctxt->state;
+
 	state[0] = SHA256_H0;
 	state[1] = SHA256_H1;
 	state[2] = SHA256_H2;
@@ -323,21 +325,22 @@ int sha256_init(void)
 	state[5] = SHA256_H5;
 	state[6] = SHA256_H6;
 	state[7] = SHA256_H7;
-	count = 0;
+	ctxt->count = 0;
 
 	return 0;
 }
 
 static u8 buf[SHA256_BLOCK_SIZE];
 
-int sha256_update(const u8 *data,
-			 unsigned int len)
+int sha256_update(ctxt_t *ctxt,
+                  const u8 *data,
+                  unsigned int len)
 {
 	unsigned int partial, done;
 	const u8 *src;
 
-	partial = count & 0x3f;
-	count += len;
+	partial = ctxt->count & 0x3f;
+	ctxt->count += len;
 	done = 0;
 	src = data;
 
@@ -348,8 +351,7 @@ int sha256_update(const u8 *data,
 			src = buf;
 		}
 
-		do {
-			sha256_transform(src);
+		do {    sha256_transform(ctxt,src);
 			done += 64;
 			src = data + done;
 		} while (done + 63 < len);
@@ -361,8 +363,9 @@ int sha256_update(const u8 *data,
 	return 0;
 }
 
-int sha256_final(u8 *out)
+int sha256_final(ctxt_t *ctxt,u8 *out)
 {
+        u32 *state = ctxt->state;
 	__be32 *dst = (__be32 *)out;
 	__be64 bits;
 	unsigned int index, pad_len;
@@ -370,15 +373,15 @@ int sha256_final(u8 *out)
 	static const u8 padding[64] = { 0x80, };
 
 	/* Save number of bits */
-	bits = cpu_to_be64(count << 3);
+	bits = cpu_to_be64(ctxt->count << 3);
 
 	/* Pad out to 56 mod 64. */
-	index = count & 0x3f;
+	index = ctxt->count & 0x3f;
 	pad_len = (index < 56) ? (56 - index) : ((64+56) - index);
-	sha256_update(padding, pad_len);
+	sha256_update(ctxt,padding, pad_len);
 
 	/* Append length (before padding) */
-	sha256_update((const u8 *)&bits, sizeof(bits));
+	sha256_update(ctxt,(const u8 *)&bits, sizeof(bits));
 
 	/* Store state in digest */
 	for (i = 0; i < 8; i++)
@@ -387,11 +390,11 @@ int sha256_final(u8 *out)
 	return 0;
 }
 
-int sha224_final(u8 *hash)
+int sha224_final(ctxt_t *ctxt,u8 *hash)
 {
 	u8 D[SHA256_DIGEST_SIZE];
 
-	sha256_final(D);
+	sha256_final(ctxt,D);
 
 	memcpy(hash, D, SHA224_DIGEST_SIZE);
 	memset(D, 0, SHA256_DIGEST_SIZE);

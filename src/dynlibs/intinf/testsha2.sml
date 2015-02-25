@@ -1,6 +1,6 @@
 val _ = load "Lightning32";
-val _ = load "StaticWord8ArraySlice";
-val _ = load "StaticBuffer";
+val _ = load "MappedWord8Array";
+val _ = load "MappedWord8ArraySlice";
 
 val _ = load "IntInf";
 
@@ -25,40 +25,6 @@ val sha256_initp   = dlhsymp "sha256_init";
 val sha256_updatep = dlhsymp "sha256_update";
 val sha256_finalp  = dlhsymp "sha256_final";
 
-val toHexStr = IntInf.fmt StringCvt.HEX;
-val num = IntInf.fromInt (Char.ord #"*");
-val fromHexString = StringCvt.scanString (IntInf.scan StringCvt.HEX)
-
-val SOME hash = fromHexString "1b7c99b95cc6fad6d88b2c3fdd0d9faab2a4fd1de0d6a880bd2261ac2592a222";
-val hash'n = toHexStr hash;
-
-val (slc,nwords,sgn) = IntInf.export IntInf.rawformat hash;
-
-val w8vsl = Word8Vector.app (fn (w) => (print ((Word8.toString w)^" "))) (Word8ArraySlice.vector slc);
-
-val hash' = IntInf.import IntInf.rawformat (slc,nwords,sgn);
-val hash'n' = toHexStr hash';
-
-fun mkLargeint () =
-   let val mpz = IntInf.init2 (0x100,0x0);
-       val mpzp = IntInf.getCptr mpz;
-   in mpzp
-   end
-
-val wvarr = Array.tabulate 
-              (nwords,
-                 fn i => (Word8ArraySlice.vector (Word8ArraySlice.subslice (slc,i*4,SOME 4))));
-
-val num2 = IntInf.orb(IntInf.<<(num, 32),IntInf.+(num, IntInf.fromInt 1));
-val num3 = IntInf.orb(IntInf.<<(num2,64),IntInf.+(num2,IntInf.fromInt 1));
-val num3'n = toHexStr num3;
-
-val (slc,nwords,sgn) = IntInf.export IntInf.rawformat num3;
-
-val wvl = Array.foldl op :: [] wvarr;
-val num' = IntInf.import IntInf.rawformat (slc,nwords,sgn);
-val num'n = toHexStr num';
-
 val () = init_jit();
 
 val ws = WORDSIZE;
@@ -80,10 +46,12 @@ fun jit_fprolog jit_ =
    val () = jit_getarg (jit_, V0, v)
    val _ = jit_ldxi (jit_, V2, V0, wsz * 0w0) (* V2 = Field(v,0)   *)
    val _ = jit_ldxi (jit_, V1, V0, wsz * 0w1) (* V1 = Field(v,1)   *)
-   val _ = jit_rshi (jit_, V1, V1, 0w1)       (* V1 = Long_val(V1) *)
+   val _ = jit_ldxi (jit_, V0, V0, wsz * 0w2) (* V0 = Field(v,2)   *)
+   val _ = jit_rshi (jit_, V0, V0, 0w1)       (* V0 = Long_val(V0) *)
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V2)
    val _ = jit_pushargr (jit_, V1)
+   val _ = jit_pushargr (jit_, V0)
    val _ = jit_finishi (jit_, sha256_updatep) 
    val _ = jit_retval (jit_, R0);
 
@@ -94,7 +62,11 @@ fun jit_fprolog jit_ =
 
    val init = jit_fprolog (jit_);
 
+   val v = jit_arg (jit_);
+
+   val () = jit_getarg (jit_, V2, v)
    val _ = jit_prepare (jit_)
+   val _ = jit_pushargr (jit_, V2)
    val _ = jit_finishi (jit_, sha256_initp) 
    val _ = jit_retval (jit_, R0);
 
@@ -109,8 +81,11 @@ fun jit_fprolog jit_ =
 
    val () = jit_getarg (jit_, V0, v)
    val _ = jit_ldxi (jit_, V2, V0, wsz * 0w0) (* V2 = Field(v,0)   *)
+   val _ = jit_ldxi (jit_, V1, V0, wsz * 0w1) (* V1 = Field(v,1)   *)
+
    val _ = jit_prepare (jit_)
    val _ = jit_pushargr (jit_, V2)
+   val _ = jit_pushargr (jit_, V1)
    val _ = jit_finishi (jit_, sha256_finalp) 
    val _ = jit_retval (jit_, R0);
 
@@ -127,8 +102,35 @@ val finaladd  = jit_address (jit_, final);
 
 val () = jit_clear_state (jit_);
 
-val sha256_init : unit -> int = app1 initadd;
-val sha256_update : cptr * int -> int = app1 updateadd;
-val sha256_final : cptr -> int = app1 finaladd;
+val sha256_init : Dynlib.cptr -> int = app1 initadd;
+val sha256_update : Dynlib.cptr * Dynlib.cptr * int -> int = app1 updateadd;
+val sha256_final : Dynlib.cptr * Dynlib.cptr -> int = app1 finaladd;
 
 val () = jit_disassemble (jit_); 
+
+(*
+struct sha256_state {
+	u64 count;
+	u32 state[SHA256_DIGEST_SIZE / 4];
+	u8 buf[SHA256_BLOCK_SIZE];
+}; *)
+
+val ctxtsize = 8+32+64
+val ctxt = MappedWord8Array.array (ctxtsize,0w0);
+val ctxtp = MappedWord8Array.get_cptr ctxt;
+
+val buffer = MappedWord8Array.array (1024,0w0);
+val sha256sum = MappedWord8Array.array (32,0w0);
+val vecFromString : string -> Word8Vector.vector = Obj.magic;
+val loadString = fn arr => fn s => MappedWord8Array.copyVec {di=0,dst=arr,src=vecFromString s};
+
+val _ = loadString buffer "abc";
+val bufp = MappedWord8Array.get_cptr buffer;
+val sump = MappedWord8Array.get_cptr sha256sum;
+val _ = sha256_init (ctxtp);
+val rv = sha256_update (ctxtp,bufp,3);
+val rv' = sha256_final (ctxtp,sump);
+
+(* echo -n "abc" | sha256sum *)
+
+val strsum = MappedWord8Array.foldl (fn (w,a) => a^(Word8.toString w)) "" sha256sum;
