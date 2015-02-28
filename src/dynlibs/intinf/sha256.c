@@ -330,7 +330,7 @@ int sha256_init(ctxt_t *ctxt)
 	return 0;
 }
 
-static u8 buf[SHA256_BLOCK_SIZE];
+// static u8 buf[SHA256_BLOCK_SIZE];
 
 int sha256_update(ctxt_t *ctxt,
                   const u8 *data,
@@ -338,6 +338,7 @@ int sha256_update(ctxt_t *ctxt,
 {
 	unsigned int partial, done;
 	const u8 *src;
+        u8 *buf = ctxt->buf;
 
 	partial = ctxt->count & 0x3f;
 	ctxt->count += len;
