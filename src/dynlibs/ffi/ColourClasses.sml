@@ -340,16 +340,19 @@ end
 signature RGBAlphaColourAttr =
 sig type RGB
     type RGBA
-    structure RGBColour
-                : RGBColour
-                   where type colour = RGB
     structure RGBAlphaColour
                 : RGBAlphaColour
                    where type supercolour = RGB
                           and type colour = RGBA
-    structure Attr
+    structure RGBAAttr
                 : Attr
                    where type attr = RGBA
+    structure RGBColour
+                : RGBColour
+                   where type colour = RGB
+    structure RGBAttr
+                : Attr
+                   where type attr = RGB
 end
 
 functor RGBAlphaColourAttr
@@ -378,7 +381,7 @@ struct
          type colour = RGBA
          open RGBAlphaColour1
       end
-      structure Attr :> Attr
+      structure RGBAAttr :> Attr
            where type attr = RGBA
              and type super = RGB =
       struct
@@ -408,6 +411,17 @@ struct
             val Setg : colour -> real -> unit = Setg
             val Setb : colour -> real -> unit = Setb
          end
+      end
+      structure RGBAttr :> Attr
+           where type attr = RGB
+             and type super = RGBA =
+      struct
+         type attr = RGB
+         type super = RGBA
+         val default = RGBColour.New (1.0, 1.0, 1.0)
+         val eq = fn (x,y) => RGBColour.Equal x y
+         val toSuper = RGBAlphaColour.fromRGBColour
+         val fromSuper = RGBAlphaColour.toRGBColour
       end
    end
 end

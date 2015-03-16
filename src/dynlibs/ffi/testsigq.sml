@@ -21,7 +21,7 @@ structure WordStruct
           and type word = Word.word =
 struct
    type largeword = Word.word
-   open Word
+  open Word
 end
 
 local open SigAction
@@ -153,7 +153,6 @@ structure ObjRepr =
 
 fun testCodec (buff : Fifo.fifo) (obj : 'a) : 'a =
    let val _ = ObjRepr.encode (obj,buff)
-       val _ = MemDebug.gc_full_major()
    in ObjRepr.decode buff 
    end
 

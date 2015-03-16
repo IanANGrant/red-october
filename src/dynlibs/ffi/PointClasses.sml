@@ -124,8 +124,7 @@ struct
    structure Attr = Attr
    type attr = Attr.attr
    type Vars = {attr : attr ref, sup : Super.Vars}
-   type 'a F =
-               { getattr : unit -> attr,
+   type 'a F = { getattr : unit -> attr,
                  setattr : attr -> unit,
                  getx : unit -> int,
                  gety : unit -> int,

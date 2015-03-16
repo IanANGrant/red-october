@@ -231,9 +231,12 @@ in
 
 fun prec name loopv mv nvs xv nextx itpred initx avs steps exit accs expr =
      let val loop = mk_var loopv
-         fun appaccs [] a = a
-           | appaccs (ac::acs) e =
-                appaccs acs (e :@ ac)
+         fun appaccs l =
+            let fun iter [] a = a
+                  | iter (ac::acs) e =
+                      iter acs (e :@ ac)
+            in iter (rev l)
+            end
      in
       letrec name
         (mv,

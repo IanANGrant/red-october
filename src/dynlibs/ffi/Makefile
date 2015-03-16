@@ -56,7 +56,10 @@ all: libmffi.so libcinfo.so Ffi.uo Jit.uo liblgtng.so Lightning32.uo	\
     PrimEncSig.ui PrimEnc.uo VectorWordEnc.uo Globals.uo TestWord.uo	\
     WordFormat.uo CompTestWord.uo SpeedTest.uo WordOpsSig.ui		\
     WordOps.uo GenericWord.ui Rot13.uo BitSet.uo PrologParser.uo	\
-    PrologLexer.uo PrologSyntax.uo Prolog.uo testlightning
+    PrologLexer.uo PrologSyntax.uo Prolog.uo testlightning		\
+    ColourClasses.ui ColourClasses.uo PointClasses.ui PointClasses.uo	\
+    GenericMappedWord8ArraySlice.ui GenericMappedWord8ArraySlice.uo	\
+    GenericWord8ArraySlice.ui GenericWord8ArraySlice.uo
 
 MLMODULES = Lightning32.ui Lightning32.uo Lightning64.ui		\
             Lightning64.uo StaticWord8Array.uo StaticWord8Array.ui	\
@@ -348,8 +351,10 @@ MemDebug.uo MemDebug.ui : ValRepr.ui MemDebug.sml
 MappedFifo.ui MappedFifo.uo : SplitFifo.ui SysErr.ui ValRepr.ui MappedFifo.sml 
 	$(MOSMLC) -imptypes SplitFifo.ui SysErr.ui ValRepr.ui MappedFifo.sml 
 
-ShmMap.uo ShmMap.ui : ShmMap.sml SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui DoubleMappedWord8Array.uo
-	 $(MOSMLC) -imptypes SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui MMap.ui Shm.ui DoubleMappedWord8Array.ui ShmMap.sml
+ShmMap.uo ShmMap.ui : ShmMap.sml SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui \
+              MMap.ui Shm.ui DoubleMappedWord8Array.uo
+	 $(MOSMLC) -imptypes SysErr.ui ValRepr.ui MappedFifo.ui FifoBuffer.ui \
+              MMap.ui Shm.ui DoubleMappedWord8Array.ui ShmMap.sml
 
 DoubleMappedWord8Array.ui : DoubleMappedWord8Array.sig MMap.ui
 	 $(MOSMLC) MMap.ui DoubleMappedWord8Array.sig
@@ -586,6 +591,85 @@ AbstractMachineWord.uo : WordPrim.ui WordEncSig.ui PrimEncSig.ui WordOpsSig.ui \
 
 MachineWord.uo : MachineWord.sml WordPrim.sml
 	$(MOSMLC) -toplevel WordPrim.sml MachineWord.sml
+
+ColourClasses.ui ColourClasses.uo : ColourClasses.sml
+	$(MOSMLC) -orthodox -toplevel ColourClasses.sml
+
+PointClasses.ui PointClasses.uo : ColourClasses.ui PointClasses.sml
+	$(MOSMLC) -orthodox -toplevel ColourClasses.ui PointClasses.sml
+
+AbstractVector.ui AbstractVector.uo : AbstractVector.sml
+	$(MOSMLC) -toplevel AbstractVector.sml
+
+AbstractVectorSlice.ui AbstractVectorSlice.uo : AbstractVectorSlice.sml
+	$(MOSMLC) -toplevel AbstractVectorSlice.sml
+
+AbstractArray.ui AbstractArray.uo : AbstractArray.sml
+	$(MOSMLC) -toplevel AbstractArray.sml
+
+AbstractArraySlice.ui AbstractArraySlice.uo : AbstractArraySlice.sml
+	$(MOSMLC) -toplevel AbstractArraySlice.sml
+
+GenericWordVector.ui GenericWordVector.uo : AbstractVector.ui GenericWordVector.sml
+	$(MOSMLC) -toplevel AbstractVector.ui GenericWordVector.sml
+
+GenericWordVectorSlice.ui GenericWordVectorSlice.uo : AbstractVectorSlice.ui \
+		 GenericWordVector.ui GenericWordVectorSlice.sml
+	$(MOSMLC) -toplevel AbstractVectorSlice.ui GenericWordVector.ui GenericWordVectorSlice.sml
+
+GenericWordArray.ui GenericWordArray.uo : GenericWordVector.ui AbstractArray.ui GenericWordArray.sml
+	$(MOSMLC) -toplevel GenericWordVector.ui AbstractArray.ui GenericWordArray.sml
+
+GenericWordArraySlice.ui GenericWordArraySlice.uo : GenericWordVectorSlice.ui GenericWordVector.ui \
+                 AbstractArraySlice.ui GenericWordArray.ui GenericWordArraySlice.sml
+	$(MOSMLC) -toplevel GenericWordVectorSlice.ui GenericWordVector.ui AbstractArraySlice.ui \
+                 GenericWordArray.ui GenericWordArraySlice.sml
+
+AbstractWord8Vector.ui AbstractWord8Vector.uo : AbstractVector.ui AbstractWord8Vector.sml
+	$(MOSMLC) -toplevel AbstractVector.ui AbstractWord8Vector.sml
+
+AbstractWord8VectorSlice.ui AbstractWord8VectorSlice.uo : AbstractVectorSlice.ui \
+                  GenericWord8Vector.ui AbstractWord8VectorSlice.sml
+	$(MOSMLC) -toplevel  GenericWord8Vector.ui AbstractVectorSlice.ui AbstractWord8VectorSlice.sml
+
+AbstractWord8Array.ui AbstractWord8Array.uo : AbstractArray.ui GenericWord8Vector.ui \
+                  AbstractWord8Array.sml
+	$(MOSMLC) -toplevel AbstractArray.ui GenericWord8Vector.ui AbstractWord8Array.sml
+
+AbstractWord8ArraySlice.ui AbstractWord8ArraySlice.uo : AbstractArraySlice.ui \
+                  AbstractWord8Array.ui AbstractWord8ArraySlice.sml
+	$(MOSMLC) -toplevel AbstractArraySlice.ui AbstractWord8Array.ui AbstractWord8ArraySlice.sml
+
+GenericWord8Vector.ui GenericWord8Vector.uo : AbstractWord8Vector.ui GenericWordVector.ui \
+                  GenericWord8Vector.sml
+	$(MOSMLC) -toplevel AbstractWord8Vector.ui GenericWordVector.ui GenericWord8Vector.sml
+
+GenericWord8VectorSlice.ui GenericWord8VectorSlice.uo : GenericWordVectorSlice.ui GenericWord8Vector.ui \
+                  AbstractWord8Vector.ui AbstractWord8VectorSlice.ui GenericWord8VectorSlice.sml
+	$(MOSMLC) -toplevel GenericWordVectorSlice.ui GenericWord8Vector.ui AbstractWord8Vector.ui \
+                    AbstractWord8VectorSlice.ui GenericWord8VectorSlice.sml
+
+GenericWord8Array.ui GenericWord8Array.uo : AbstractWord8Array.ui GenericWordArray.ui GenericWord8Vector.ui GenericWord8Array.sml
+	$(MOSMLC) -toplevel AbstractWord8Array.ui GenericWordArray.ui GenericWord8Vector.ui GenericWord8Array.sml
+
+GenericMappedWord8Array.ui GenericMappedWord8Array.uo : GenericWordArray.ui AbstractWord8Array.ui \
+                  GenericWord8Vector.ui GenericMappedWord8Array.sml
+	$(MOSMLC) -toplevel GenericWordArray.ui AbstractWord8Array.ui GenericWord8Vector.ui \
+                  GenericMappedWord8Array.sml
+
+GenericWord8ArraySlice.ui GenericWord8ArraySlice.uo : AbstractWord8ArraySlice.ui GenericWordArraySlice.ui \
+                  GenericWord8Array.ui GenericWord8Vector.ui GenericWord8VectorSlice.ui \
+                  GenericWord8ArraySlice.sml
+	$(MOSMLC) -toplevel AbstractWord8ArraySlice.ui GenericWordArraySlice.ui GenericWord8Array.ui \
+                  GenericWord8Vector.ui GenericWord8VectorSlice.ui GenericWord8ArraySlice.sml
+
+GenericMappedWord8ArraySlice.ui GenericMappedWord8ArraySlice.uo : GenericWord8VectorSlice.ui \
+                           GenericMappedWord8Array.ui GenericWord8Vector.ui \
+                           GenericWordArraySlice.ui AbstractWord8ArraySlice.ui \
+                           GenericMappedWord8ArraySlice.sml
+	$(MOSMLC) -toplevel GenericWord8VectorSlice.ui GenericMappedWord8Array.ui \
+                           GenericWord8Vector.ui GenericWordArraySlice.ui \
+                           AbstractWord8ArraySlice.ui GenericMappedWord8ArraySlice.sml
 
 test:
 	mosml testffi.sml

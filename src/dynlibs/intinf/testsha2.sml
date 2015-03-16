@@ -25,6 +25,10 @@ val sha256_initp   = dlhsymp "sha256_init";
 val sha256_updatep = dlhsymp "sha256_update";
 val sha256_finalp  = dlhsymp "sha256_final";
 
+val sha224_initp   = dlhsymp "sha224_init";
+val sha224_updatep = dlhsymp "sha256_update";
+val sha224_finalp  = dlhsymp "sha224_final";
+
 val () = init_jit();
 
 val ws = WORDSIZE;

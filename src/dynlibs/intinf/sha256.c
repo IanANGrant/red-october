@@ -330,8 +330,6 @@ int sha256_init(ctxt_t *ctxt)
 	return 0;
 }
 
-// static u8 buf[SHA256_BLOCK_SIZE];
-
 int sha256_update(ctxt_t *ctxt,
                   const u8 *data,
                   unsigned int len)

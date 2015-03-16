@@ -118,8 +118,8 @@ fun univ_coerce c1 (tFUN(tE1_T1,tE2_T1))
          then v
          else (lookup_coerce c1 x y) v  
 
-fun coerce c1 (T1 as (emb_T1, proj_T1, tE_T1))
-              (T2 as (emb_T2, proj_T2, tE_T2)) v =
+fun coerce c1 (T1 as (emb_T1, proj_T1, tE_T1)) v
+  = fn (T2 as (emb_T2, proj_T2, tE_T2)) =>
       proj_T2 (univ_coerce c1 tE_T1 tE_T2 (emb_T1 v))
 
 infix 5 ++
@@ -243,9 +243,9 @@ val C' = [(tINT,
            fn (REAL x) => STR (Real.toString x)
             | _ => raise Fail "coerce: WORD->STR: Internal error")]
 
-val r2i = coerce C' (Pair(Real,Real) --> Real) (Pair(Int,Real) --> Int)
+val r2i = fn f => coerce C' (Pair(Real,Real) --> Real) f (Pair(Int,Real) --> Int)
 val iplus = r2i Real.+
-val 42 = iplus (12,30.0)
+val 42 = iplus (12,30.333333)
 
 datatype lexp =
    VAR of string
